@@ -1,0 +1,42 @@
+# -*- coding: utf-8 -*-
+"""
+STREAM IT — Capacitor & GitHub Pages Static Bundle Builder (`www/`)
+====================================================================
+מעתיק את כל נכסי האפליקציה העצמאית לתיקיית `www/` עבור בניית APK ב-Capacitor
+ועבור פריסה סטטית ב-GitHub Pages ללא צורך בשרת מקומי.
+"""
+
+import os
+import shutil
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WWW_DIR = os.path.join(BASE_DIR, "www")
+
+FILES_TO_COPY = [
+    "index.html",
+    "styles.css",
+    "app.js",
+    "tv-navigation.js",
+    "manifest.webmanifest",
+]
+
+
+def build_www() -> None:
+    os.makedirs(WWW_DIR, exist_ok=True)
+    for fname in FILES_TO_COPY:
+        src = os.path.join(BASE_DIR, fname)
+        if os.path.exists(src):
+            shutil.copy2(src, os.path.join(WWW_DIR, fname))
+
+    src_data = os.path.join(BASE_DIR, "data")
+    dst_data = os.path.join(WWW_DIR, "data")
+    os.makedirs(dst_data, exist_ok=True)
+    cat_file = os.path.join(src_data, "hebrew_catalog.json")
+    if os.path.exists(cat_file):
+        shutil.copy2(cat_file, os.path.join(dst_data, "hebrew_catalog.json"))
+
+    print("[STREAM IT] Built standalone Capacitor / Git bundle in www/")
+
+
+if __name__ == "__main__":
+    build_www()
