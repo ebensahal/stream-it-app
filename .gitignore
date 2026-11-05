@@ -19,3 +19,5 @@ dist/
 android/.gradle/
 android/app/build/
 *.log
+data/subtitles_cache/
+data/accounts_vault.json

@@ -771,6 +771,8 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
 
         # 1c. Local Ad-Free HLS Playlist & MPEG-TS Video Segment Proxy (Injects Required Referer/Origin Headers)
         if path == "/api/hls-proxy":
+            import gzip as _gzip
+            import re as _re
             target_url = q_val("url", "").strip()
             api_token = q_val("api_token", "").strip()
             player_origin = q_val("origin", "https://stellarconductornexus.com").strip() or "https://stellarconductornexus.com"
@@ -779,12 +781,15 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                 self._send_json({"ok": False, "error": "Missing or invalid target url"}, status_code=400)
                 return
 
-            ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            req_headers = {
-                "User-Agent": ua,
-                "Origin": player_origin,
-                "Referer": f"{player_origin}/",
-            }
+            ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36"
+            if player_origin == "live":
+                req_headers = {"User-Agent": ua}
+            else:
+                req_headers = {
+                    "User-Agent": ua,
+                    "Origin": player_origin,
+                    "Referer": f"{player_origin}/",
+                }
             try:
                 if api_token and "token=" not in target_url:
                     u_parsed = urllib.parse.urlparse(target_url)
@@ -816,26 +821,42 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
 
                 r_media = urllib.request.Request(target_url, headers=req_headers)
                 with urllib.request.urlopen(r_media, timeout=8) as resp_media:
+                    final_url = resp_media.geturl() or target_url
                     raw_bytes = resp_media.read()
+
+                if raw_bytes[:2] == b"\x1f\x8b":
+                    try:
+                        raw_bytes = _gzip.decompress(raw_bytes)
+                    except Exception:
+                        pass
 
                 if raw_bytes.lstrip().startswith(b"#EXTM3U"):
                     m3u8_text = raw_bytes.decode("utf-8", errors="replace")
                     out_lines: List[str] = []
+
+                    def _proxy_wrap(raw_u: str) -> str:
+                        abs_u = urllib.parse.urljoin(final_url, raw_u)
+                        return (
+                            f"http://localhost:{server_port}/api/hls-proxy"
+                            f"?url={urllib.parse.quote(abs_u, safe='')}"
+                            f"&origin={urllib.parse.quote(player_origin, safe='')}"
+                        )
+
                     for line in m3u8_text.splitlines():
                         s_line = line.strip()
                         if not s_line:
                             out_lines.append("")
                             continue
                         if s_line.startswith("#"):
+                            if 'URI="' in s_line:
+                                s_line = _re.sub(
+                                    r'URI="([^"]+)"',
+                                    lambda m: f'URI="{_proxy_wrap(m.group(1))}"',
+                                    s_line,
+                                )
                             out_lines.append(s_line)
                             continue
-                        abs_u = urllib.parse.urljoin(target_url, s_line)
-                        proxied_u = (
-                            f"http://localhost:{server_port}/api/hls-proxy"
-                            f"?url={urllib.parse.quote(abs_u, safe='')}"
-                            f"&origin={urllib.parse.quote(player_origin, safe='')}"
-                        )
-                        out_lines.append(proxied_u)
+                        out_lines.append(_proxy_wrap(s_line))
                     final_m3u8 = "\n".join(out_lines) + "\n"
                     self._send_text(final_m3u8, content_type="application/vnd.apple.mpegurl; charset=utf-8")
                     return
@@ -1012,6 +1033,21 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"ok": True, "state": state, **state})
             return
 
+        # 8b. Encrypted Email Account Vault Lookup
+        if path == "/api/accounts/get":
+            email_key = q_val("email", "").strip().lower()
+            vault_path = os.path.join(DATA_DIR, "accounts_vault.json")
+            accounts_map: Dict[str, Any] = {}
+            if os.path.exists(vault_path):
+                try:
+                    with open(vault_path, "r", encoding="utf-8") as vf:
+                        accounts_map = json.load(vf) or {}
+                except Exception:
+                    accounts_map = {}
+            rec = accounts_map.get(email_key)
+            self._send_json({"ok": bool(rec), "email": email_key, "record": rec})
+            return
+
         # 9. Installed Addons List
         if path == "/api/addons":
             state = load_user_state()
@@ -1084,6 +1120,30 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
         if path == "/api/state":
             updated = update_user_state(body)
             self._send_json({"ok": True, "state": updated, **updated})
+            return
+
+        if path == "/api/accounts/sync":
+            email_key = str(body.get("email") or "").strip().lower()
+            record = body.get("record")
+            if email_key and isinstance(record, dict):
+                vault_path = os.path.join(DATA_DIR, "accounts_vault.json")
+                with STATE_LOCK:
+                    accounts_map: Dict[str, Any] = {}
+                    if os.path.exists(vault_path):
+                        try:
+                            with open(vault_path, "r", encoding="utf-8") as vf:
+                                accounts_map = json.load(vf) or {}
+                        except Exception:
+                            accounts_map = {}
+                    accounts_map[email_key] = record
+                    try:
+                        with open(vault_path, "w", encoding="utf-8") as vf:
+                            json.dump(accounts_map, vf, ensure_ascii=False, indent=2)
+                    except Exception:
+                        pass
+                self._send_json({"ok": True, "email": email_key})
+                return
+            self._send_json({"ok": False, "error": "Invalid email or record"}, status_code=400)
             return
 
         if path == "/api/addons/install":

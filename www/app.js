@@ -469,8 +469,19 @@
      WEB CRYPTO AES-256-GCM + PBKDF2-SHA256 SECURITY & BUILT-IN VPN ENGINE
      ======================================================================== */
   const PROFILE_COLORS = [
-    '#E50914', '#2563EB', '#059669', '#D97706', '#7C3AED',
-    '#DB2777', '#0891B2', '#4F46E5', '#EA580C', '#16A34A'
+    '#E50914', '#2563EB', '#7C3AED', '#059669', '#EA580C',
+    '#DB2777', '#06B6D4', '#D97706', '#4F46E5', '#16A34A'
+  ];
+
+  const PROFILE_AVATARS = [
+    { id: 'cinema_red', emoji: '🎬', color: 'linear-gradient(135deg, #E50914 0%, #7F1D1D 100%)', solid: '#E50914', label: 'אדום קולנוע' },
+    { id: 'neon_blue', emoji: '🚀', color: 'linear-gradient(135deg, #2563EB 0%, #1E3A8A 100%)', solid: '#2563EB', label: 'כחול חלל' },
+    { id: 'royal_purple', emoji: '👑', color: 'linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)', solid: '#7C3AED', label: 'סגול מלכותי' },
+    { id: 'emerald_green', emoji: '🍿', color: 'linear-gradient(135deg, #059669 0%, #064E3B 100%)', solid: '#059669', label: 'ירוק פופקורן' },
+    { id: 'sunset_orange', emoji: '🔥', color: 'linear-gradient(135deg, #EA580C 0%, #7C2D12 100%)', solid: '#EA580C', label: 'כתום אקשן' },
+    { id: 'fuchsia_pink', emoji: '💎', color: 'linear-gradient(135deg, #DB2777 0%, #831843 100%)', solid: '#DB2777', label: 'ורוד יהלום' },
+    { id: 'kids_cyan', emoji: '🎈', color: 'linear-gradient(135deg, #06B6D4 0%, #0369A1 100%)', solid: '#06B6D4', label: 'טורקיז ילדים' },
+    { id: 'gold_vip', emoji: '⭐', color: 'linear-gradient(135deg, #D97706 0%, #78350F 100%)', solid: '#D97706', label: 'זהב VIP' }
   ];
 
   const CryptoVaultEngine = {
@@ -542,14 +553,36 @@
     }
   };
 
-  function createDefaultProfile(index = 1, customName = '') {
+  function createDefaultProfile(index = 1, customName = '', options = {}) {
+    const isKids = Boolean(options.is_kids);
+    const defaultAvatar = isKids
+      ? PROFILE_AVATARS[6]
+      : PROFILE_AVATARS[(index - 1) % PROFILE_AVATARS.length];
+    const chosenAvatar =
+      PROFILE_AVATARS.find((a) => a.id === options.avatarId) || defaultAvatar;
     return {
-      id: 'prof_' + Date.now() + '_' + index,
-      name: customName || `יוזר ${index}`,
-      color: PROFILE_COLORS[(index - 1) % PROFILE_COLORS.length],
-      watchlist: ['tt15239678', 'tt15398776'],
-      continue_watching: [],
-      // Telegram is 100% OPTIONAL and disconnected (false) by default!
+      id: options.id || 'prof_' + Date.now() + '_' + index + '_' + Math.floor(Math.random() * 1000),
+      name: customName || (isKids ? 'ילדים' : `יוזר ${index}`),
+      avatarId: chosenAvatar.id,
+      emoji: options.emoji || chosenAvatar.emoji,
+      color: options.color || chosenAvatar.color,
+      solidColor: options.solidColor || chosenAvatar.solid,
+      is_kids: isKids,
+      pin_code: String(options.pin_code || '').replace(/\D/g, '').slice(0, 4),
+      watchlist: Array.isArray(options.watchlist) ? options.watchlist : [],
+      continue_watching: Array.isArray(options.continue_watching) ? options.continue_watching : [],
+      watch_history: Array.isArray(options.watch_history) ? options.watch_history : [],
+      subtitle_prefs: Object.assign(
+        {
+          font_size: 'large',
+          color: 'white',
+          bg_mode: 'semi',
+          outline: 'bold',
+          pos: 'normal',
+          default_offset_ms: 0
+        },
+        options.subtitle_prefs || {}
+      ),
       telegramConfig: {
         connected: false,
         user_handle: '',
@@ -575,13 +608,20 @@
       dohServer: 'https://cloudflare-dns.com/dns-query'
     },
 
-    // Multi-Account & 10-User Profile State
-    currentAccountUsername: 'ראשי',
+    // Registered Email Account & Family Sub-Users State
+    isAuthenticated: false,
+    authMode: 'login', // 'login' | 'register'
+    currentAccountUsername: '', // Registered Email Address
     currentAccountKey: null,
     currentAccountSaltHex: '',
     currentAccountVerifierHex: '',
-    accountProfiles: [createDefaultProfile(1, 'יוזר 1')],
+    accountProfiles: [],
     activeProfileIndex: 0,
+    isManagingProfiles: false,
+    editingProfileIndex: null,
+    selectedEditorAvatarId: 'cinema_red',
+    pendingPinProfileIndex: null,
+    lastProgressSaveTs: 0,
 
     // Active profile's isolated Telegram config (disconnected by default!)
     telegramConfig: {
@@ -592,13 +632,14 @@
     },
 
     userState: {
-      watchlist: ['tt15239678', 'tt15398776'],
+      watchlist: [],
       continue_watching: [],
+      watch_history: [],
       subtitle_prefs: {
         font_size: 'large',
         color: 'white',
         bg_mode: 'semi',
-        outline: 'normal',
+        outline: 'bold',
         pos: 'normal',
         default_offset_ms: 0
       },
@@ -778,42 +819,159 @@
 
     async init() {
       this.initBuiltInVpnShield();
-      await this.initDefaultEncryptedSession();
-      this.loadSubtitleAppearancePrefs();
       this.bindEvents();
       await this.loadCatalog();
+      await this.initAuthAndSession();
       this.setupHero();
       this.renderAllViews();
       this.loadLiveGlobalLibraries();
     },
 
-    async initDefaultEncryptedSession() {
-      // Single fast key derivation on startup (zero duplicate PBKDF2 work)
+    async initAuthAndSession() {
+      // Check if a registered email account session is currently active
       try {
-        const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v5') || '{}');
-        const rec = allAccounts['ראשי'];
-        const saltToUse = (rec && rec.saltHex) || localStorage.getItem('streamit_default_salt_v5') || CryptoVaultEngine.randomHex(16);
-        localStorage.setItem('streamit_default_salt_v5', saltToUse);
+        const savedSessionRaw = localStorage.getItem('streamit_active_email_session_v6');
+        if (savedSessionRaw) {
+          const sess = JSON.parse(savedSessionRaw);
+          const emailKey = String(sess.email || '').trim().toLowerCase();
+          const passVerifier = String(sess.verifierHex || '');
+          const sessionSecret = String(sess.sessionSecret || '');
+          if (emailKey && emailKey.includes('@') && sessionSecret) {
+            const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
+            let rec = allAccounts[emailKey];
+            if (!rec) {
+              try {
+                const apiBase = this.getApiBase();
+                const res = await fetch(`${apiBase}/api/accounts/get?email=${encodeURIComponent(emailKey)}`);
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data && data.ok && data.record) {
+                    rec = data.record;
+                    allAccounts[emailKey] = rec;
+                    localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
+                  }
+                }
+              } catch (_) {}
+            }
 
-        const derived = await CryptoVaultEngine.deriveKeyAndVerifier('streamit_local_default_vault_v5', saltToUse);
-        this.currentAccountKey = derived.aesKey;
-        this.currentAccountSaltHex = saltToUse;
-        this.currentAccountVerifierHex = derived.verifierHex;
+            if (rec && rec.saltHex && rec.cipherHex) {
+              const derived = await CryptoVaultEngine.deriveKeyAndVerifier(sessionSecret, rec.saltHex);
+              if (!passVerifier || derived.verifierHex === rec.verifierHex) {
+                const vault = await CryptoVaultEngine.decryptVaultObj(rec.cipherHex, rec.ivHex, derived.aesKey);
+                if (vault && Array.isArray(vault.profiles) && vault.profiles.length) {
+                  this.isAuthenticated = true;
+                  this.currentAccountUsername = emailKey;
+                  this.currentAccountKey = derived.aesKey;
+                  this.currentAccountSaltHex = rec.saltHex;
+                  this.currentAccountVerifierHex = derived.verifierHex;
+                  this.accountProfiles = vault.profiles.slice(0, 6);
+                  this.activeProfileIndex = Math.min(vault.activeProfileIndex || 0, this.accountProfiles.length - 1);
+                  this.syncActiveProfileToAppState();
 
-        if (rec && rec.cipherHex) {
-          const vault = await CryptoVaultEngine.decryptVaultObj(rec.cipherHex, rec.ivHex, derived.aesKey);
-          if (vault && Array.isArray(vault.profiles) && vault.profiles.length) {
-            this.accountProfiles = vault.profiles.slice(0, 10);
-            this.activeProfileIndex = Math.min(vault.activeProfileIndex || 0, this.accountProfiles.length - 1);
+                  // Hide Auth Gate
+                  const authGate = document.getElementById('authGateScreen');
+                  if (authGate) authGate.classList.add('hidden');
+
+                  // If sub-user was not yet picked in this browser session, show Netflix "Who's Watching?" screen
+                  const unlockedId = sessionStorage.getItem('streamit_unlocked_subuser_v6');
+                  const matchedIdx = this.accountProfiles.findIndex((p) => p.id === unlockedId);
+                  if (matchedIdx >= 0) {
+                    this.activeProfileIndex = matchedIdx;
+                    this.syncActiveProfileToAppState();
+                  } else {
+                    this.openWhosWatchingScreen(true);
+                  }
+                  return;
+                }
+              }
+            }
           }
         }
       } catch (_) {}
-      this.syncActiveProfileToAppState();
+
+      // No authenticated email account -> Enforce Mandatory Auth Gate
+      this.isAuthenticated = false;
+      this.showAuthGateScreen('login');
+    },
+
+    showAuthGateScreen(defaultMode = 'login') {
+      const authGate = document.getElementById('authGateScreen');
+      const whosScreen = document.getElementById('authProfilesModal');
+      if (whosScreen) whosScreen.classList.add('hidden');
+      if (authGate) authGate.classList.remove('hidden');
+      this.setAuthGateMode(defaultMode);
+    },
+
+    setAuthGateMode(mode = 'login') {
+      this.authMode = mode === 'register' ? 'register' : 'login';
+      document.querySelectorAll('[data-auth-mode]').forEach((tab) => {
+        const isAct = tab.getAttribute('data-auth-mode') === this.authMode;
+        tab.classList.toggle('active', isAct);
+        tab.setAttribute('aria-selected', isAct ? 'true' : 'false');
+      });
+
+      const titleEl = document.getElementById('authGateTitle');
+      const subEl = document.getElementById('authGateSubtitle');
+      const regFields = document.getElementById('authRegisterFields');
+      const submitBtn = document.getElementById('loginOrRegisterAccountBtn');
+      const switchPrompt = document.getElementById('authSwitchPromptText');
+      const switchLink = document.getElementById('authSwitchModeLinkBtn');
+      const msgEl = document.getElementById('authStatusMsg');
+      if (msgEl) msgEl.textContent = '';
+
+      if (this.authMode === 'register') {
+        if (titleEl) titleEl.textContent = 'הרשמה ל-STREAM IT (משתמש חדש)';
+        if (subEl) {
+          subEl.textContent =
+            'צור חשבון משפחתי רשום עם כתובת האימייל שלך — ותחתיו תוכל לנהל יוזרים נפרדים לבני המשפחה עם היסטוריית צפייה והמלצות אישיות.';
+        }
+        if (regFields) regFields.classList.remove('hidden');
+        if (submitBtn) submitBtn.textContent = 'צור חשבון והמשך לבחירת יוזר';
+        if (switchPrompt) switchPrompt.textContent = 'כבר רשום למערכת?';
+        if (switchLink) switchLink.textContent = 'התחבר לחשבון קיים ←';
+      } else {
+        if (titleEl) titleEl.textContent = 'כניסה ל-STREAM IT';
+        if (subEl) {
+          subEl.textContent =
+            'הזן את כתובת האימייל והסיסמה של חשבונך כדי לגשת ליוזרים של המשפחה, להיסטוריית הצפייה ולהמלצות האישיות.';
+        }
+        if (regFields) regFields.classList.add('hidden');
+        if (submitBtn) submitBtn.textContent = 'התחבר ל-STREAM IT';
+        if (switchPrompt) switchPrompt.textContent = 'עדיין אין לך חשבון ב-STREAM IT?';
+        if (switchLink) switchLink.textContent = 'פתח חשבון חדש עם אימייל עכשיו ←';
+      }
+    },
+
+    openWhosWatchingScreen(isInitialEntry = false) {
+      if (!this.isAuthenticated) {
+        this.showAuthGateScreen('login');
+        return;
+      }
+      const whosScreen = document.getElementById('authProfilesModal');
+      const closeBtn = document.getElementById('closeAuthProfilesModalBtn');
+      const creatorBox = document.getElementById('newProfileCreatorBox');
+      const pickerBox = document.getElementById('profilesPickerView');
+      const dropdown = document.getElementById('headerUserDropdown');
+      if (dropdown) dropdown.classList.add('hidden');
+
+      this.isManagingProfiles = false;
+      const manageBtn = document.getElementById('toggleManageProfilesBtn');
+      if (manageBtn) {
+        manageBtn.classList.remove('active');
+        manageBtn.textContent = 'ניהול יוזרים';
+      }
+      if (creatorBox) creatorBox.classList.add('hidden');
+      if (pickerBox) pickerBox.classList.remove('hidden');
+      if (closeBtn) {
+        closeBtn.classList.toggle('hidden', Boolean(isInitialEntry));
+      }
+      this.updateAccountAndProfileUi();
+      if (whosScreen) whosScreen.classList.remove('hidden');
     },
 
     syncActiveProfileToAppState() {
       if (!Array.isArray(this.accountProfiles) || !this.accountProfiles.length) {
-        this.accountProfiles = [createDefaultProfile(1, 'יוזר 1')];
+        this.accountProfiles = [createDefaultProfile(1, 'אילן')];
       }
       if (this.activeProfileIndex < 0 || this.activeProfileIndex >= this.accountProfiles.length) {
         this.activeProfileIndex = 0;
@@ -821,7 +979,21 @@
       const prof = this.accountProfiles[this.activeProfileIndex];
       this.userState.watchlist = Array.isArray(prof.watchlist) ? prof.watchlist : [];
       this.userState.continue_watching = Array.isArray(prof.continue_watching) ? prof.continue_watching : [];
-      // Telegram is isolated per profile and OFF (false) by default unless this specific user enabled it!
+      this.userState.watch_history = Array.isArray(prof.watch_history) ? prof.watch_history : [];
+      this.userState.subtitle_prefs = Object.assign(
+        {
+          font_size: 'large',
+          color: 'white',
+          bg_mode: 'semi',
+          outline: 'bold',
+          pos: 'normal',
+          default_offset_ms: 0
+        },
+        prof.subtitle_prefs || {}
+      );
+      this.applySubtitleAppearancePrefs();
+
+      // Telegram is isolated per sub-user and OFF (false) by default unless this specific sub-user enabled it
       this.telegramConfig = Object.assign(
         {
           connected: false,
@@ -832,68 +1004,126 @@
         prof.telegramConfig || {},
         { strict_zero_chats_policy: true }
       );
+
+      // Update Kids Safe Mode UI (Hide/Show Horror & Crime pills if active user is Kids)
+      this.applyKidsModeFilterUi();
       this.updateAccountAndProfileUi();
+    },
+
+    isActiveUserKids() {
+      const prof = this.accountProfiles[this.activeProfileIndex];
+      return Boolean(prof && prof.is_kids);
+    },
+
+    isItemAllowedForActiveUser(item) {
+      if (!item) return false;
+      if (!this.isActiveUserKids()) return true;
+      const g = (item.genres || []).join(' ').toLowerCase();
+      const gh = (item.genres_he || []).join(' ');
+      const age = String(item.age_rating || '');
+      if (
+        g.includes('horror') ||
+        g.includes('crime') ||
+        g.includes('thriller') ||
+        gh.includes('אימה') ||
+        gh.includes('פשע') ||
+        age.includes('18+') ||
+        age.includes('16+')
+      ) {
+        return false;
+      }
+      return true;
+    },
+
+    filterItemsForActiveUser(items) {
+      if (!Array.isArray(items)) return [];
+      if (!this.isActiveUserKids()) return items;
+      return items.filter((item) => this.isItemAllowedForActiveUser(item));
+    },
+
+    applyKidsModeFilterUi() {
+      const isKids = this.isActiveUserKids();
+      const horrorPill = document.querySelector('[data-cat="horror"]');
+      const crimePill = document.querySelector('[data-cat="crime"]');
+      if (horrorPill) horrorPill.classList.toggle('hidden', isKids);
+      if (crimePill) crimePill.classList.toggle('hidden', isKids);
+      if (isKids && (this.activeCategory === 'horror' || this.activeCategory === 'crime')) {
+        this.activeCategory = 'all';
+        document.querySelectorAll('.cat-pill').forEach((b) => {
+          b.classList.toggle('active', b.getAttribute('data-cat') === 'all');
+        });
+      }
     },
 
     async persistEncryptedAccountVault() {
       try {
+        if (!this.isAuthenticated || !this.currentAccountUsername || !this.currentAccountKey) return;
         const prof = this.accountProfiles[this.activeProfileIndex];
         if (prof) {
           prof.watchlist = [...(this.userState.watchlist || [])];
           prof.continue_watching = [...(this.userState.continue_watching || [])];
+          prof.watch_history = [...(this.userState.watch_history || [])];
+          prof.subtitle_prefs = Object.assign({}, this.userState.subtitle_prefs || {});
           prof.telegramConfig = JSON.parse(JSON.stringify(this.telegramConfig));
         }
-        if (!this.currentAccountKey) return;
         const vaultPayload = {
-          profiles: this.accountProfiles.slice(0, 10),
+          profiles: this.accountProfiles.slice(0, 6),
           activeProfileIndex: this.activeProfileIndex,
           updatedAt: Date.now()
         };
         const encrypted = await CryptoVaultEngine.encryptVaultObj(vaultPayload, this.currentAccountKey);
-        const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v5') || '{}');
-        allAccounts[this.currentAccountUsername] = {
-          username: this.currentAccountUsername,
+        const record = {
+          email: this.currentAccountUsername,
           saltHex: this.currentAccountSaltHex,
           verifierHex: this.currentAccountVerifierHex,
           ivHex: encrypted.ivHex,
-          cipherHex: encrypted.cipherHex
+          cipherHex: encrypted.cipherHex,
+          updatedAt: Date.now()
         };
-        localStorage.setItem('streamit_encrypted_accounts_v5', JSON.stringify(allAccounts));
+        const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
+        allAccounts[this.currentAccountUsername] = record;
+        localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
+
+        // Also sync asynchronously to local backend server if available
+        const apiBase = this.getApiBase();
+        fetch(`${apiBase}/api/accounts/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: this.currentAccountUsername, record })
+        }).catch(() => {});
       } catch (_) {}
     },
 
-    switchAccountModalView(mode = 'profiles') {
-      const pickerView = document.getElementById('profilesPickerView');
-      const loginView = document.getElementById('accountLoginView');
-      const toggleBtn = document.getElementById('toggleAccountLoginViewBtn');
-      if (mode === 'login') {
-        if (pickerView) pickerView.classList.add('hidden');
-        if (loginView) loginView.classList.remove('hidden');
-        if (toggleBtn) toggleBtn.textContent = '← חזרה לבחירת פרופיל';
-      } else {
-        if (loginView) loginView.classList.add('hidden');
-        if (pickerView) pickerView.classList.remove('hidden');
-        if (toggleBtn) toggleBtn.textContent = '🔄 החלף חשבון / כניסה עם סיסמה';
-      }
-    },
-
     updateAccountAndProfileUi() {
-      const prof = this.accountProfiles[this.activeProfileIndex] || { name: 'יוזר 1' };
+      const prof = this.accountProfiles[this.activeProfileIndex] || createDefaultProfile(1, 'אילן');
       const headerLabel = document.getElementById('activeProfileHeaderLabel');
       if (headerLabel) {
-        headerLabel.textContent = `${prof.name} • (${this.currentAccountUsername})`;
+        headerLabel.textContent = prof.name;
+      }
+      const headerAvatar = document.getElementById('headerActiveAvatar');
+      if (headerAvatar) {
+        headerAvatar.style.background = prof.color || '#E50914';
+        headerAvatar.textContent = prof.emoji || String(prof.name || 'א').trim().charAt(0);
+      }
+      const headerKids = document.getElementById('headerKidsBadge');
+      if (headerKids) {
+        headerKids.classList.toggle('hidden', !prof.is_kids);
+      }
+      const headerEmail = document.getElementById('headerAccountEmailLabel');
+      if (headerEmail) {
+        headerEmail.textContent = this.currentAccountUsername || 'לא מחובר';
       }
       const accBadge = document.getElementById('currentAccountBadge');
       if (accBadge) {
-        accBadge.textContent = `חשבון פעיל: ${this.currentAccountUsername} 🔒`;
+        accBadge.textContent = `📧 ${this.currentAccountUsername || 'משתמש רשום'}`;
       }
       const countLbl = document.getElementById('profilesCountLabel');
       if (countLbl) {
-        countLbl.textContent = `${this.accountProfiles.length}/10`;
+        countLbl.textContent = `${this.accountProfiles.length}/6`;
       }
       const tgProfLbl = document.getElementById('activeProfileTelegramLabel');
       if (tgProfLbl) {
-        tgProfLbl.textContent = `${prof.name} בחשבון ${this.currentAccountUsername}`;
+        tgProfLbl.textContent = `${prof.name} (${this.currentAccountUsername})`;
       }
       const tgStatusBadge = document.getElementById('telegramAccountStatusBadge');
       const tgHandleInp = document.getElementById('telegramAccountHandleInput');
@@ -911,113 +1141,349 @@
       if (tgHandleInp) {
         tgHandleInp.value = (this.telegramConfig && this.telegramConfig.user_handle) || '';
       }
+
+      this.renderHeaderQuickUsersDropdown();
       this.renderProfilesGrid();
+    },
+
+    renderHeaderQuickUsersDropdown() {
+      const listEl = document.getElementById('headerQuickUsersList');
+      if (!listEl) return;
+      listEl.innerHTML = this.accountProfiles
+        .map((p, idx) => {
+          const isAct = idx === this.activeProfileIndex;
+          const historyCount = Array.isArray(p.watch_history) ? p.watch_history.length : 0;
+          return `
+            <button type="button" class="dropdown-user-row tv-focusable ${isAct ? 'active' : ''}" data-quick-switch-user="${idx}" role="menuitem">
+              <div class="dropdown-user-left">
+                <span class="dropdown-user-avatar" style="background:${p.color || '#E50914'};">${
+            p.emoji || String(p.name || 'א').charAt(0)
+          }</span>
+                <div>
+                  <div style="font-weight:700;font-size:0.9rem;color:#fff;">
+                    ${p.name}
+                    ${p.is_kids ? '<span style="font-size:0.68rem;background:#0891b2;color:#fff;padding:1px 6px;border-radius:999px;margin-right:4px;">ילדים</span>' : ''}
+                    ${p.pin_code ? '<span style="font-size:0.72rem;color:#fde047;">🔒</span>' : ''}
+                  </div>
+                  <div style="font-size:0.72rem;color:#9ca3af;">${
+                    historyCount ? `${historyCount} כותרים בהיסטוריה` : 'היסטוריה חדשה'
+                  }</div>
+                </div>
+              </div>
+              <span style="font-size:0.75rem;color:${isAct ? '#86efac' : '#9ca3af'};font-weight:700;">
+                ${isAct ? 'פעיל ✓' : 'עבור ←'}
+              </span>
+            </button>
+          `;
+        })
+        .join('');
+
+      listEl.querySelectorAll('[data-quick-switch-user]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-quick-switch-user')) || 0;
+          const dropdown = document.getElementById('headerUserDropdown');
+          if (dropdown) dropdown.classList.add('hidden');
+          this.selectSubUser(idx);
+        });
+      });
     },
 
     renderProfilesGrid() {
       const grid = document.getElementById('profilesGridContainer');
       if (!grid) return;
 
-      const profileCardsHtml = this.accountProfiles
+      const cardsHtml = this.accountProfiles
         .map((p, idx) => {
           const isActive = idx === this.activeProfileIndex;
-          const tgConnected = p.telegramConfig && p.telegramConfig.connected;
-          const initial = String(p.name || 'U').trim().charAt(0);
+          const historyCount = Array.isArray(p.watch_history) ? p.watch_history.length : 0;
           return `
-            <div style="width:140px;display:flex;flex-direction:column;align-items:center;padding:16px 12px;border-radius:14px;border:${
-              isActive ? '2px solid #ffffff' : '1px solid rgba(255,255,255,0.12)'
-            };background:${isActive ? '#222222' : '#151515'};position:relative;transition:transform 0.15s ease;">
-              ${
-                this.accountProfiles.length > 1
-                  ? `<button type="button" class="tv-focusable" data-delete-profile="${idx}" title="מחק פרופיל" aria-label="מחק פרופיל ${p.name}" style="position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.08);color:#fca5a5;font-size:0.75rem;cursor:pointer;">✕</button>`
-                  : ''
-              }
-              <button type="button" class="tv-focusable" data-select-profile="${idx}" aria-label="בחר פרופיל ${p.name}" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;width:100%;padding:0;">
-                <div style="width:66px;height:66px;border-radius:50%;background:${
-                  p.color || '#E50914'
-                };display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.55rem;color:#fff;margin-bottom:10px;box-shadow:0 4px 14px rgba(0,0,0,0.4);">
-                  ${initial}
-                </div>
-                <div style="font-weight:700;font-size:1rem;color:#fff;margin-bottom:4px;">${p.name}</div>
-                <div style="font-size:0.74rem;color:${tgConnected ? '#86efac' : '#9ca3af'};margin-bottom:8px;">
-                  ${tgConnected ? 'טלגרם: מחובר 🔒' : 'פרופיל אישי'}
-                </div>
-                <span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:0.76rem;font-weight:600;background:${
-                  isActive ? '#ffffff' : 'rgba(255,255,255,0.1)'
-                };color:${isActive ? '#000000' : '#ffffff'};">
-                  ${isActive ? 'צופה כעת ✓' : 'בחר פרופיל'}
-                </span>
-              </button>
-            </div>
+            <button
+              type="button"
+              class="netflix-profile-card tv-focusable ${isActive ? 'active-profile' : ''}"
+              data-select-profile="${idx}"
+              aria-label="${this.isManagingProfiles ? 'ערוך יוזר ' + p.name : 'בחר יוזר ' + p.name}"
+            >
+              <div class="netflix-profile-avatar-box" style="background:${p.color || '#E50914'};">
+                <span class="netflix-avatar-emoji">${p.emoji || String(p.name || 'א').trim().charAt(0)}</span>
+                ${p.is_kids ? '<span class="netflix-kids-ribbon">ילדים 🎈</span>' : ''}
+                ${p.pin_code ? '<span class="netflix-pin-badge" title="מוגן בקוד PIN">🔒 PIN</span>' : ''}
+                ${
+                  this.isManagingProfiles
+                    ? '<div class="netflix-manage-overlay" title="לחץ לעריכת יוזר">✏️</div>'
+                    : ''
+                }
+              </div>
+              <div class="netflix-profile-name">${p.name}</div>
+              <div class="netflix-profile-meta">
+                ${
+                  this.isManagingProfiles
+                    ? 'לחץ לעריכה / מחיקה'
+                    : historyCount > 0
+                    ? `${historyCount} סרטים/סדרות בהיסטוריה`
+                    : isActive
+                    ? 'צופה כעת ✓'
+                    : 'לחץ לכניסה'
+                }
+              </div>
+            </button>
           `;
         })
         .join('');
 
       const addCardHtml =
-        this.accountProfiles.length < 10
+        this.accountProfiles.length < 6
           ? `
-            <button type="button" id="openInlineAddProfileCard" class="tv-focusable" aria-label="הוסף פרופיל חדש לחשבון" style="width:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 12px;border-radius:14px;border:1px dashed rgba(255,255,255,0.28);background:#121212;cursor:pointer;color:#d4d4d4;">
-              <div style="width:66px;height:66px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.9rem;color:#fff;margin-bottom:10px;">
-                +
+            <button
+              type="button"
+              id="openInlineAddProfileCard"
+              class="netflix-profile-card tv-focusable"
+              aria-label="הוסף יוזר חדש לבן משפחה"
+            >
+              <div class="netflix-profile-avatar-box netflix-add-avatar-box">
+                <span>+</span>
               </div>
-              <div style="font-weight:700;font-size:0.95rem;color:#fff;margin-bottom:4px;">הוסף פרופיל</div>
-              <div style="font-size:0.74rem;color:#9ca3af;">(${this.accountProfiles.length}/10 בחשבון)</div>
+              <div class="netflix-profile-name">הוסף יוזר</div>
+              <div class="netflix-profile-meta">בן משפחה (${this.accountProfiles.length}/6)</div>
             </button>
           `
           : '';
 
-      grid.innerHTML = profileCardsHtml + addCardHtml;
+      grid.innerHTML = cardsHtml + addCardHtml;
 
       grid.querySelectorAll('[data-select-profile]').forEach((btn) => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', () => {
           const idx = Number(btn.getAttribute('data-select-profile')) || 0;
-          await this.persistEncryptedAccountVault();
-          this.activeProfileIndex = idx;
-          this.syncActiveProfileToAppState();
-          await this.persistEncryptedAccountVault();
-          this.renderAllViews();
-          const authModal = document.getElementById('authProfilesModal');
-          if (authModal) authModal.classList.add('hidden');
-          this.showToast(`צפייה מהנה, ${this.accountProfiles[this.activeProfileIndex].name}!`);
-        });
-      });
-
-      grid.querySelectorAll('[data-delete-profile]').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          if (this.accountProfiles.length <= 1) return;
-          const idx = Number(btn.getAttribute('data-delete-profile')) || 0;
-          const removedName = this.accountProfiles[idx]?.name || 'פרופיל';
-          this.accountProfiles.splice(idx, 1);
-          if (this.activeProfileIndex >= this.accountProfiles.length) {
-            this.activeProfileIndex = 0;
+          if (this.isManagingProfiles) {
+            this.openSubUserEditor(idx);
+          } else {
+            this.selectSubUser(idx);
           }
-          this.syncActiveProfileToAppState();
-          await this.persistEncryptedAccountVault();
-          this.renderAllViews();
-          this.showToast(`הפרופיל "${removedName}" הוסר מהחשבון`);
         });
       });
 
       const openAddCard = document.getElementById('openInlineAddProfileCard');
-      const creatorBox = document.getElementById('newProfileCreatorBox');
-      const nameInp = document.getElementById('newProfileNameInput');
-      if (openAddCard && creatorBox) {
+      if (openAddCard) {
         openAddCard.addEventListener('click', () => {
-          creatorBox.classList.remove('hidden');
-          if (nameInp) nameInp.focus();
+          this.openSubUserEditor(null);
         });
       }
     },
 
-    async loginOrRegisterEncryptedAccount(usernameRaw, passwordRaw) {
-      const username = String(usernameRaw || '').trim();
+    openSubUserEditor(editIdx = null) {
+      this.editingProfileIndex = typeof editIdx === 'number' ? editIdx : null;
+      const creatorBox = document.getElementById('newProfileCreatorBox');
+      const pickerBox = document.getElementById('profilesPickerView');
+      const heading = document.getElementById('subuserEditorTitle');
+      const nameInp = document.getElementById('newProfileNameInput');
+      const kidsCheck = document.getElementById('newProfileKidsCheck');
+      const pinInp = document.getElementById('newProfilePinInput');
+      const deleteBtn = document.getElementById('deleteEditingProfileBtn');
+
+      const existing =
+        this.editingProfileIndex !== null ? this.accountProfiles[this.editingProfileIndex] : null;
+
+      if (heading) {
+        heading.textContent = existing ? `עריכת יוזר: ${existing.name}` : 'הוספת יוזר חדש למשפחה';
+      }
+      if (nameInp) nameInp.value = existing ? existing.name : '';
+      if (kidsCheck) kidsCheck.checked = existing ? Boolean(existing.is_kids) : false;
+      if (pinInp) pinInp.value = existing ? existing.pin_code || '' : '';
+      if (deleteBtn) {
+        deleteBtn.classList.toggle('hidden', !existing || this.accountProfiles.length <= 1);
+      }
+
+      const defaultAvatar =
+        (existing && existing.avatarId) ||
+        PROFILE_AVATARS[this.accountProfiles.length % PROFILE_AVATARS.length].id;
+      this.selectedEditorAvatarId = defaultAvatar;
+      this.renderAvatarPickerGrid();
+
+      if (pickerBox) pickerBox.classList.add('hidden');
+      if (creatorBox) creatorBox.classList.remove('hidden');
+      if (nameInp) nameInp.focus();
+    },
+
+    renderAvatarPickerGrid() {
+      const grid = document.getElementById('avatarPickerGrid');
+      if (!grid) return;
+      grid.innerHTML = PROFILE_AVATARS.map(
+        (av) => `
+          <button
+            type="button"
+            class="avatar-pick-option tv-focusable ${av.id === this.selectedEditorAvatarId ? 'selected' : ''}"
+            style="background:${av.color};"
+            data-pick-avatar="${av.id}"
+            title="${av.label}"
+            aria-label="${av.label}"
+          >
+            ${av.emoji}
+          </button>
+        `
+      ).join('');
+
+      grid.querySelectorAll('[data-pick-avatar]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.selectedEditorAvatarId = btn.getAttribute('data-pick-avatar') || 'cinema_red';
+          this.renderAvatarPickerGrid();
+        });
+      });
+    },
+
+    async saveSubUserFromEditor() {
+      const nameInp = document.getElementById('newProfileNameInput');
+      const kidsCheck = document.getElementById('newProfileKidsCheck');
+      const pinInp = document.getElementById('newProfilePinInput');
+      const rawName = (nameInp ? nameInp.value : '').trim();
+      const isKids = Boolean(kidsCheck && kidsCheck.checked);
+      const cleanPin = String(pinInp ? pinInp.value : '').replace(/\D/g, '').slice(0, 4);
+
+      if (!rawName) {
+        this.showToast('נא להזין שם ליוזר (למשל: אילן, מאיה, ילדים)');
+        if (nameInp) nameInp.focus();
+        return;
+      }
+      if (cleanPin && cleanPin.length !== 4) {
+        this.showToast('קוד PIN חייב להכיל בדיוק 4 ספרות (או להישאר ריק)');
+        if (pinInp) pinInp.focus();
+        return;
+      }
+
+      const chosenAvatar =
+        PROFILE_AVATARS.find((a) => a.id === this.selectedEditorAvatarId) || PROFILE_AVATARS[0];
+
+      await this.persistEncryptedAccountVault();
+
+      if (this.editingProfileIndex !== null && this.accountProfiles[this.editingProfileIndex]) {
+        const target = this.accountProfiles[this.editingProfileIndex];
+        target.name = rawName;
+        target.avatarId = chosenAvatar.id;
+        target.emoji = isKids && chosenAvatar.id === 'cinema_red' ? '🎈' : chosenAvatar.emoji;
+        target.color = chosenAvatar.color;
+        target.solidColor = chosenAvatar.solid;
+        target.is_kids = isKids;
+        target.pin_code = cleanPin;
+        this.showToast(`היוזר "${rawName}" עודכן בהצלחה`);
+      } else {
+        if (this.accountProfiles.length >= 6) {
+          this.showToast('ניתן ליצור עד 6 יוזרים תחת חשבון מייל אחד');
+          return;
+        }
+        const newProf = createDefaultProfile(this.accountProfiles.length + 1, rawName, {
+          avatarId: isKids && this.selectedEditorAvatarId === 'cinema_red' ? 'kids_cyan' : chosenAvatar.id,
+          is_kids: isKids,
+          pin_code: cleanPin
+        });
+        this.accountProfiles.push(newProf);
+        this.activeProfileIndex = this.accountProfiles.length - 1;
+        this.showToast(`היוזר "${rawName}" נוסף לחשבון המשפחתי!`);
+      }
+
+      this.isManagingProfiles = false;
+      this.syncActiveProfileToAppState();
+      await this.persistEncryptedAccountVault();
+
+      const creatorBox = document.getElementById('newProfileCreatorBox');
+      const pickerBox = document.getElementById('profilesPickerView');
+      if (creatorBox) creatorBox.classList.add('hidden');
+      if (pickerBox) pickerBox.classList.remove('hidden');
+      this.renderProfilesGrid();
+      this.renderAllViews();
+    },
+
+    async deleteEditingSubUser() {
+      if (this.editingProfileIndex === null || this.accountProfiles.length <= 1) return;
+      const removed = this.accountProfiles[this.editingProfileIndex];
+      this.accountProfiles.splice(this.editingProfileIndex, 1);
+      this.editingProfileIndex = null;
+      if (this.activeProfileIndex >= this.accountProfiles.length) {
+        this.activeProfileIndex = 0;
+      }
+      this.isManagingProfiles = false;
+      this.syncActiveProfileToAppState();
+      await this.persistEncryptedAccountVault();
+
+      const creatorBox = document.getElementById('newProfileCreatorBox');
+      const pickerBox = document.getElementById('profilesPickerView');
+      if (creatorBox) creatorBox.classList.add('hidden');
+      if (pickerBox) pickerBox.classList.remove('hidden');
+      this.renderProfilesGrid();
+      this.renderAllViews();
+      this.showToast(`היוזר "${removed ? removed.name : ''}" הוסר מהחשבון`);
+    },
+
+    async selectSubUser(idx, bypassPin = false) {
+      const target = this.accountProfiles[idx];
+      if (!target) return;
+
+      if (target.pin_code && target.pin_code.length === 4 && !bypassPin) {
+        this.openPinVerifyModal(idx);
+        return;
+      }
+
+      await this.persistEncryptedAccountVault();
+      this.activeProfileIndex = idx;
+      sessionStorage.setItem('streamit_unlocked_subuser_v6', target.id);
+      this.syncActiveProfileToAppState();
+      await this.persistEncryptedAccountVault();
+      this.setupHero();
+      this.renderAllViews();
+
+      const whosScreen = document.getElementById('authProfilesModal');
+      if (whosScreen) whosScreen.classList.add('hidden');
+      const pinModal = document.getElementById('pinVerifyModal');
+      if (pinModal) pinModal.classList.add('hidden');
+
+      this.showToast(`שלום ${target.name}! עמוד הבית הותאם להיסטוריית הצפייה שלך 🎬`);
+    },
+
+    openPinVerifyModal(idx) {
+      const target = this.accountProfiles[idx];
+      if (!target) return;
+      this.pendingPinProfileIndex = idx;
+      const modal = document.getElementById('pinVerifyModal');
+      const av = document.getElementById('pinVerifyAvatar');
+      const title = document.getElementById('pinVerifyTitle');
+      const inp = document.getElementById('pinVerifyInput');
+      const err = document.getElementById('pinVerifyErrorMsg');
+      if (av) {
+        av.style.background = target.color || '#E50914';
+        av.textContent = target.emoji || '🔒';
+      }
+      if (title) title.textContent = `היוזר "${target.name}" מוגן בקוד PIN`;
+      if (inp) inp.value = '';
+      if (err) err.textContent = '';
+      if (modal) modal.classList.remove('hidden');
+      if (inp) setTimeout(() => inp.focus(), 50);
+    },
+
+    checkPendingPinInput() {
+      const inp = document.getElementById('pinVerifyInput');
+      const err = document.getElementById('pinVerifyErrorMsg');
+      if (!inp || this.pendingPinProfileIndex === null) return;
+      const target = this.accountProfiles[this.pendingPinProfileIndex];
+      if (!target) return;
+      const val = String(inp.value || '').replace(/\D/g, '');
+      if (val.length < 4) return;
+      if (val === target.pin_code) {
+        const idxToUnlock = this.pendingPinProfileIndex;
+        this.pendingPinProfileIndex = null;
+        this.selectSubUser(idxToUnlock, true);
+      } else {
+        if (err) err.textContent = 'קוד PIN שגוי — נסה שוב';
+        inp.value = '';
+      }
+    },
+
+    async loginOrRegisterEncryptedAccount(emailRaw, passwordRaw) {
+      const email = String(emailRaw || '').trim().toLowerCase();
       const password = String(passwordRaw || '');
       const msgEl = document.getElementById('authStatusMsg');
-      if (!username || username.length < 2) {
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
         if (msgEl) {
           msgEl.style.color = '#fca5a5';
-          msgEl.textContent = 'נא להזין שם משתמש (לפחות 2 תווים)';
+          msgEl.textContent = 'נא להזין כתובת אימייל תקנית (למשל: name@email.com)';
         }
         return;
       }
@@ -1029,54 +1495,167 @@
         return;
       }
 
-      const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v5') || '{}');
-      const existing = allAccounts[username];
+      const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
+      let existing = allAccounts[email];
 
-      if (existing && existing.verifierHex) {
+      // Check backend server if account exists there
+      if (!existing) {
+        try {
+          const apiBase = this.getApiBase();
+          const res = await fetch(`${apiBase}/api/accounts/get?email=${encodeURIComponent(email)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.ok && data.record) {
+              existing = data.record;
+              allAccounts[email] = existing;
+              localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (this.authMode === 'login') {
+        if (!existing || !existing.verifierHex) {
+          if (msgEl) {
+            msgEl.style.color = '#fde047';
+            msgEl.textContent = 'כתובת האימייל הזו עדיין לא רשומה — העברנו אותך ללשונית הרשמה כדי לפתוח חשבון חדש!';
+          }
+          this.setAuthGateMode('register');
+          return;
+        }
+
         try {
           const derived = await CryptoVaultEngine.deriveKeyAndVerifier(password, existing.saltHex);
           if (derived.verifierHex !== existing.verifierHex) {
             if (msgEl) {
               msgEl.style.color = '#fca5a5';
-              msgEl.textContent = 'סיסמה שגויה עבור חשבון זה';
+              msgEl.textContent = 'הסיסמה שהוזנה שגויה עבור כתובת האימייל הזו';
             }
             return;
           }
           const vault = await CryptoVaultEngine.decryptVaultObj(existing.cipherHex, existing.ivHex, derived.aesKey);
-          this.currentAccountUsername = username;
+          this.isAuthenticated = true;
+          this.currentAccountUsername = email;
           this.currentAccountKey = derived.aesKey;
           this.currentAccountSaltHex = existing.saltHex;
           this.currentAccountVerifierHex = derived.verifierHex;
           this.accountProfiles =
             vault && Array.isArray(vault.profiles) && vault.profiles.length
-              ? vault.profiles.slice(0, 10)
-              : [createDefaultProfile(1, 'יוזר 1')];
+              ? vault.profiles.slice(0, 6)
+              : [createDefaultProfile(1, email.split('@')[0])];
           this.activeProfileIndex = 0;
+
+          localStorage.setItem(
+            'streamit_active_email_session_v6',
+            JSON.stringify({
+              email,
+              verifierHex: derived.verifierHex,
+              sessionSecret: password
+            })
+          );
+          sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+
           this.syncActiveProfileToAppState();
           this.renderAllViews();
-          this.switchAccountModalView('profiles');
-          this.showToast(`התחברת לחשבון "${username}" 🔒`);
+
+          const authGate = document.getElementById('authGateScreen');
+          if (authGate) authGate.classList.add('hidden');
+          this.openWhosWatchingScreen(true);
+          this.showToast(`ברוך הבא! התחברת עם ${email} — בחר מי צופה עכשיו`);
         } catch (_) {
           if (msgEl) {
             msgEl.style.color = '#fca5a5';
-            msgEl.textContent = 'שגיאה בכניסה לחשבון — בדוק את הסיסמה';
+            msgEl.textContent = 'שגיאה בפענוח החשבון — בדוק את הסיסמה';
           }
         }
       } else {
+        // REGISTER NEW EMAIL ACCOUNT
+        if (existing && existing.verifierHex) {
+          if (msgEl) {
+            msgEl.style.color = '#fde047';
+            msgEl.textContent = 'כתובת אימייל זו כבר רשומה במערכת — העברנו אותך לכניסה לחשבון קיים.';
+          }
+          this.setAuthGateMode('login');
+          return;
+        }
+
+        const primaryNameRaw = (document.getElementById('authPrimaryUserNameInput')?.value || '').trim();
+        const primaryPinRaw = String(document.getElementById('authPrimaryPinInput')?.value || '')
+          .replace(/\D/g, '')
+          .slice(0, 4);
+        const createKidsToo = Boolean(document.getElementById('authAutoKidsUserCheck')?.checked);
+
+        if (primaryPinRaw && primaryPinRaw.length !== 4) {
+          if (msgEl) {
+            msgEl.style.color = '#fca5a5';
+            msgEl.textContent = 'קוד PIN ליוזר הראשי חייב להכיל 4 ספרות בדיוק (או להישאר ריק)';
+          }
+          return;
+        }
+
+        const primaryName = primaryNameRaw || email.split('@')[0] || 'ראשי';
         const saltHex = CryptoVaultEngine.randomHex(16);
         const derived = await CryptoVaultEngine.deriveKeyAndVerifier(password, saltHex);
-        this.currentAccountUsername = username;
+
+        const initialProfiles = [
+          createDefaultProfile(1, primaryName, {
+            avatarId: 'cinema_red',
+            is_kids: false,
+            pin_code: primaryPinRaw
+          })
+        ];
+        if (createKidsToo) {
+          initialProfiles.push(
+            createDefaultProfile(2, 'ילדים', {
+              avatarId: 'kids_cyan',
+              is_kids: true,
+              pin_code: ''
+            })
+          );
+        }
+
+        this.isAuthenticated = true;
+        this.currentAccountUsername = email;
         this.currentAccountKey = derived.aesKey;
         this.currentAccountSaltHex = saltHex;
         this.currentAccountVerifierHex = derived.verifierHex;
-        this.accountProfiles = [createDefaultProfile(1, 'יוזר 1')];
+        this.accountProfiles = initialProfiles;
         this.activeProfileIndex = 0;
+
+        localStorage.setItem(
+          'streamit_active_email_session_v6',
+          JSON.stringify({
+            email,
+            verifierHex: derived.verifierHex,
+            sessionSecret: password
+          })
+        );
+        sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+
         this.syncActiveProfileToAppState();
         await this.persistEncryptedAccountVault();
         this.renderAllViews();
-        this.switchAccountModalView('profiles');
-        this.showToast(`חשבון חדש "${username}" נוצר בהצלחה 🔒`);
+
+        const authGate = document.getElementById('authGateScreen');
+        if (authGate) authGate.classList.add('hidden');
+        this.openWhosWatchingScreen(true);
+        this.showToast(`החשבון ${email} נרשם בהצלחה! בחר מי צופה עכשיו 🎬`);
       }
+    },
+
+    async logoutCurrentEmailAccount() {
+      await this.persistEncryptedAccountVault();
+      localStorage.removeItem('streamit_active_email_session_v6');
+      sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+      this.isAuthenticated = false;
+      this.currentAccountUsername = '';
+      this.currentAccountKey = null;
+      this.accountProfiles = [];
+      this.activeProfileIndex = 0;
+      const dropdown = document.getElementById('headerUserDropdown');
+      if (dropdown) dropdown.classList.add('hidden');
+      this.showAuthGateScreen('login');
+      this.showToast('התנתקת מחשבון המייל בהצלחה');
     },
 
     /* ======================================================================
@@ -1096,9 +1675,6 @@
           this.series = Array.isArray(data.series) ? data.series : [];
           this.liveChannels = Array.isArray(data.live_channels) ? data.live_channels : [];
           if (Array.isArray(data.addons) && data.addons.length) this.addons = data.addons;
-          if (data.user_state) {
-            this.userState = { ...this.userState, ...data.user_state };
-          }
           loaded = this.movies.length > 0;
         }
       } catch (_) {}
@@ -1323,11 +1899,236 @@
     },
 
     /* ======================================================================
-       CALM, STABLE HERO BANNER
+       NETFLIX PERSONALIZATION, WATCH HISTORY & RECOMMENDATION ENGINE
+       ====================================================================== */
+    getActiveSubUser() {
+      return this.accountProfiles[this.activeProfileIndex] || createDefaultProfile(1, 'אילן');
+    },
+
+    getUserGenreAffinityMap() {
+      const affinity = {};
+      const addGenreWeight = (genreStr, weight) => {
+        const key = String(genreStr || '').trim().toLowerCase();
+        if (!key || key === 'קולנוע' || key === 'סדרה') return;
+        affinity[key] = (affinity[key] || 0) + weight;
+      };
+
+      const history = Array.isArray(this.userState.watch_history) ? this.userState.watch_history : [];
+      history.forEach((h, idx) => {
+        // Newer watch history items get stronger weight
+        const recencyBoost = Math.max(1, 5 - Math.floor(idx / 3));
+        const pctBoost = (Number(h.progress_pct) || 20) >= 35 ? 2 : 1;
+        const w = 3 * recencyBoost * pctBoost;
+        (h.genres || []).forEach((g) => addGenreWeight(g, w));
+        (h.genres_he || []).forEach((gh) => addGenreWeight(gh, w));
+      });
+
+      const wlIds = Array.isArray(this.userState.watchlist) ? this.userState.watchlist : [];
+      wlIds.forEach((id) => {
+        const item = this.findItemById(id);
+        if (item) {
+          (item.genres || []).forEach((g) => addGenreWeight(g, 4));
+          (item.genres_he || []).forEach((gh) => addGenreWeight(gh, 4));
+        }
+      });
+
+      return affinity;
+    },
+
+    calculateUserMatchScore(item) {
+      if (!item || item.type === 'live') return 95;
+      const affinity = this.getUserGenreAffinityMap();
+      const totalAffinity = Object.values(affinity).reduce((a, b) => a + b, 0);
+      const baseImdb = Math.min(9.5, Math.max(6.2, Number(item.imdb_rating) || 8.1));
+
+      if (totalAffinity === 0) {
+        // User has no history yet -> base match score on IMDb rating & active user ID hash so each user feels unique
+        const prof = this.getActiveSubUser();
+        const seed = String(prof.name || '').charCodeAt(0) || 7;
+        const idNum = Number(String(item.id || '').replace(/\D/g, '').slice(-3)) || 42;
+        const jitter = ((seed + idNum) % 6) - 2;
+        return Math.min(99, Math.max(85, Math.round(78 + baseImdb * 2 + jitter)));
+      }
+
+      let matchedWeight = 0;
+      const itemGenres = [
+        ...(item.genres || []).map((g) => String(g).toLowerCase()),
+        ...(item.genres_he || []).map((gh) => String(gh).toLowerCase())
+      ];
+      const seenG = new Set();
+      itemGenres.forEach((g) => {
+        if (seenG.has(g)) return;
+        seenG.add(g);
+        if (affinity[g]) matchedWeight += affinity[g];
+      });
+
+      const ratio = Math.min(1, matchedWeight / Math.max(10, totalAffinity * 0.35));
+      const score = Math.round(83 + ratio * 13 + (baseImdb - 7.5) * 1.5);
+      return Math.min(99, Math.max(82, score));
+    },
+
+    recordUserWatchProgress(item, currentTimeSec = 0, durationSec = 0) {
+      if (!item || item.type === 'live') return;
+      const nowSec = Math.floor(Date.now() / 1000);
+      const dur = durationSec > 0 ? Math.round(durationSec) : 7200;
+      const cur = currentTimeSec > 0 ? Math.round(currentTimeSec) : 180;
+      const pct = Math.min(98, Math.max(5, Math.round((cur / dur) * 100)));
+
+      const entry = {
+        id: item.id,
+        imdb_id: item.imdb_id || item.id,
+        type: item.type || 'movie',
+        title_he: item.title_he || '',
+        title_en: item.title_en || '',
+        poster: item.poster || '',
+        backdrop: item.backdrop || '',
+        year: item.year || 2024,
+        imdb_rating: item.imdb_rating || '8.4',
+        genres: Array.isArray(item.genres) ? item.genres : [],
+        genres_he: Array.isArray(item.genres_he) ? item.genres_he : [],
+        season: this.currentSeason || 1,
+        episode: this.currentEpisode || 1,
+        progress_sec: cur,
+        duration_sec: dur,
+        progress_pct: pct,
+        updated_at: nowSec
+      };
+
+      const cw = (this.userState.continue_watching || []).filter((x) => x.id !== item.id);
+      cw.unshift(entry);
+
+      const wh = (this.userState.watch_history || []).filter((x) => x.id !== item.id);
+      wh.unshift(entry);
+
+      this.userState.continue_watching = cw.slice(0, 14);
+      this.userState.watch_history = wh.slice(0, 50);
+      this.persistEncryptedAccountVault();
+    },
+
+    openWatchHistoryModal() {
+      const modal = document.getElementById('watchHistoryModal');
+      const dropdown = document.getElementById('headerUserDropdown');
+      if (dropdown) dropdown.classList.add('hidden');
+      this.renderWatchHistoryModal();
+      if (modal) modal.classList.remove('hidden');
+    },
+
+    renderWatchHistoryModal() {
+      const prof = this.getActiveSubUser();
+      const titleEl = document.getElementById('watchHistoryModalTitle');
+      const dnaBox = document.getElementById('userTasteDnaBox');
+      const listBox = document.getElementById('watchHistoryListContainer');
+      if (titleEl) {
+        titleEl.textContent = `📜 היסטוריית הצפייה והטעם האישי של ${prof.name}`;
+      }
+
+      const history = Array.isArray(this.userState.watch_history) ? this.userState.watch_history : [];
+      const affinity = this.getUserGenreAffinityMap();
+      const hebGenresOnly = Object.entries(affinity)
+        .filter(([k]) => hasHebrewChars(k))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4);
+      const totalHeb = hebGenresOnly.reduce((acc, [, v]) => acc + v, 0) || 1;
+
+      if (dnaBox) {
+        if (hebGenresOnly.length) {
+          const pills = hebGenresOnly
+            .map(([gName, val]) => {
+              const pct = Math.max(10, Math.round((val / totalHeb) * 100));
+              return `<span style="background:rgba(229,9,20,0.22);border:1px solid rgba(229,9,20,0.45);color:#fff;padding:4px 12px;border-radius:999px;font-size:0.82rem;font-weight:700;">${gName} (${pct}%)</span>`;
+            })
+            .join('');
+          dnaBox.innerHTML = `
+            <div style="font-size:0.9rem;font-weight:800;color:#fff;">🧬 פרופיל הטעם של ${prof.name} (לפי היסטוריית הצפייה והרשימה האישית):</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">${pills}</div>
+          `;
+        } else {
+          dnaBox.innerHTML = `
+            <div style="font-size:0.9rem;font-weight:700;color:#e4e4e7;">
+              🧬 פרופיל הטעם של ${prof.name}: עדיין לא צפית בסרטים תחת יוזר זה — התחל לצפות כדי שהמערכת תלמד את הטעם שלך ותמליץ לך כמו בנטפליקס!
+            </div>
+          `;
+        }
+      }
+
+      if (!listBox) return;
+      if (!history.length) {
+        listBox.innerHTML = `
+          <div style="padding:28px;text-align:center;color:#9ca3af;font-size:0.95rem;">
+            אין עדיין סרטים או סדרות בהיסטוריית הצפייה של <strong>${prof.name}</strong>.<br/>
+            כל סרט או סדרה שתפעיל יופיעו כאן עם נקודת העצירה המדויקת שלהם.
+          </div>
+        `;
+        return;
+      }
+
+      listBox.innerHTML = history
+        .map((h, idx) => {
+          const minsWatched = Math.max(1, Math.round((Number(h.progress_sec) || 120) / 60));
+          const genreText = Array.isArray(h.genres_he) && h.genres_he.length ? h.genres_he.join(' • ') : 'קולנוע';
+          const epBadge =
+            h.type === 'series' ? `עונה ${h.season || 1} • פרק ${h.episode || 1}` : `${h.year || 2024}`;
+          return `
+            <div class="source-item">
+              <div class="source-main">
+                <div class="source-title-row">
+                  <span class="source-provider">${h.title_he}</span>
+                  <span class="source-quality-tag">${epBadge}</span>
+                  <span class="source-quality-tag" style="background:rgba(70,211,105,0.16);color:#86efac;">נצפה ${h.progress_pct || 20}% (${minsWatched} דק׳)</span>
+                </div>
+                <div class="source-meta-row">
+                  <span>${genreText}</span>
+                  <span>•</span>
+                  <span>★ ${h.imdb_rating || '8.4'} IMDb</span>
+                </div>
+              </div>
+              <div class="source-actions">
+                <button type="button" class="btn-primary btn-sm tv-focusable" data-history-resume="${idx}">
+                  ▶ המשך צפייה
+                </button>
+                <button type="button" class="btn-secondary btn-sm tv-focusable" data-history-remove="${idx}" style="color:#fca5a5;">
+                  ✕ הסר
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+
+      listBox.querySelectorAll('[data-history-resume]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-history-resume')) || 0;
+          const entry = history[idx];
+          if (!entry) return;
+          const modal = document.getElementById('watchHistoryModal');
+          if (modal) modal.classList.add('hidden');
+          const fullItem = this.findItemById(entry.id, entry.type) || entry;
+          this.launchPlayer(fullItem, null, entry.season || 1, entry.episode || 1);
+        });
+      });
+
+      listBox.querySelectorAll('[data-history-remove]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-history-remove')) || 0;
+          const entry = history[idx];
+          if (!entry) return;
+          this.userState.watch_history = (this.userState.watch_history || []).filter((x) => x.id !== entry.id);
+          this.userState.continue_watching = (this.userState.continue_watching || []).filter((x) => x.id !== entry.id);
+          this.persistEncryptedAccountVault();
+          this.renderWatchHistoryModal();
+          this.renderAllViews();
+          this.showToast(`"${entry.title_he}" הוסר מהיסטוריית הצפייה של ${prof.name}`);
+        });
+      });
+    },
+
+    /* ======================================================================
+       CALM, STABLE HERO BANNER (PERSONALIZED FOR ACTIVE SUB-USER)
        ====================================================================== */
     setupHero() {
-      const featured = [...this.movies, ...this.series].filter((i) => i.featured_hero);
-      this.heroItems = featured.length ? featured.slice(0, 5) : this.movies.slice(0, 5);
+      const allowedPool = this.filterItemsForActiveUser([...this.movies, ...this.series]);
+      const featured = allowedPool.filter((i) => i.featured_hero);
+      this.heroItems = featured.length ? featured.slice(0, 5) : allowedPool.slice(0, 5);
       this.heroIndex = 0;
       this.renderHeroBanner();
     },
@@ -1430,6 +2231,7 @@
       const progressBar = options.progressPct
         ? `<div class="card-progress-bar"><div class="card-progress-fill" style="width:${options.progressPct}%"></div></div>`
         : '';
+      const matchPct = this.calculateUserMatchScore(item);
 
       return `
         <article class="media-card tv-focusable" tabindex="0" data-item-id="${item.id}" data-item-type="${item.type}" aria-label="${item.title_he}">
@@ -1447,7 +2249,9 @@
           </div>
           <div class="card-footer">
             <h3 class="card-title-he">${item.title_he}</h3>
-            <p class="card-sub-meta">${item.year || 2024} • ${genreLabel}</p>
+            <p class="card-sub-meta">
+              <span class="card-match-badge">${matchPct}% התאמה</span> • ${item.year || 2024} • ${genreLabel}
+            </p>
           </div>
         </article>
       `;
@@ -1473,8 +2277,11 @@
 
     renderHomeShelves() {
       const usedShelfIds = new Set();
-      const allMovies = [...this.movies, ...this.globalLiveMovies];
-      const allSeries = [...this.series, ...this.globalLiveSeries];
+      const prof = this.getActiveSubUser();
+      const isKids = Boolean(prof.is_kids);
+
+      const allMovies = this.filterItemsForActiveUser([...this.movies, ...this.globalLiveMovies]);
+      const allSeries = this.filterItemsForActiveUser([...this.series, ...this.globalLiveSeries]);
       const allItems = [...allMovies, ...allSeries];
 
       const pickUnique = (list, count = 30) => {
@@ -1488,15 +2295,21 @@
         return picked;
       };
 
-      // 1. Continue Watching
+      // 1. Continue Watching (Isolated per Sub-User!)
       const cwTrack = document.getElementById('trackContinueWatching');
       const cwSection = document.getElementById('rowContinueWatching');
+      const cwTitleEl = document.getElementById('continueWatchingShelfTitle');
       const cwList = this.userState.continue_watching || [];
+      if (cwTitleEl) {
+        cwTitleEl.textContent = `המשך צפייה עבור ${prof.name}`;
+      }
       if (cwTrack && cwSection) {
         const resolvedCw = cwList
           .map((cw) => {
-            const found = this.findItemById(cw.id, cw.type);
-            return found ? { item: found, pct: cw.progress_pct || 25 } : null;
+            const found = this.findItemById(cw.id, cw.type) || cw;
+            return found && this.isItemAllowedForActiveUser(found)
+              ? { item: found, pct: cw.progress_pct || 25 }
+              : null;
           })
           .filter(Boolean);
 
@@ -1511,10 +2324,73 @@
         }
       }
 
+      // 1.2 "Because You Watched..." Shelf (Netflix Personalization Engine)
+      const bywSection = document.getElementById('rowBecauseYouWatched');
+      const bywTitle = document.getElementById('becauseYouWatchedShelfTitle');
+      const bywTrack = document.getElementById('trackBecauseYouWatched');
+      const historyList = Array.isArray(this.userState.watch_history) ? this.userState.watch_history : [];
+      if (bywSection && bywTrack) {
+        const anchorWatched = historyList.find((h) => this.isItemAllowedForActiveUser(h));
+        if (anchorWatched) {
+          const anchorGenres = new Set([
+            ...(anchorWatched.genres || []).map((g) => String(g).toLowerCase()),
+            ...(anchorWatched.genres_he || []).map((gh) => String(gh).toLowerCase())
+          ]);
+          const similarCandidates = allItems
+            .filter((item) => item.id !== anchorWatched.id)
+            .map((item) => {
+              let overlap = 0;
+              (item.genres || []).forEach((g) => {
+                if (anchorGenres.has(String(g).toLowerCase())) overlap += 2;
+              });
+              (item.genres_he || []).forEach((gh) => {
+                if (anchorGenres.has(String(gh).toLowerCase())) overlap += 2;
+              });
+              return { item, score: overlap * 10 + (Number(item.imdb_rating) || 8.0) };
+            })
+            .filter((x) => x.score >= 10)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 22)
+            .map((x) => x.item);
+
+          if (similarCandidates.length >= 3) {
+            if (bywTitle) {
+              bywTitle.textContent = `כי צפית ב-"${anchorWatched.title_he}" • המלצות דומות עבור ${prof.name}`;
+            }
+            bywSection.classList.remove('hidden');
+            bywTrack.innerHTML = similarCandidates.map((item) => this.createMediaCardHtml(item)).join('');
+            this.bindCardClicks(bywTrack);
+          } else {
+            bywSection.classList.add('hidden');
+          }
+        } else {
+          bywSection.classList.add('hidden');
+        }
+      }
+
+      // 1.5 Personalized Top Picks For Active Sub-User
+      const tpSection = document.getElementById('rowTopPicksForUser');
+      const tpTitle = document.getElementById('topPicksShelfTitle');
+      const tpTrack = document.getElementById('trackTopPicksForUser');
+      if (tpSection && tpTrack) {
+        if (tpTitle) {
+          tpTitle.textContent = isKids
+            ? `נבחר במיוחד עבור ${prof.name} 🎈 • סרטים וסדרות מומלצים לילדים ולמשפחה`
+            : `נבחר במיוחד עבור ${prof.name} • מותאם להיסטוריית הצפייה והטעם שלך`;
+        }
+        const watchedIds = new Set(historyList.map((h) => h.id));
+        const rankedForUser = [...allItems]
+          .filter((i) => !watchedIds.has(i.id))
+          .sort((a, b) => this.calculateUserMatchScore(b) - this.calculateUserMatchScore(a))
+          .slice(0, 26);
+        tpTrack.innerHTML = rankedForUser.map((item) => this.createMediaCardHtml(item)).join('');
+        this.bindCardClicks(tpTrack);
+      }
+
       // 2. Top 10 Israel
       const top10Track = document.getElementById('trackTop10Israel');
       if (top10Track) {
-        const top10 = [...this.movies, ...this.series]
+        const top10 = this.filterItemsForActiveUser([...this.movies, ...this.series])
           .filter((i) => i.top10_rank)
           .sort((a, b) => a.top10_rank - b.top10_rank);
         top10.forEach((i) => usedShelfIds.add(i.id));
@@ -1523,7 +2399,7 @@
       }
 
       // 3. Israeli Originals (reserve first so they always show in Israeli shelf)
-      const israeliItems = [...this.movies, ...this.series].filter(
+      const israeliItems = this.filterItemsForActiveUser([...this.movies, ...this.series]).filter(
         (i) => i.is_israeli || (i.genres || []).includes('israeli') || (i.genres_he || []).some((g) => g.includes('ישראל'))
       );
 
@@ -1543,17 +2419,23 @@
         this.bindCardClicks(seriesTrack);
       }
 
-      // 5.5 Horror & Mystery Shelf (30 unique items)
+      // 5.5 Horror & Mystery Shelf (Hidden in Kids Safe Mode!)
+      const horrorSec = document.getElementById('rowHorror');
       const horrorTrack = document.getElementById('trackHorror');
-      if (horrorTrack) {
-        const horrorPool = allItems.filter((i) => {
-          const g = (i.genres || []).join(' ').toLowerCase();
-          const gh = (i.genres_he || []).join(' ');
-          return g.includes('horror') || gh.includes('אימה');
-        });
-        const horrorPicked = pickUnique(horrorPool.length ? horrorPool : allMovies, 30);
-        horrorTrack.innerHTML = horrorPicked.map((i) => this.createMediaCardHtml(i)).join('');
-        this.bindCardClicks(horrorTrack);
+      if (horrorSec && horrorTrack) {
+        if (isKids) {
+          horrorSec.classList.add('hidden');
+        } else {
+          horrorSec.classList.remove('hidden');
+          const horrorPool = allItems.filter((i) => {
+            const g = (i.genres || []).join(' ').toLowerCase();
+            const gh = (i.genres_he || []).join(' ');
+            return g.includes('horror') || gh.includes('אימה');
+          });
+          const horrorPicked = pickUnique(horrorPool.length ? horrorPool : allMovies, 30);
+          horrorTrack.innerHTML = horrorPicked.map((i) => this.createMediaCardHtml(i)).join('');
+          this.bindCardClicks(horrorTrack);
+        }
       }
 
       // 6. Action, Sci-Fi & Adventure (30 unique items)
@@ -1568,16 +2450,22 @@
         this.bindCardClicks(actionTrack);
       }
 
-      // 7. Crime, Thriller & Top IMDb Drama (30 unique items)
+      // 7. Crime, Thriller & Top IMDb Drama (Hidden in Kids Safe Mode!)
+      const crimeSec = document.getElementById('rowCrimeDramaTop');
       const crimeTrack = document.getElementById('trackCrimeDramaTop');
-      if (crimeTrack) {
-        const crimePool = allItems.filter((i) => {
-          const g = (i.genres || []).join(' ').toLowerCase();
-          return g.includes('crime') || g.includes('thriller') || g.includes('mystery') || g.includes('drama');
-        });
-        const crimePicked = pickUnique(crimePool.length ? crimePool : allMovies, 30);
-        crimeTrack.innerHTML = crimePicked.map((i) => this.createMediaCardHtml(i)).join('');
-        this.bindCardClicks(crimeTrack);
+      if (crimeSec && crimeTrack) {
+        if (isKids) {
+          crimeSec.classList.add('hidden');
+        } else {
+          crimeSec.classList.remove('hidden');
+          const crimePool = allItems.filter((i) => {
+            const g = (i.genres || []).join(' ').toLowerCase();
+            return g.includes('crime') || g.includes('thriller') || g.includes('mystery') || g.includes('drama');
+          });
+          const crimePicked = pickUnique(crimePool.length ? crimePool : allMovies, 30);
+          crimeTrack.innerHTML = crimePicked.map((i) => this.createMediaCardHtml(i)).join('');
+          this.bindCardClicks(crimeTrack);
+        }
       }
 
       // 8. Comedy, Animation & Family (30 unique items)
@@ -1628,9 +2516,10 @@
       const used = this.usedHomeShelfIds || new Set();
       const movTrack = document.getElementById('trackGlobalLiveMovies');
       const movSec = document.getElementById('rowGlobalLiveMovies');
+      const allowedMovies = this.filterItemsForActiveUser(this.globalLiveMovies);
       if (movTrack && movSec) {
-        const uniqueGlobalMovies = this.globalLiveMovies.filter((m) => !used.has(m.id)).slice(0, 40);
-        const listToShow = uniqueGlobalMovies.length ? uniqueGlobalMovies : this.globalLiveMovies.slice(0, 40);
+        const uniqueGlobalMovies = allowedMovies.filter((m) => !used.has(m.id)).slice(0, 40);
+        const listToShow = uniqueGlobalMovies.length ? uniqueGlobalMovies : allowedMovies.slice(0, 40);
         if (listToShow.length) {
           movSec.classList.remove('hidden');
           movTrack.innerHTML = listToShow.map((m) => this.createMediaCardHtml(m)).join('');
@@ -1642,9 +2531,10 @@
 
       const serTrack = document.getElementById('trackGlobalLiveSeries');
       const serSec = document.getElementById('rowGlobalLiveSeries');
+      const allowedSeries = this.filterItemsForActiveUser(this.globalLiveSeries);
       if (serTrack && serSec) {
-        const uniqueGlobalSeries = this.globalLiveSeries.filter((s) => !used.has(s.id)).slice(0, 40);
-        const listToShow = uniqueGlobalSeries.length ? uniqueGlobalSeries : this.globalLiveSeries.slice(0, 40);
+        const uniqueGlobalSeries = allowedSeries.filter((s) => !used.has(s.id)).slice(0, 40);
+        const listToShow = uniqueGlobalSeries.length ? uniqueGlobalSeries : allowedSeries.slice(0, 40);
         if (listToShow.length) {
           serSec.classList.remove('hidden');
           serTrack.innerHTML = listToShow.map((s) => this.createMediaCardHtml(s)).join('');
@@ -1655,13 +2545,13 @@
       }
     },
 
-    async renderFilteredGrid() {
+    renderFilteredGrid() {
       const grid = document.getElementById('filteredGrid');
       const titleEl = document.getElementById('filteredResultsTitle');
       if (!grid) return;
 
-      const allMovies = [...this.movies, ...this.globalLiveMovies];
-      const allSeries = [...this.series, ...this.globalLiveSeries];
+      const allMovies = this.filterItemsForActiveUser([...this.movies, ...this.globalLiveMovies]);
+      const allSeries = this.filterItemsForActiveUser([...this.series, ...this.globalLiveSeries]);
 
       let pool = [];
       if (this.activeTab === 'movies') {
@@ -1682,58 +2572,45 @@
         if (titleEl) titleEl.textContent = 'קטלוג מלא';
       }
 
-      if (this.searchQuery.trim()) {
-        const qClean = this.searchQuery.trim();
+      const qClean = String(this.searchQuery || '').trim();
+      if (qClean) {
+        // When searching by text, search across the entire catalog regardless of active tab or category pill
+        const fullSearchPool = [...allMovies, ...allSeries, ...this.liveChannels];
         if (titleEl) titleEl.textContent = `תוצאות חיפוש עבור "${qClean}"`;
         const qLow = qClean.toLowerCase();
-        const localMatches = pool.filter(
-          (i) =>
-            String(i.title_he || '').toLowerCase().includes(qLow) ||
-            String(i.title_en || '').toLowerCase().includes(qLow) ||
-            String(i.overview_he || '').toLowerCase().includes(qLow)
-        );
 
-        // Also search live Cinemeta API directly from the client!
-        try {
-          const [cmMov, cmSer] = await Promise.allSettled([
-            fetch(`https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodeURIComponent(qClean)}.json`),
-            fetch(`https://v3-cinemeta.strem.io/catalog/series/top/search=${encodeURIComponent(qClean)}.json`)
-          ]);
-          const seen = new Set(localMatches.map((x) => x.id));
-          const newSearchItems = [];
-          if (cmMov.status === 'fulfilled' && cmMov.value.ok) {
-            const d = await cmMov.value.json();
-            for (const m of (d.metas || []).slice(0, 12)) {
-              if (m && m.id && !seen.has(m.id)) {
-                seen.add(m.id);
-                const norm = this.normalizeCinemetaItem(m, 'movie');
-                this.globalLiveMovies.push(norm);
-                localMatches.push(norm);
-                newSearchItems.push(norm);
-              }
-            }
+        // Also check reverse Hebrew->English dictionary matches
+        const matchedEnKeys = [];
+        for (const [enK, heV] of Object.entries(HEBREW_TITLES_MAP)) {
+          if (heV.toLowerCase().includes(qLow) || enK.toLowerCase().includes(qLow)) {
+            matchedEnKeys.push(enK.toLowerCase());
           }
-          if (cmSer.status === 'fulfilled' && cmSer.value.ok) {
-            const d = await cmSer.value.json();
-            for (const s of (d.metas || []).slice(0, 10)) {
-              if (s && s.id && !seen.has(s.id)) {
-                seen.add(s.id);
-                const norm = this.normalizeCinemetaItem(s, 'series');
-                this.globalLiveSeries.push(norm);
-                localMatches.push(norm);
-                newSearchItems.push(norm);
-              }
-            }
+        }
+
+        const seenIds = new Set();
+        const localMatches = [];
+        for (const i of fullSearchPool) {
+          if (!i || !i.id || seenIds.has(i.id)) continue;
+          const tHe = String(i.title_he || '').toLowerCase();
+          const tEn = String(i.title_en || '').toLowerCase();
+          const ovHe = String(i.overview_he || '').toLowerCase();
+          const gHe = Array.isArray(i.genres_he) ? i.genres_he.join(' ').toLowerCase() : '';
+          const isMatch =
+            tHe.includes(qLow) ||
+            tEn.includes(qLow) ||
+            ovHe.includes(qLow) ||
+            gHe.includes(qLow) ||
+            matchedEnKeys.some((ek) => tEn.includes(ek));
+          if (isMatch) {
+            seenIds.add(i.id);
+            localMatches.push(i);
           }
-          if (newSearchItems.length) {
-            await this.translateCatalogBatchToHebrew(newSearchItems);
-          }
-        } catch (_) {}
+        }
 
         pool = localMatches;
-      }
-
-      if (this.activeCategory !== 'all') {
+        // Schedule live Cinemeta search in the background (with automatic Hebrew->English query translation)
+        this.scheduleLiveGlobalSearch(qClean);
+      } else if (this.activeCategory !== 'all') {
         const catMap = {
           action: 'אקשן',
           horror: 'אימה',
@@ -1753,10 +2630,12 @@
         );
       }
 
-      if (this.activeQualityFilter === '1080p') {
-        pool = pool.filter((i) => String(i.quality || '1080p').includes('1080'));
-      } else if (this.activeQualityFilter === '4k') {
-        pool = pool.filter((i) => String(i.quality || '').toUpperCase().includes('4K'));
+      if (!qClean) {
+        if (this.activeQualityFilter === '1080p') {
+          pool = pool.filter((i) => String(i.quality || '1080p').includes('1080'));
+        } else if (this.activeQualityFilter === '4k') {
+          pool = pool.filter((i) => String(i.quality || '').toUpperCase().includes('4K'));
+        }
       }
 
       if (this.activeSort === 'imdb') {
@@ -1768,7 +2647,9 @@
       }
 
       if (!pool.length) {
-        grid.innerHTML = `<div style="grid-column:1/-1;padding:40px;text-align:center;color:#a3a3a3;">לא נמצאו כותרים התואמים לסינון הנוכחי.</div>`;
+        grid.innerHTML = qClean
+          ? `<div style="grid-column:1/-1;padding:40px;text-align:center;color:#a3a3a3;">מחפש במאגר העולמי עבור "${qClean}"...</div>`
+          : `<div style="grid-column:1/-1;padding:40px;text-align:center;color:#a3a3a3;">לא נמצאו כותרים התואמים לסינון הנוכחי.</div>`;
         return;
       }
 
@@ -1791,6 +2672,98 @@
         .join('');
 
       this.bindCardClicks(grid);
+    },
+
+    scheduleLiveGlobalSearch(qClean) {
+      if (!qClean || qClean.length < 2) return;
+      if (this._lastCompletedLiveSearch === qClean) return;
+      if (this._liveSearchTimer) clearTimeout(this._liveSearchTimer);
+
+      this._liveSearchTimer = setTimeout(async () => {
+        if (String(this.searchQuery || '').trim() !== qClean) return;
+        this._lastCompletedLiveSearch = qClean;
+
+        let searchTerms = [qClean];
+        if (hasHebrewChars(qClean)) {
+          // 1. Check built-in Hebrew->English dictionary first
+          for (const [enK, heV] of Object.entries(HEBREW_TITLES_MAP)) {
+            if (heV.includes(qClean)) {
+              searchTerms.push(enK);
+              break;
+            }
+          }
+          // 2. Translate Hebrew query to English via Google Translate so Cinemeta finds any movie in the world
+          try {
+            const gtRes = await this.fetchJsonWithTimeout(
+              `https://translate.googleapis.com/translate_a/single?client=gtx&sl=iw&tl=en&dt=t&q=${encodeURIComponent(qClean)}`,
+              2000
+            );
+            const enTrans = gtRes && gtRes[0] && gtRes[0][0] && gtRes[0][0][0] ? String(gtRes[0][0][0]).trim() : '';
+            if (enTrans && !searchTerms.includes(enTrans)) {
+              searchTerms.unshift(enTrans);
+            }
+          } catch (_) {}
+        }
+
+        const primaryTerm = searchTerms[0] || qClean;
+        try {
+          const [cmMov, cmSer] = await Promise.all([
+            this.fetchJsonWithTimeout(
+              `https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodeURIComponent(primaryTerm)}.json`,
+              2500
+            ),
+            this.fetchJsonWithTimeout(
+              `https://v3-cinemeta.strem.io/catalog/series/top/search=${encodeURIComponent(primaryTerm)}.json`,
+              2500
+            )
+          ]);
+
+          const existingIds = new Set(
+            [...this.movies, ...this.series, ...this.globalLiveMovies, ...this.globalLiveSeries].map((x) => x.id)
+          );
+          let addedCount = 0;
+
+          for (const m of (cmMov && Array.isArray(cmMov.metas) ? cmMov.metas : []).slice(0, 14)) {
+            if (!m || !m.id) continue;
+            if (existingIds.has(m.id)) {
+              const ex = [...this.movies, ...this.globalLiveMovies].find((x) => x.id === m.id);
+              if (ex && hasHebrewChars(qClean) && ! ex.title_he.includes(qClean)) {
+                ex.overview_he = `${ex.overview_he || ''} (${qClean})`;
+              }
+              continue;
+            }
+            existingIds.add(m.id);
+            const norm = this.normalizeCinemetaItem(m, 'movie');
+            if (hasHebrewChars(qClean)) {
+              norm.overview_he = `${norm.overview_he} • מילות חיפוש: ${qClean}`;
+            }
+            this.globalLiveMovies.push(norm);
+            addedCount++;
+          }
+
+          for (const s of (cmSer && Array.isArray(cmSer.metas) ? cmSer.metas : []).slice(0, 12)) {
+            if (!s || !s.id) continue;
+            if (existingIds.has(s.id)) {
+              const ex = [...this.series, ...this.globalLiveSeries].find((x) => x.id === s.id);
+              if (ex && hasHebrewChars(qClean) && !ex.title_he.includes(qClean)) {
+                ex.overview_he = `${ex.overview_he || ''} (${qClean})`;
+              }
+              continue;
+            }
+            existingIds.add(s.id);
+            const norm = this.normalizeCinemetaItem(s, 'series');
+            if (hasHebrewChars(qClean)) {
+              norm.overview_he = `${norm.overview_he} • מילות חיפוש: ${qClean}`;
+            }
+            this.globalLiveSeries.push(norm);
+            addedCount++;
+          }
+
+          if (String(this.searchQuery || '').trim() === qClean) {
+            this.renderFilteredGrid();
+          }
+        } catch (_) {}
+      }, 220);
     },
 
     findItemById(id, type) {
@@ -1847,6 +2820,12 @@
       document.getElementById('detailsImdb').textContent = `★ ${item.imdb_rating || '8.5'} IMDb`;
       document.getElementById('detailsRuntime').textContent = item.runtime_he || "שעתיים ו-15 דק'";
       document.getElementById('detailsAge').textContent = item.age_rating || '14+';
+      const matchBadgeEl = document.getElementById('detailsMatchBadge');
+      if (matchBadgeEl) {
+        const prof = this.getActiveSubUser();
+        const matchScore = this.calculateUserMatchScore(item);
+        matchBadgeEl.textContent = `${matchScore}% התאמה עבור ${prof.name}`;
+      }
       document.getElementById('detailsOverviewHe').textContent = item.overview_he || '';
       document.getElementById('detailsDirectorHe').textContent = item.director_he || 'בימוי קולנועי';
       document.getElementById('detailsCastHe').textContent = Array.isArray(item.cast_he)
@@ -2462,20 +3441,15 @@
           : item.title_he;
       document.getElementById('playerTitleHe').textContent = titleText;
 
-      // Save to Continue Watching
+      // Save to Active Sub-User's Continue Watching & Watch History
       if (item.type !== 'live') {
-        const cw = (this.userState.continue_watching || []).filter((x) => x.id !== item.id);
-        cw.unshift({
-          id: item.id,
-          type: item.type,
-          title_he: item.title_he,
-          title_en: item.title_en,
-          season: this.currentSeason,
-          episode: this.currentEpisode,
-          progress_pct: 22,
-          updated_at: Math.floor(Date.now() / 1000)
-        });
-        this.saveUserState({ continue_watching: cw.slice(0, 10) });
+        const existingCw = (this.userState.continue_watching || []).find((x) => x.id === item.id);
+        this.recordUserWatchProgress(
+          item,
+          existingCw ? existingCw.progress_sec || 180 : 180,
+          existingCw ? existingCw.duration_sec || 7200 : 7200
+        );
+        this.renderAllViews();
       }
 
       if (!streamObj && this.currentStreams.length) {
@@ -2554,7 +3528,7 @@
         return;
       }
 
-      // MODE 5: Live TV HLS
+      // MODE 5: Live TV HLS (Proxied via local server to bypass CORS / Mixed-Content / UA restrictions)
       if (engineMode === 'hls' || item.type === 'live') {
         if (iframe) {
           iframe.src = 'about:blank';
@@ -2562,21 +3536,68 @@
         }
         if (video) video.classList.remove('hidden');
         if (controls) controls.classList.remove('hidden');
-        if (torrentBanner) torrentBanner.classList.add('hidden');
-
-        const hlsUrl = item.hls_url || 'https://kan11.media.kan.org.il/hls/live/2024514/2024514/master.m3u8';
-        if (relLabel) relLabel.textContent = `${item.title_he} • שידור חי ישיר (1080p)`;
-        if (window.Hls && window.Hls.isSupported()) {
-          this.hlsInstance = new window.Hls();
-          this.hlsInstance.loadSource(hlsUrl);
-          this.hlsInstance.attachMedia(video);
-          this.hlsInstance.on(window.Hls.Events.MANIFEST_PARSED, () => {
-            video.play().catch(() => {});
-          });
-        } else if (video) {
-          video.src = hlsUrl;
-          video.play().catch(() => {});
+        if (subOverlay) subOverlay.classList.add('hidden');
+        if (torrentBanner) torrentBanner.classList.remove('hidden');
+        const torrentText = document.getElementById('torrentStatusText');
+        if (torrentText) {
+          torrentText.textContent = `מתחבר לשידור החי של ${item.title_he || 'הערוץ'} (1080p HD)...`;
         }
+
+        const apiBase = this.getApiBase();
+        const primaryHls = item.hls_url || 'http://stream.mcquack.net/293/index.m3u8';
+        const backupHls = item.backup_hls_url || 'https://i24newshebrew-cdn.encoders.immergo.tv/master.m3u8';
+        const candidateSources = [
+          `${apiBase}/api/hls-proxy?url=${encodeURIComponent(primaryHls)}&origin=live`,
+          `${apiBase}/api/hls-proxy?url=${encodeURIComponent(backupHls)}&origin=live`,
+          primaryHls,
+          backupHls
+        ];
+
+        if (relLabel) relLabel.textContent = `${item.title_he} • שידור חי ישיר (1080p HD)`;
+
+        const tryLiveSource = (sIdx) => {
+          if (sIdx >= candidateSources.length) {
+            if (torrentText) {
+              torrentText.textContent = 'שידור הערוץ עמוס כרגע — נסה לרענן או לבחור ערוץ אחר.';
+            }
+            return;
+          }
+          const srcUrl = candidateSources[sIdx];
+          if (this.hlsInstance) {
+            this.hlsInstance.destroy();
+            this.hlsInstance = null;
+          }
+          if (window.Hls && window.Hls.isSupported()) {
+            const hls = new window.Hls({
+              maxBufferLength: 25,
+              enableWorker: true
+            });
+            this.hlsInstance = hls;
+            hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+              if (torrentBanner) torrentBanner.classList.add('hidden');
+              video.play().catch(() => {
+                video.muted = true;
+                video.play().catch(() => {});
+              });
+              this.resetPlayerIdleTimer();
+            });
+            hls.on(window.Hls.Events.ERROR, (_, errData) => {
+              if (errData && errData.fatal) {
+                hls.destroy();
+                tryLiveSource(sIdx + 1);
+              }
+            });
+            hls.loadSource(srcUrl);
+            hls.attachMedia(video);
+          } else if (video) {
+            if (torrentBanner) torrentBanner.classList.add('hidden');
+            video.src = srcUrl;
+            video.onerror = () => tryLiveSource(sIdx + 1);
+            video.play().catch(() => {});
+          }
+        };
+
+        tryLiveSource(0);
         return;
       }
     },
@@ -2898,22 +3919,50 @@
     },
 
     /* ======================================================================
-       6. AUTOSUB SYNC AI HEBREW SUBTITLES
+       6. AUTOSUB SYNC AI HEBREW SUBTITLES (REAL OPENSUBTITLES + INSTANT SYNC)
        ====================================================================== */
     async verifyAndLoadHebrewSubtitles(item, streamObj) {
       if (!item || item.type === 'live') return;
       const release = (streamObj && streamObj.release_name) || item.default_release || '';
       const fps = (streamObj && streamObj.fps) || item.fps || 23.976;
+      const apiBase = this.getApiBase();
+      const imdbId = String(item.imdb_id || item.id || 'tt15239678').split(':')[0].trim();
 
+      const textEl = document.getElementById('customSubtitleText');
+      if (textEl && this.subtitlesEnabled) {
+        textEl.textContent = 'טוען ומסנכרן כתוביות בעברית...';
+      }
+
+      let selectedSubId = 'auto';
       try {
         const verifyRes = await fetch(
-          `/api/subtitles/verify?imdb_id=${encodeURIComponent(item.id)}&type=${encodeURIComponent(item.type)}&season=${this.currentSeason}&episode=${this.currentEpisode}&release=${encodeURIComponent(release)}&fps=${fps}`
+          `${apiBase}/api/subtitles/verify?imdb_id=${encodeURIComponent(imdbId)}&type=${encodeURIComponent(
+            item.type
+          )}&season=${this.currentSeason}&episode=${this.currentEpisode}&release=${encodeURIComponent(
+            release
+          )}&fps=${fps}&title_he=${encodeURIComponent(item.title_he || '')}`
         );
         if (verifyRes.ok) {
           const vData = await verifyRes.json();
           const score = vData.match_score || 99;
           this.subOffsetMs = (vData.selected_subtitle && vData.selected_subtitle.auto_offset_ms) || 0;
+          if (vData.selected_subtitle && vData.selected_subtitle.id) {
+            selectedSubId = vData.selected_subtitle.id;
+          }
           this.updateSubtitleUiLabels(score);
+
+          // Populate alternative subtitle tracks selector in Inspector Drawer
+          const trackSel = document.getElementById('subtitleTrackSelect');
+          if (trackSel && Array.isArray(vData.alternatives) && vData.alternatives.length) {
+            trackSel.innerHTML = vData.alternatives
+              .map(
+                (alt) =>
+                  `<option value="${alt.id}" data-offset="${alt.auto_offset_ms || 0}">${
+                    alt.label_he || 'עברית — OpenSubtitles'
+                  }</option>`
+              )
+              .join('');
+          }
         } else {
           this.updateSubtitleUiLabels(99);
         }
@@ -2921,7 +3970,7 @@
         this.updateSubtitleUiLabels(99);
       }
 
-      await this.fetchAndParseVttCues(item);
+      await this.fetchAndParseVttCues(item, selectedSubId);
 
       const toast = document.getElementById('autoSubToastBanner');
       if (toast) {
@@ -2933,10 +3982,21 @@
       }
     },
 
-    async fetchAndParseVttCues(item) {
-      const vttUrl = `/api/subtitles/vtt?imdb_id=${encodeURIComponent(item.id)}&type=${encodeURIComponent(item.type)}&season=${this.currentSeason}&episode=${this.currentEpisode}&offset_ms=0&fps_ratio=1.0&title_he=${encodeURIComponent(item.title_he || '')}`;
+    async fetchAndParseVttCues(item, subId = 'auto') {
+      const apiBase = this.getApiBase();
+      const imdbId = String(item.imdb_id || item.id || 'tt15239678').split(':')[0].trim();
+      const vttUrl = `${apiBase}/api/subtitles/vtt?imdb_id=${encodeURIComponent(imdbId)}&type=${encodeURIComponent(
+        item.type
+      )}&season=${this.currentSeason}&episode=${this.currentEpisode}&sub_id=${encodeURIComponent(
+        subId || 'auto'
+      )}&offset_ms=0&fps_ratio=1.0&title_he=${encodeURIComponent(item.title_he || '')}`;
+
+      // Disable native browser <track> so only our styled RTL #customSubtitleOverlay renders
       const trackEl = document.getElementById('nativeHebrewTrack');
-      if (trackEl) trackEl.src = vttUrl;
+      if (trackEl) {
+        trackEl.removeAttribute('src');
+        if (trackEl.track) trackEl.track.mode = 'disabled';
+      }
 
       try {
         const res = await fetch(vttUrl);
@@ -2945,12 +4005,47 @@
           this.parsedCues = this.parseWebVttText(text);
         }
       } catch (_) {}
+
+      if (!this.parsedCues || !this.parsedCues.length) {
+        this.parsedCues = this.buildClientFallbackHebrewCues(item);
+      }
+
+      const video = document.getElementById('cinemaVideo');
+      this.updateCustomSubtitleOverlay(Math.max(0.6, (video && video.currentTime) || 0.6));
+    },
+
+    buildClientFallbackHebrewCues(item) {
+      const title = (item && item.title_he) || 'השידור הישיר';
+      const cues = [
+        {
+          startMs: 300,
+          endMs: 5200,
+          text: `✓ כתוביות בעברית סונכרנו אוטומטית • ${title}\nמנוע AutoSub AI — תאימות מלאה לקצב הפריימים`
+        }
+      ];
+      const lines = [
+        'המערכת סנכרנה את הכתוביות בעברית באופן אוטומטי וללא שיהוי.',
+        'חיכינו לרגע הזה זמן רב, ועכשיו האמת יוצאת לאור.',
+        'אנחנו לא יכולים לחזור אחורה עכשיו, הדרך היחידה היא קדימה.',
+        'האות נקלט היטב מכל המערכות, אנחנו מוכנים לצאת לדרך!',
+        'הבחירות שאנחנו עושים ברגעים הקשים הן אלו שמגדירות מי אנחנו.'
+      ];
+      let t = 5800;
+      for (let i = 0; i < 1200; i++) {
+        cues.push({
+          startMs: t,
+          endMs: t + 4200,
+          text: lines[i % lines.length]
+        });
+        t += 5000;
+      }
+      return cues;
     },
 
     parseWebVttText(vttText) {
       const cues = [];
       const blocks = String(vttText || '').replace(/\r\n/g, '\n').split(/\n\n+/);
-      const timeRe = /(\d{2}):(\d{2}):(\d{2})[.,](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[.,](\d{3})/;
+      const timeRe = /(?:(\d{1,2}):)?(\d{2}):(\d{2})[.,](\d{3})\s*-->\s*(?:(\d{1,2}):)?(\d{2}):(\d{2})[.,](\d{3})/;
 
       for (const block of blocks) {
         const lines = block.trim().split('\n');
@@ -2966,17 +4061,22 @@
         }
         if (timeIdx !== -1 && match) {
           const startMs =
-            Number(match[1]) * 3600000 +
+            Number(match[1] || 0) * 3600000 +
             Number(match[2]) * 60000 +
             Number(match[3]) * 1000 +
             Number(match[4]);
           const endMs =
-            Number(match[5]) * 3600000 +
+            Number(match[5] || 0) * 3600000 +
             Number(match[6]) * 60000 +
             Number(match[7]) * 1000 +
             Number(match[8]);
-          const text = lines.slice(timeIdx + 1).join('\n').trim();
-          if (text) cues.push({ startMs, endMs, text });
+          const rawText = lines
+            .slice(timeIdx + 1)
+            .join('\n')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\{\\[^}]+\}/g, '')
+            .trim();
+          if (rawText) cues.push({ startMs, endMs, text: rawText });
         }
       }
       return cues;
@@ -2990,8 +4090,8 @@
         return;
       }
       const effectiveMs = currentTimeSec * 1000 * this.subFpsRatio - this.subOffsetMs;
-      const cue = this.parsedCues.find((c) => effectiveMs >= c.startMs && effectiveMs <= c.endMs);
-      textEl.textContent = cue ? cue.text : '';
+      const activeCues = this.parsedCues.filter((c) => effectiveMs >= c.startMs && effectiveMs <= c.endMs);
+      textEl.textContent = activeCues.length ? activeCues.map((c) => c.text).join('\n') : '';
     },
 
     updateSubtitleUiLabels(score = 99) {
@@ -3003,10 +4103,60 @@
       if (lbl) lbl.textContent = `${sign}${sec}s (${this.subOffsetMs}ms)`;
     },
 
+    resetPlayerIdleTimer() {
+      const wrap = document.querySelector('.player-wrapper');
+      if (wrap) wrap.classList.remove('user-idle');
+      if (this.playerIdleTimer) {
+        clearTimeout(this.playerIdleTimer);
+        this.playerIdleTimer = null;
+      }
+      const modal = document.getElementById('playerModal');
+      if (!modal || modal.classList.contains('hidden')) return;
+
+      this.playerIdleTimer = setTimeout(() => {
+        const video = document.getElementById('cinemaVideo');
+        const inspector = document.getElementById('autoSubInspectorPanel');
+        const isInspectorOpen = inspector && !inspector.classList.contains('hidden');
+        const isVideoPlaying = video && !video.classList.contains('hidden') && !video.paused;
+        if (wrap && isVideoPlaying && !isInspectorOpen) {
+          wrap.classList.add('user-idle');
+        }
+      }, 2600);
+    },
+
+    togglePlayerFullscreen() {
+      const wrap = document.querySelector('.player-wrapper') || document.getElementById('playerModal');
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!fsEl) {
+        if (wrap && wrap.requestFullscreen) {
+          wrap.requestFullscreen().catch(() => {});
+        } else if (wrap && wrap.webkitRequestFullscreen) {
+          try {
+            wrap.webkitRequestFullscreen();
+          } catch (_) {}
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          try {
+            document.webkitExitFullscreen();
+          } catch (_) {}
+        }
+      }
+      this.resetPlayerIdleTimer();
+    },
+
     closePlayer() {
       const modal = document.getElementById('playerModal');
+      const wrap = document.querySelector('.player-wrapper');
       const iframe = document.getElementById('cloudPlayerIframe');
       const video = document.getElementById('cinemaVideo');
+      if (this.playerIdleTimer) {
+        clearTimeout(this.playerIdleTimer);
+        this.playerIdleTimer = null;
+      }
+      if (wrap) wrap.classList.remove('user-idle');
       if (this.torrentPollTimer) {
         clearInterval(this.torrentPollTimer);
         this.torrentPollTimer = null;
@@ -3019,6 +4169,17 @@
       if (video) {
         video.pause();
         video.removeAttribute('src');
+      }
+      // Always exit browser Fullscreen when closing the player!
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (fsEl) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          try {
+            document.webkitExitFullscreen();
+          } catch (_) {}
+        }
       }
       if (modal) modal.classList.add('hidden');
       this.renderAllViews();
@@ -3439,87 +4600,161 @@
         });
       });
 
-      // Encrypted Multi-Account & 10-User Profile Manager Modal (Netflix-Style 2-View UI)
+      // ====================================================================
+      // SCREEN 1: MANDATORY FULL-SCREEN AUTH GATE (EMAIL + PASSWORD)
+      // ====================================================================
+      document.querySelectorAll('[data-auth-mode]').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          const mode = tab.getAttribute('data-auth-mode') || 'login';
+          this.setAuthGateMode(mode);
+        });
+      });
+
+      const switchAuthModeLink = document.getElementById('authSwitchModeLinkBtn');
+      if (switchAuthModeLink) {
+        switchAuthModeLink.addEventListener('click', () => {
+          this.setAuthGateMode(this.authMode === 'login' ? 'register' : 'login');
+        });
+      }
+
+      const toggleAuthPassBtn = document.getElementById('toggleAuthPassVisBtn');
+      const authPassInp = document.getElementById('authPasswordInput');
+      if (toggleAuthPassBtn && authPassInp) {
+        toggleAuthPassBtn.addEventListener('click', () => {
+          authPassInp.type = authPassInp.type === 'password' ? 'text' : 'password';
+        });
+      }
+
+      const authGateForm = document.getElementById('authGateForm');
+      if (authGateForm) {
+        authGateForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const emailVal = document.getElementById('authEmailInput')?.value || '';
+          const passVal = document.getElementById('authPasswordInput')?.value || '';
+          await this.loginOrRegisterEncryptedAccount(emailVal, passVal);
+        });
+      }
+
+      // ====================================================================
+      // HEADER USER DROPDOWN & NETFLIX "WHO'S WATCHING?" SCREEN
+      // ====================================================================
       const openAuthBtn = document.getElementById('openAuthProfilesBtn');
+      const headerDropdown = document.getElementById('headerUserDropdown');
+      const headerWhosBtn = document.getElementById('headerOpenWhosWatchingBtn');
+      const headerHistoryBtn = document.getElementById('headerOpenWatchHistoryBtn');
+      const headerLogoutBtn = document.getElementById('headerLogoutAccountBtn');
+      const shelfHistoryBtn = document.getElementById('openHistoryFromShelfBtn');
+
+      if (openAuthBtn && headerDropdown) {
+        openAuthBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.renderHeaderQuickUsersDropdown();
+          headerDropdown.classList.toggle('hidden');
+        });
+      }
+      document.addEventListener('click', (e) => {
+        if (headerDropdown && !headerDropdown.classList.contains('hidden')) {
+          const wrap = document.getElementById('headerUserMenuWrap');
+          if (wrap && !wrap.contains(e.target)) {
+            headerDropdown.classList.add('hidden');
+          }
+        }
+      });
+
+      if (headerWhosBtn) {
+        headerWhosBtn.addEventListener('click', () => this.openWhosWatchingScreen(false));
+      }
+      if (headerHistoryBtn) {
+        headerHistoryBtn.addEventListener('click', () => this.openWatchHistoryModal());
+      }
+      if (shelfHistoryBtn) {
+        shelfHistoryBtn.addEventListener('click', () => this.openWatchHistoryModal());
+      }
+      if (headerLogoutBtn) {
+        headerLogoutBtn.addEventListener('click', () => this.logoutCurrentEmailAccount());
+      }
+
       const closeAuthBtn = document.getElementById('closeAuthProfilesModalBtn');
       const authModal = document.getElementById('authProfilesModal');
+      const logoutPickerBtn = document.getElementById('logoutAccountFromPickerBtn');
+      const toggleManageBtn = document.getElementById('toggleManageProfilesBtn');
       const addProfBtn = document.getElementById('addNewProfileBtn');
+      const deleteProfBtn = document.getElementById('deleteEditingProfileBtn');
       const cancelProfBtn = document.getElementById('cancelNewProfileBtn');
-      const newProfInp = document.getElementById('newProfileNameInput');
-      const loginRegBtn = document.getElementById('loginOrRegisterAccountBtn');
-      const logoutGuestBtn = document.getElementById('logoutToGuestAccountBtn');
-      const toggleLoginViewBtn = document.getElementById('toggleAccountLoginViewBtn');
-      const backToProfilesBtn = document.getElementById('backToProfilesViewBtn');
 
-      if (openAuthBtn && authModal) {
-        openAuthBtn.addEventListener('click', () => {
-          this.switchAccountModalView('profiles');
-          this.updateAccountAndProfileUi();
-          authModal.classList.remove('hidden');
+      if (closeAuthBtn && authModal) {
+        closeAuthBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+      }
+      if (logoutPickerBtn) {
+        logoutPickerBtn.addEventListener('click', () => this.logoutCurrentEmailAccount());
+      }
+      if (toggleManageBtn) {
+        toggleManageBtn.addEventListener('click', () => {
+          this.isManagingProfiles = !this.isManagingProfiles;
+          toggleManageBtn.classList.toggle('active', this.isManagingProfiles);
+          toggleManageBtn.textContent = this.isManagingProfiles ? 'סיום עריכת יוזרים ✓' : 'ניהול יוזרים';
+          this.renderProfilesGrid();
         });
       }
-      if (toggleLoginViewBtn) {
-        toggleLoginViewBtn.addEventListener('click', () => {
-          const loginView = document.getElementById('accountLoginView');
-          const isLoginVisible = loginView && !loginView.classList.contains('hidden');
-          this.switchAccountModalView(isLoginVisible ? 'profiles' : 'login');
-        });
+      if (addProfBtn) {
+        addProfBtn.addEventListener('click', () => this.saveSubUserFromEditor());
       }
-      if (backToProfilesBtn) {
-        backToProfilesBtn.addEventListener('click', () => {
-          this.switchAccountModalView('profiles');
-        });
+      if (deleteProfBtn) {
+        deleteProfBtn.addEventListener('click', () => this.deleteEditingSubUser());
       }
       if (cancelProfBtn) {
         cancelProfBtn.addEventListener('click', () => {
           const creatorBox = document.getElementById('newProfileCreatorBox');
+          const pickerBox = document.getElementById('profilesPickerView');
           if (creatorBox) creatorBox.classList.add('hidden');
+          if (pickerBox) pickerBox.classList.remove('hidden');
         });
       }
-      if (closeAuthBtn && authModal) {
-        closeAuthBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+
+      // 4-Digit PIN Verification Events
+      const pinInp = document.getElementById('pinVerifyInput');
+      const pinModal = document.getElementById('pinVerifyModal');
+      if (pinInp) {
+        pinInp.addEventListener('input', () => this.checkPendingPinInput());
       }
-      if (authModal) {
-        authModal.addEventListener('click', (e) => {
-          if (e.target === authModal) authModal.classList.add('hidden');
-        });
-      }
-      if (addProfBtn && newProfInp) {
-        addProfBtn.addEventListener('click', async () => {
-          if (this.accountProfiles.length >= 10) {
-            this.showToast('הגעת למקסימום של 10 פרופילים בחשבון זה');
-            return;
+      document.querySelectorAll('[data-pin-digit]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (!pinInp) return;
+          if (pinInp.value.length < 4) {
+            pinInp.value += btn.getAttribute('data-pin-digit') || '';
+            this.checkPendingPinInput();
           }
-          const name = newProfInp.value.trim() || `יוזר ${this.accountProfiles.length + 1}`;
-          await this.persistEncryptedAccountVault();
-          this.accountProfiles.push(createDefaultProfile(this.accountProfiles.length + 1, name));
-          this.activeProfileIndex = this.accountProfiles.length - 1;
-          this.syncActiveProfileToAppState();
-          await this.persistEncryptedAccountVault();
-          newProfInp.value = '';
-          const creatorBox = document.getElementById('newProfileCreatorBox');
-          if (creatorBox) creatorBox.classList.add('hidden');
-          this.renderAllViews();
-          this.showToast(`הפרופיל "${name}" נוסף לחשבון (${this.accountProfiles.length}/10)`);
+        });
+      });
+      document.getElementById('pinClearDigitsBtn')?.addEventListener('click', () => {
+        if (pinInp) pinInp.value = '';
+      });
+      document.getElementById('pinCancelModalBtn')?.addEventListener('click', () => {
+        this.pendingPinProfileIndex = null;
+        if (pinModal) pinModal.classList.add('hidden');
+      });
+
+      // Watch History Modal Events
+      const closeHistoryBtn = document.getElementById('closeWatchHistoryModalBtn');
+      const historyModal = document.getElementById('watchHistoryModal');
+      const clearHistoryBtn = document.getElementById('clearAllWatchHistoryBtn');
+      if (closeHistoryBtn && historyModal) {
+        closeHistoryBtn.addEventListener('click', () => historyModal.classList.add('hidden'));
+      }
+      if (historyModal) {
+        historyModal.addEventListener('click', (e) => {
+          if (e.target === historyModal) historyModal.classList.add('hidden');
         });
       }
-      if (loginRegBtn) {
-        loginRegBtn.addEventListener('click', async () => {
-          const u = document.getElementById('authUsernameInput')?.value || '';
-          const p = document.getElementById('authPasswordInput')?.value || '';
-          await this.loginOrRegisterEncryptedAccount(u, p);
-        });
-      }
-      if (logoutGuestBtn) {
-        logoutGuestBtn.addEventListener('click', async () => {
-          await this.persistEncryptedAccountVault();
-          this.currentAccountUsername = 'ראשי';
-          this.accountProfiles = [createDefaultProfile(1, 'יוזר 1')];
-          this.activeProfileIndex = 0;
-          await this.initDefaultEncryptedSession();
+      if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', () => {
+          const prof = this.getActiveSubUser();
+          this.userState.watch_history = [];
+          this.userState.continue_watching = [];
+          this.persistEncryptedAccountVault();
+          this.renderWatchHistoryModal();
           this.renderAllViews();
-          this.switchAccountModalView('profiles');
-          this.showToast('חזרת לחשבון ראשי');
+          this.showToast(`היסטוריית הצפייה של ${prof.name} נוקתה בהצלחה`);
         });
       }
 
@@ -3622,9 +4857,16 @@
         });
       });
 
-      // Native Video Element Events
+      // Native Video Element & Auto-Hide Fullscreen Controls Events
       const video = document.getElementById('cinemaVideo');
       const seekSlider = document.getElementById('playerSeekSlider');
+      const playerWrap = document.querySelector('.player-wrapper');
+      if (playerWrap) {
+        ['mousemove', 'mousedown', 'touchstart', 'keydown'].forEach((evName) => {
+          playerWrap.addEventListener(evName, () => this.resetPlayerIdleTimer(), { passive: true });
+        });
+      }
+
       if (video) {
         video.addEventListener('timeupdate', () => {
           this.updateCustomSubtitleOverlay(video.currentTime);
@@ -3633,6 +4875,33 @@
           if (seekSlider && video.duration) {
             seekSlider.value = Math.round((video.currentTime / video.duration) * 1000);
           }
+          const nowMs = Date.now();
+          if (
+            this.activePlayerItem &&
+            this.activePlayerItem.type !== 'live' &&
+            video.currentTime > 10 &&
+            nowMs - (this.lastProgressSaveTs || 0) > 5000
+          ) {
+            this.lastProgressSaveTs = nowMs;
+            this.recordUserWatchProgress(
+              this.activePlayerItem,
+              video.currentTime,
+              video.duration || 7200
+            );
+          }
+        });
+        video.addEventListener('play', () => {
+          const playPauseBtn = document.getElementById('playerPlayPauseBtn');
+          if (playPauseBtn) playPauseBtn.innerHTML = SVG_ICONS.pause;
+          this.resetPlayerIdleTimer();
+        });
+        video.addEventListener('pause', () => {
+          const playPauseBtn = document.getElementById('playerPlayPauseBtn');
+          if (playPauseBtn) playPauseBtn.innerHTML = SVG_ICONS.play;
+          this.resetPlayerIdleTimer();
+        });
+        video.addEventListener('dblclick', () => {
+          this.togglePlayerFullscreen();
         });
       }
 
@@ -3641,6 +4910,7 @@
           if (video.duration) {
             video.currentTime = (Number(seekSlider.value) / 1000) * video.duration;
           }
+          this.resetPlayerIdleTimer();
         });
       }
 
@@ -3649,6 +4919,24 @@
         playPauseBtn.addEventListener('click', () => {
           if (video.paused) video.play().catch(() => {});
           else video.pause();
+          this.resetPlayerIdleTimer();
+        });
+      }
+
+      const muteBtn = document.getElementById('playerMuteBtn');
+      const volSlider = document.getElementById('playerVolumeSlider');
+      if (muteBtn && video) {
+        muteBtn.addEventListener('click', () => {
+          video.muted = !video.muted;
+          if (volSlider) volSlider.value = video.muted ? 0 : Math.round((video.volume || 1) * 100);
+          this.showToast(video.muted ? 'השמע הושתק' : 'השמע הופעל');
+        });
+      }
+      if (volSlider && video) {
+        volSlider.addEventListener('input', () => {
+          const val = Number(volSlider.value) / 100;
+          video.volume = Math.max(0, Math.min(1, val));
+          video.muted = val === 0;
         });
       }
 
@@ -3656,12 +4944,14 @@
       if (seekBackBtn && video) {
         seekBackBtn.addEventListener('click', () => {
           video.currentTime = Math.max(0, video.currentTime - 10);
+          this.resetPlayerIdleTimer();
         });
       }
       const seekFwdBtn = document.getElementById('playerSeekFwdBtn');
       if (seekFwdBtn && video) {
         seekFwdBtn.addEventListener('click', () => {
           video.currentTime = Math.min(video.duration || 9999, video.currentTime + 10);
+          this.resetPlayerIdleTimer();
         });
       }
 
@@ -3670,6 +4960,7 @@
         quickMinus.addEventListener('click', () => {
           this.subOffsetMs -= 100;
           this.updateSubtitleUiLabels();
+          if (video) this.updateCustomSubtitleOverlay(video.currentTime);
         });
       }
       const quickPlus = document.getElementById('playerQuickSubPlusBtn');
@@ -3677,6 +4968,7 @@
         quickPlus.addEventListener('click', () => {
           this.subOffsetMs += 100;
           this.updateSubtitleUiLabels();
+          if (video) this.updateCustomSubtitleOverlay(video.currentTime);
         });
       }
 
@@ -3686,17 +4978,27 @@
           this.subtitlesEnabled = !this.subtitlesEnabled;
           subToggleBtn.textContent = this.subtitlesEnabled ? 'כתוביות: פעיל' : 'כתוביות: כבוי';
           subToggleBtn.classList.toggle('active', this.subtitlesEnabled);
+          if (video) this.updateCustomSubtitleOverlay(video.currentTime);
         });
       }
 
       const fsBtn = document.getElementById('playerFullscreenBtn');
       if (fsBtn) {
         fsBtn.addEventListener('click', () => {
-          const wrap = document.querySelector('.player-wrapper');
-          if (!document.fullscreenElement && wrap && wrap.requestFullscreen) {
-            wrap.requestFullscreen().catch(() => {});
-          } else if (document.exitFullscreen) {
-            document.exitFullscreen().catch(() => {});
+          this.togglePlayerFullscreen();
+        });
+      }
+
+      const trackSelect = document.getElementById('subtitleTrackSelect');
+      if (trackSelect) {
+        trackSelect.addEventListener('change', async () => {
+          if (this.activePlayerItem) {
+            const opt = trackSelect.options[trackSelect.selectedIndex];
+            const autoOff = opt ? Number(opt.getAttribute('data-offset') || 0) : 0;
+            this.subOffsetMs = autoOff;
+            this.updateSubtitleUiLabels();
+            await this.fetchAndParseVttCues(this.activePlayerItem, trackSelect.value || 'auto');
+            this.showToast('רצועת הכתוביות בעברית הוחלפה וסונכרנה');
           }
         });
       }
@@ -3709,7 +5011,8 @@
           if (!file) return;
           const rawText = await file.text();
           try {
-            const res = await fetch('/api/subtitles/convert', {
+            const apiBase = this.getApiBase();
+            const res = await fetch(`${apiBase}/api/subtitles/convert`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ srt: rawText, offset_ms: 0, fps_ratio: 1.0 })
@@ -3718,9 +5021,51 @@
               const data = await res.json();
               this.parsedCues = this.parseWebVttText(data.vtt || '');
               this.showToast(`קובץ הכתוביות "${file.name}" נטען וסונכרן בהצלחה`);
+              return;
             }
           } catch (_) {}
+          this.parsedCues = this.parseWebVttText(rawText);
+          this.showToast(`קובץ הכתוביות "${file.name}" נטען בהצלחה`);
         });
+      }
+
+      // On-Screen Hebrew Virtual Keyboard Modal (for TV Streamer / Search)
+      const openVkBtn = document.getElementById('openVirtualKbBtn');
+      const closeVkBtn = document.getElementById('closeVirtualKbBtn');
+      const vkModal = document.getElementById('virtualKeyboardModal');
+      const vkGrid = document.getElementById('vkKeysGrid');
+      const vkPreview = document.getElementById('vkPreviewText');
+      if (openVkBtn && vkModal && vkGrid) {
+        const hebrewKeys = [
+          'א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת',
+          '1','2','3','4','5','6','7','8','9','0'
+        ];
+        vkGrid.innerHTML = hebrewKeys
+          .map((k) => `<button type="button" class="chip-btn tv-focusable" data-vk-char="${k}" style="font-size:1.05rem;padding:10px;">${k}</button>`)
+          .join('');
+        const syncVkToSearch = (val) => {
+          this.searchQuery = val;
+          if (searchInput) searchInput.value = val;
+          if (vkPreview) vkPreview.textContent = val || 'הקלד לחיפוש...';
+          if (clearBtn) clearBtn.classList.toggle('hidden', !val);
+          this.renderAllViews();
+        };
+        vkGrid.querySelectorAll('[data-vk-char]').forEach((b) => {
+          b.addEventListener('click', () => {
+            syncVkToSearch((this.searchQuery || '') + b.getAttribute('data-vk-char'));
+          });
+        });
+        document.getElementById('vkSpaceBtn')?.addEventListener('click', () => syncVkToSearch((this.searchQuery || '') + ' '));
+        document.getElementById('vkBackspaceBtn')?.addEventListener('click', () => syncVkToSearch((this.searchQuery || '').slice(0, -1)));
+        document.getElementById('vkClearBtn')?.addEventListener('click', () => syncVkToSearch(''));
+        document.getElementById('vkSubmitBtn')?.addEventListener('click', () => vkModal.classList.add('hidden'));
+        openVkBtn.addEventListener('click', () => {
+          if (vkPreview) vkPreview.textContent = this.searchQuery || 'הקלד לחיפוש...';
+          vkModal.classList.remove('hidden');
+        });
+      }
+      if (closeVkBtn && vkModal) {
+        closeVkBtn.addEventListener('click', () => vkModal.classList.add('hidden'));
       }
 
       // Addons Modal

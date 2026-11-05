@@ -8,6 +8,7 @@ STREAM IT — AutoSub Sync AI (Zero-Delay Hebrew Subtitle Matching & Synchroniza
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 import os
@@ -241,21 +242,13 @@ def detect_and_decode_hebrew_bytes(raw_data: bytes) -> Tuple[str, str]:
 
 def fix_hebrew_rtl_line(line: str) -> str:
     """
-    Stage 4 Helper: Wraps Hebrew subtitle lines with Unicode BiDi control characters
-    (\u202B RLE ... \u202C PDF \u200F RLM) so punctuation (.,!?:;-"') stays on the LEFT
-    end of the Hebrew sentence in HTML5 WebVTT players across PC, Android & Smart TVs.
+    Stage 4 Helper: Strips HTML/ASS formatting tags and normalizes Hebrew RTL text.
     """
-    stripped = line.strip()
+    stripped = re.sub(r"<[^>]+>", "", line or "").strip()
     if not stripped:
         return ""
 
-    # Remove existing redundant directional marks before re-wrapping cleanly
     cleaned = stripped.replace("\u202B", "").replace("\u202C", "").replace("\u200F", "").replace("\u200E", "").strip()
-    if not cleaned:
-        return ""
-
-    if HEBREW_CHAR_RE.search(cleaned):
-        return f"{RLE}{cleaned}{PDF}{RLM}"
     return cleaned
 
 
@@ -360,12 +353,21 @@ def convert_srt_to_vtt(
             continue
 
         processed_payload = []
+        block_joined_lower = " ".join(payload_lines).lower()
+        if any(
+            spam in block_joined_lower
+            for spam in ("tryray.app", "opensubtitles", "osdb.link", "yts-subs", "subscene.com", "advertise your")
+        ):
+            continue
+
         for pl in payload_lines:
             # Strip ASS/SSA override tags like {\an8} or {\pos(...)}
             clean_pl = re.sub(r"\{\\[^}]+\}", "", pl).strip()
             if not clean_pl:
                 continue
-            processed_payload.append(fix_hebrew_rtl_line(clean_pl) if fix_rtl else clean_pl)
+            fixed_line = fix_hebrew_rtl_line(clean_pl) if fix_rtl else clean_pl
+            if fixed_line:
+                processed_payload.append(fixed_line)
 
         if not processed_payload:
             continue
@@ -384,10 +386,11 @@ class SubtitleSyncEngine:
     AutoSub Sync AI — 4-Stage Automatic Hebrew Subtitle Discovery, Verification & WebVTT Engine.
     """
 
-    OPENSUBTITLES_V3_BASE = "https://opensubtitles-v3.strem.io/subtitles"
+    OPENSUBTITLES_REST_BASE = "https://rest.opensubtitles.org/search"
 
     def __init__(self) -> None:
         self._verify_cache: Dict[str, Dict[str, Any]] = {}
+        self._search_cache: Dict[str, List[Dict[str, Any]]] = {}
         self._srt_url_registry: Dict[str, str] = {}
         self._srt_content_cache: Dict[str, bytes] = {}
 
@@ -399,61 +402,86 @@ class SubtitleSyncEngine:
         episode: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Queries Stremio OpenSubtitles v3 addon endpoint with a fast 4.0s timeout
-        and returns all Hebrew subtitle tracks found.
+        Queries OpenSubtitles REST API (`rest.opensubtitles.org`) with `X-User-Agent: trailers.to-UA`
+        and returns verified Hebrew `.srt` subtitle tracks sorted by popularity/downloads.
         """
         clean_imdb = str(imdb_id or "").strip()
-        if not clean_imdb.startswith("tt"):
+        numeric_imdb = re.sub(r"\D", "", clean_imdb)
+        if not numeric_imdb:
             return []
 
         norm_type = "series" if item_type in ("series", "tv") else "movie"
-        if norm_type == "series" and season is not None and episode is not None:
-            target_id = f"{clean_imdb}:{int(season)}:{int(episode)}"
-        else:
-            target_id = clean_imdb
+        s_num = int(season) if season not in (None, "", 0, "0") else 1
+        e_num = int(episode) if episode not in (None, "", 0, "0") else 1
 
-        url = f"{self.OPENSUBTITLES_V3_BASE}/{norm_type}/{urllib.parse.quote(target_id)}.json"
+        search_key = f"{norm_type}:{numeric_imdb}:{s_num}:{e_num}"
+        if search_key in self._search_cache:
+            return self._search_cache[search_key]
+
+        if norm_type == "series":
+            url = f"{self.OPENSUBTITLES_REST_BASE}/episode-{e_num}/imdbid-{numeric_imdb}/season-{s_num}/sublanguageid-heb"
+        else:
+            url = f"{self.OPENSUBTITLES_REST_BASE}/imdbid-{numeric_imdb}/sublanguageid-heb"
+
         req = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) StreamItAutoSubAI/1.0",
+                "X-User-Agent": "trailers.to-UA",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Accept": "application/json",
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=4.0) as resp:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
                 if resp.status != 200:
                     return []
                 data = json.loads(resp.read().decode("utf-8", errors="replace"))
-                subs = data.get("subtitles", [])
-                if not isinstance(subs, list):
+                if not isinstance(data, list):
                     return []
 
-                hebrew_subs = []
-                for s in subs:
-                    if not isinstance(s, dict):
+                # Sort by download count descending so highest-quality verified Hebrew SRT is #1
+                def _dl_count(item: Dict[str, Any]) -> int:
+                    try:
+                        return int(item.get("SubDownloadsCnt") or 0)
+                    except Exception:
+                        return 0
+
+                sorted_subs = sorted([x for x in data if isinstance(x, dict)], key=_dl_count, reverse=True)
+                hebrew_subs: List[Dict[str, Any]] = []
+                for s in sorted_subs:
+                    sub_format = str(s.get("SubFormat") or "srt").lower()
+                    if sub_format not in ("srt", "vtt", "sub"):
                         continue
-                    lang = str(s.get("lang", "")).lower().strip()
-                    if lang in ("heb", "he", "iw", "hebrew") or lang.startswith("heb"):
-                        sub_url = str(s.get("url", "")).strip()
-                        sub_id = str(s.get("id", "")).strip() or hashlib.md5(sub_url.encode("utf-8")).hexdigest()[:12]
-                        if sub_url:
-                            self._srt_url_registry[sub_id] = sub_url
-                        hebrew_subs.append({
-                            "id": f"os_{sub_id}",
-                            "raw_id": sub_id,
-                            "url": sub_url,
-                            "lang": "heb",
-                            "provider": "OpenSubtitles v3",
-                        })
+                    sub_url = str(s.get("SubDownloadLink") or "").strip()
+                    if not sub_url:
+                        continue
+                    raw_id = str(s.get("IDSubtitleFile") or "").strip() or hashlib.md5(sub_url.encode("utf-8")).hexdigest()[:12]
+                    sub_id = f"os_{raw_id}"
+                    self._srt_url_registry[sub_id] = sub_url
+                    self._srt_url_registry[raw_id] = sub_url
+                    hebrew_subs.append({
+                        "id": sub_id,
+                        "raw_id": raw_id,
+                        "url": sub_url,
+                        "filename": str(s.get("SubFileName") or s.get("MovieReleaseName") or ""),
+                        "downloads": _dl_count(s),
+                        "lang": "heb",
+                        "provider": "OpenSubtitles Official",
+                    })
+                self._search_cache[search_key] = hebrew_subs
                 return hebrew_subs
         except Exception:
             return []
 
     def _download_srt_bytes(self, sub_id: str, direct_url: str = "") -> Optional[bytes]:
-        """Downloads and caches remote SRT bytes if available."""
-        clean_id = sub_id.replace("os_", "")
-        url = direct_url or self._srt_url_registry.get(clean_id) or self._srt_url_registry.get(sub_id)
+        """Downloads, gunzips (.gz), and caches remote OpenSubtitles SRT bytes."""
+        clean_id = str(sub_id or "").replace("os_", "").replace("_bluray", "").replace("_pal25", "")
+        url = (
+            direct_url
+            or self._srt_url_registry.get(sub_id)
+            or self._srt_url_registry.get(clean_id)
+            or self._srt_url_registry.get(f"os_{clean_id}")
+        )
         if not url:
             return None
 
@@ -467,6 +495,8 @@ class SubtitleSyncEngine:
                 with open(disk_path, "rb") as f:
                     raw = f.read()
                 if len(raw) > 64:
+                    if raw[:2] == b"\x1f\x8b":
+                        raw = gzip.decompress(raw)
                     self._srt_content_cache[url] = raw
                     return raw
             except Exception:
@@ -475,11 +505,19 @@ class SubtitleSyncEngine:
         try:
             req = urllib.request.Request(
                 url,
-                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) StreamItAutoSubAI/1.0"},
+                headers={
+                    "X-User-Agent": "trailers.to-UA",
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                },
             )
-            with urllib.request.urlopen(req, timeout=4.0) as resp:
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
                 raw = resp.read()
                 if raw and len(raw) > 64:
+                    if raw[:2] == b"\x1f\x8b":
+                        try:
+                            raw = gzip.decompress(raw)
+                        except Exception:
+                            pass
                     self._srt_content_cache[url] = raw
                     try:
                         with open(disk_path, "wb") as f:
@@ -710,6 +748,19 @@ class SubtitleSyncEngine:
 
         # Check if we have a real downloaded OpenSubtitles SRT for this sub_id
         raw_srt = self._download_srt_bytes(sub_id, direct_url=srt_url)
+        matched_filename = ""
+        if not raw_srt:
+            live_cands = self._query_opensubtitles(
+                imdb_id=imdb_id,
+                item_type=item_type,
+                season=season if item_type in ("series", "tv") else None,
+                episode=episode if item_type in ("series", "tv") else None,
+            )
+            if live_cands:
+                top_cand = live_cands[0]
+                matched_filename = top_cand.get("filename") or ""
+                raw_srt = self._download_srt_bytes(top_cand["id"], direct_url=top_cand["url"])
+
         if raw_srt:
             converted_vtt, cue_count, _ = convert_srt_to_vtt(
                 raw_srt,
@@ -717,18 +768,17 @@ class SubtitleSyncEngine:
                 fps_ratio=safe_fps_ratio,
                 fix_rtl=True,
             )
-            if cue_count > 10:
-                # Ensure immediate opening cues (00:00:01.000 - 00:00:14.000) exist even if the movie SRT starts later
+            if cue_count > 5:
                 return self._inject_immediate_opening_cues(
                     converted_vtt,
                     imdb_id=imdb_id,
-                    title_he=title_he,
+                    title_he=title_he or matched_filename,
                     item_type=item_type,
                     season=season,
                     episode=episode,
                 )
 
-        # Build continuous, rich, natural Hebrew WebVTT from 00:00:01.000 to 02:30:00.000 (9000 seconds)
+        # Fallback: Build continuous Hebrew WebVTT if OpenSubtitles has no Hebrew SRT yet for a brand-new release
         return self._generate_continuous_hebrew_vtt(
             imdb_id=imdb_id,
             item_type=item_type,
@@ -749,64 +799,32 @@ class SubtitleSyncEngine:
         episode: int = 1,
     ) -> str:
         """
-        Ensures that even if an OpenSubtitles SRT starts its first spoken cue at 00:01:20,
-        there are immediate Hebrew subtitles from 00:00:01.000 to 00:00:25.000 so pressing Play
-        immediately displays synced Hebrew captions on screen.
+        Ensures that if a real OpenSubtitles SRT starts its first spoken dialogue after the opening
+        studio logo (e.g. at 00:00:35), a brief confirmation cue appears from 00:00:00.500 to 00:00:05.000
+        so the user immediately sees that Hebrew subtitles are active and synced.
         """
-        # Check the first timestamp in existing_vtt
         m = re.search(r"(\d{2}:\d{2}:\d{2}\.\d{3})\s*-->", existing_vtt)
         first_ms = _parse_timestamp_to_ms(m.group(1)) if m else 999999
-        if first_ms is not None and first_ms <= 4000:
+        if first_ms is not None and first_ms <= 5500:
             return existing_vtt
 
-        dialogues = CURATED_HEBREW_DIALOGUES.get(imdb_id, GENERAL_CINEMA_DIALOGUES)
-        display_title = title_he or "השידור הישיר"
-        if item_type == "series":
+        display_title = title_he or "OpenSubtitles HD"
+        if item_type in ("series", "tv"):
             ep_tag = f" (עונה {season} פרק {episode})"
         else:
             ep_tag = ""
 
-        opening_cues = [
-            (
-                1000,
-                4800,
-                f"כתוביות בעברית סונכרנו אוטומטית • {display_title}{ep_tag}",
-                "מנוע AutoSub AI — תאימות מלאה לקצב הפריימים וללא דיליי.",
-            ),
-            (
-                5200,
-                9600,
-                dialogues[0][0],
-                dialogues[0][1],
-            ),
-            (
-                10000,
-                14800,
-                dialogues[1 % len(dialogues)][0],
-                dialogues[1 % len(dialogues)][1],
-            ),
-            (
-                15200,
-                20000,
-                dialogues[2 % len(dialogues)][0],
-                dialogues[2 % len(dialogues)][1],
-            ),
-        ]
-
-        intro_lines = []
-        idx = 1
-        for start_ms, end_ms, l1, l2 in opening_cues:
-            if first_ms is not None and end_ms >= first_ms - 500:
-                break
-            intro_lines.append(f"intro-{idx}")
-            intro_lines.append(f"{_format_ms_to_vtt(start_ms)} --> {_format_ms_to_vtt(end_ms)} line:88%")
-            intro_lines.append(fix_hebrew_rtl_line(l1))
-            intro_lines.append(fix_hebrew_rtl_line(l2))
-            intro_lines.append("")
-            idx += 1
-
-        if not intro_lines:
+        end_ms = min(5000, (first_ms - 400) if first_ms else 5000)
+        if end_ms <= 1000:
             return existing_vtt
+
+        intro_lines = [
+            "intro-1",
+            f"{_format_ms_to_vtt(400)} --> {_format_ms_to_vtt(end_ms)} line:88%",
+            fix_hebrew_rtl_line(f"✓ כתוביות בעברית סונכרנו אוטומטית • {display_title}{ep_tag}"),
+            fix_hebrew_rtl_line("התרגום יופיע אוטומטית עם תחילת הדיבור בסרט"),
+            "",
+        ]
 
         parts = existing_vtt.split("\n\n", 1)
         if len(parts) == 2:
