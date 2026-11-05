@@ -1433,8 +1433,8 @@
 
         if (iframe) {
           iframe.classList.remove('hidden');
-          // Ensure strict HTML5 Sandbox is always enforced so zero popups/AliExpress redirects can ever occur!
-          iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+          // Ensure sandbox attribute is removed so external video servers never block playback with "Please Disable Sandbox"
+          iframe.removeAttribute('sandbox');
 
           if (engineMode === 'trailer') {
             const ytId = item.trailer_yt_id || 'Way9Dexny3w';
@@ -1447,7 +1447,7 @@
                 : `https://vidsrc.cc/v2/embed/movie/${encodeURIComponent(imdbId)}`;
             iframe.src = url2;
             if (relLabel) {
-              relLabel.textContent = `הזרמה מהירה #2 (VIP Multi • חסום פרסומות Sandbox 🔒) • ${st.release_name || item.title_en || imdbId}`;
+              relLabel.textContent = `הזרמה מהירה #2 (VIP Multi • VidSrc) • ${st.release_name || item.title_en || imdbId}`;
             }
           } else {
             const url1 =
@@ -1456,7 +1456,7 @@
                 : `https://vidlink.pro/movie/${encodeURIComponent(tmdbId)}?primaryColor=ffffff&secondaryColor=141414&iconColor=ffffff&autoplay=true`;
             iframe.src = url1;
             if (relLabel) {
-              relLabel.textContent = `הזרמה מהירה #1 (4K Cloud • חסום פרסומות Sandbox 🔒) • ${st.provider || 'ניגון מיידי'}`;
+              relLabel.textContent = `הזרמה מהירה #1 (4K Cloud • VidLink) • ${st.provider || 'ניגון מיידי'}`;
             }
           }
         }
@@ -1503,14 +1503,14 @@
 
       if (iframe) {
         iframe.classList.remove('hidden');
-        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+        iframe.removeAttribute('sandbox');
         const url =
           item.type === 'series'
             ? `https://multiembed.mov/?video_id=${encodeURIComponent(imdbId)}&s=${this.currentSeason}&e=${this.currentEpisode}`
             : `https://multiembed.mov/?video_id=${encodeURIComponent(imdbId)}`;
         iframe.src = url;
         if (relLabel) {
-          relLabel.textContent = `הזרמת ענן לטורנט/טלגרם (0% עומס על המחשב • חסום פרסומות 🔒) • ${torCandidate.release_name || imdbId}`;
+          relLabel.textContent = `הזרמת ענן לטורנט/טלגרם (0% עומס על המחשב) • ${torCandidate.release_name || imdbId}`;
         }
       }
     },

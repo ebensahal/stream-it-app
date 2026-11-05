@@ -361,11 +361,11 @@
           </div>
         </div>
 
-        <!-- Engine Switcher (Sandboxed Zero-Popup Cloud + Cloud/Local BitTorrent + Official Trailer) -->
+        <!-- Engine Switcher (Fast Cloud Servers + Cloud BitTorrent/Telegram + Official Trailer) -->
         <div class="player-engine-tabs" role="tablist" aria-label="מנוע ניגון">
-          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="הזרמה מהירה שרת 1 חסום פרסומות">הזרמה מהירה #1 (4K • חסום פרסומות 🔒)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="הזרמה מהירה שרת 2 חסום פרסומות">הזרמה מהירה #2 (VIP • חסום פרסומות 🔒)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="ביטורנט וטלגרם ישיר">ביטורנט / טלגרם ישיר (P2P + AutoSub)</button>
+          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="הזרמה מהירה שרת 1">הזרמה מהירה #1 (4K • VidLink)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="הזרמה מהירה שרת 2">הזרמה מהירה #2 (VIP • VidSrc)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="ביטורנט וטלגרם ישיר">הזרמה מהירה #3 (טורנט / טלגרם ענן)</button>
           <button type="button" class="engine-tab tv-focusable" data-engine="trailer" aria-label="נגן טריילר">טריילר רשמי</button>
         </div>
 
@@ -377,17 +377,15 @@
         </div>
       </div>
 
-      <!-- Stage: Sandboxed Zero-Popup Cloud Player + Native HTML5 Video + AutoSub Overlay -->
+      <!-- Stage: Cloud Player + Native HTML5 Video + AutoSub Overlay -->
       <div id="playerVideoStage" class="player-stage">
-        <!-- Strict HTML5 Sandbox blocks 100% of popups, new tabs, and AliExpress redirects! -->
         <iframe
           id="cloudPlayerIframe"
           class="cloud-player-iframe hidden"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-          referrerpolicy="no-referrer"
+          referrerpolicy="origin"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowfullscreen
-          title="נגן קולנוע מוגן מפרסומות"
+          title="נגן קולנוע ראשי"
         ></iframe>
 
         <!-- Native HTML5 Video for Direct BitTorrent / Telegram MP4 & Live HLS -->
