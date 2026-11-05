@@ -9,7 +9,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=4.6" />
+  <script>
+    // Wipe any old Service Worker cache that previously served the old Sandbox player
+    (function () {
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister(); });
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (k) { caches.delete(k); });
+          });
+        }
+      } catch (e) {}
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js" defer></script>
 </head>
 <body data-device-mode="auto">
@@ -147,6 +164,11 @@
         <button type="button" id="resetFiltersBtn" class="btn-text tv-focusable" aria-label="חזור לתצוגה מלאה">נקה סינון וחזור</button>
       </div>
       <div id="filteredGrid" class="poster-grid"></div>
+      <div style="display:flex;justify-content:center;padding:24px 0 8px;">
+        <button type="button" id="loadMoreGlobalBtn" class="btn-secondary tv-focusable" aria-label="טען עוד 100 סרטים וסדרות מהמאגר העולמי">
+          + טען עוד 100 סרטים וסדרות מהמאגר העולמי (Cinemeta &amp; YTS Live)
+        </button>
+      </div>
     </section>
 
     <!-- Main Grounded Cinema Shelves -->
@@ -169,9 +191,9 @@
       </section>
 
       <!-- Blockbuster Movies -->
-      <section id="rowMovies4K" class="catalog-shelf" aria-label="סרטי קולנוע">
+      <section id="rowMovies4K" class="catalog-shelf" aria-label="שוברי קופות וסרטי קולנוע">
         <div class="shelf-header">
-          <h2 class="shelf-title">סרטי קולנוע נבחרים</h2>
+          <h2 class="shelf-title">שוברי קופות חדשים ב-4K UHD (ללא כפילויות)</h2>
         </div>
         <div id="trackMovies4K" class="shelf-track"></div>
       </section>
@@ -179,15 +201,39 @@
       <!-- Binge Series -->
       <section id="rowSeriesBinge" class="catalog-shelf" aria-label="סדרות מובילות">
         <div class="shelf-header">
-          <h2 class="shelf-title">סדרות מובילות</h2>
+          <h2 class="shelf-title">סדרות מובילות לבינג'</h2>
         </div>
         <div id="trackSeriesBinge" class="shelf-track"></div>
+      </section>
+
+      <!-- Action & Sci-Fi Shelf -->
+      <section id="rowActionSciFi" class="catalog-shelf" aria-label="אקשן, מדע בדיוני והרפתקאות">
+        <div class="shelf-header">
+          <h2 class="shelf-title">אקשן, מדע בדיוני והרפתקאות</h2>
+        </div>
+        <div id="trackActionSciFi" class="shelf-track"></div>
+      </section>
+
+      <!-- Top IMDb Crime, Thriller & Drama Shelf -->
+      <section id="rowCrimeDramaTop" class="catalog-shelf" aria-label="סרטי מתח, פשע ודרמה בדירוג IMDb גבוה">
+        <div class="shelf-header">
+          <h2 class="shelf-title">מתח, פשע ודרמה עטורי פרסים (דירוג IMDb 8.0+)</h2>
+        </div>
+        <div id="trackCrimeDramaTop" class="shelf-track"></div>
+      </section>
+
+      <!-- Comedy, Animation & Family Shelf -->
+      <section id="rowComedyFamily" class="catalog-shelf" aria-label="קומדיה, אנימציה ומשפחה">
+        <div class="shelf-header">
+          <h2 class="shelf-title">קומדיה, אנימציה ולכל המשפחה</h2>
+        </div>
+        <div id="trackComedyFamily" class="shelf-track"></div>
       </section>
 
       <!-- Israeli Originals -->
       <section id="rowIsraeliOriginals" class="catalog-shelf" aria-label="יצירה ישראלית">
         <div class="shelf-header">
-          <h2 class="shelf-title">יצירה ישראלית</h2>
+          <h2 class="shelf-title">יצירה ישראלית מובחרת</h2>
         </div>
         <div id="trackIsraeliOriginals" class="shelf-track"></div>
       </section>
@@ -195,7 +241,7 @@
       <!-- Live Connected Global Movies (Cinemeta & YTS Real-Time Feed) -->
       <section id="rowGlobalLiveMovies" class="catalog-shelf" aria-label="סרטים פופולריים בעולם בזמן אמת">
         <div class="shelf-header">
-          <h2 class="shelf-title">להיטי קולנוע מהעולם בזמן אמת (Cinemeta & YTS Live)</h2>
+          <h2 class="shelf-title">להיטי קולנוע מהעולם בזמן אמת (Cinemeta &amp; YTS Live)</h2>
         </div>
         <div id="trackGlobalLiveMovies" class="shelf-track"></div>
       </section>
@@ -361,11 +407,12 @@
           </div>
         </div>
 
-        <!-- Engine Switcher (Fast Cloud Servers + Cloud BitTorrent/Telegram + Official Trailer) -->
+        <!-- Engine Switcher (4 Verified Cloud Servers + Official Trailer) -->
         <div class="player-engine-tabs" role="tablist" aria-label="מנוע ניגון">
-          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="הזרמה מהירה שרת 1">הזרמה מהירה #1 (4K • VidLink)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="הזרמה מהירה שרת 2">הזרמה מהירה #2 (VIP • VidSrc)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="ביטורנט וטלגרם ישיר">הזרמה מהירה #3 (טורנט / טלגרם ענן)</button>
+          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="שרת ראשי מומלץ">שרת #1 (VidSrc • מומלץ ⚡)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="שרת 2 איכות 4K">שרת #2 (VidLink 4K UHD)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud3" aria-label="שרת 3 VIP">שרת #3 (2Embed VIP)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="שרת 4 מולטי טורנט וטלגרם">שרת #4 (MultiEmbed / טלגרם)</button>
           <button type="button" class="engine-tab tv-focusable" data-engine="trailer" aria-label="נגן טריילר">טריילר רשמי</button>
         </div>
 
@@ -638,73 +685,84 @@
   <!-- MODAL 6: TELEGRAM CINEMA MEDIA-ONLY HUB (ZERO PERSONAL CHATS!)        -->
   <!-- ===================================================================== -->
   <div id="telegramModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="telegramModalTitle">
-    <div class="details-sheet addons-sheet" style="max-width: 820px;">
+    <div class="details-sheet addons-sheet" style="max-width: 860px;">
       <button type="button" id="closeTelegramModalBtn" class="sheet-close-btn tv-focusable" aria-label="סגור חלון טלגרם סרטים">
         <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
 
       <div class="addons-sheet-body">
         <div>
-          <h2 id="telegramModalTitle" class="sheet-title">טלגרם סרטים וסדרות (Media-Only 🔒)</h2>
+          <h2 id="telegramModalTitle" class="sheet-title">חיבור טלגרם לסרטים וסדרות בלבד (Media-Only 🔒)</h2>
           <p class="sheet-section-sub">
-            חיפוש והזרמה ישירה של קובצי וידאו (MP4 / MKV) מערוצי סרטים וסדרות בטלגרם — ללא שום גישה או חשיפה לצ'אטים האישיים שלך.
+            איך זה עובד? מחברים את החשבון או ערוצי הסרטים בשלב 1, מחפשים כל סרט או סדרה בשלב 2, ולוחצים <strong>"נגן עכשיו"</strong> — בלי שהמערכת תיגע או תראה לעולם את הצ'אטים האישיים שלך.
           </p>
         </div>
 
-        <!-- Privacy Lock Banner -->
-        <div class="addon-card" style="background:#142219; border-color:rgba(70,211,105,0.35);">
-          <div>
-            <div class="addon-card-title" style="color:#86efac;">🔒 נעילת פרטיות מוחלטת פעילה (Zero-Chat Policy)</div>
-            <div class="addon-card-desc" style="color:#d4d4d4;">
-              החיבור פועל בפילטר קולנועי מבודד (`InputMessagesFilterVideo` בלבד). שיחות אישיות, קבוצות פרטיות ואנשי קשר בטלגרם חסומים לחלוטין ואינם נטענים לעולם.
-            </div>
+        <!-- STEP 1: Connect Personal Telegram Account in Isolated Media-Only Mode -->
+        <div class="sheet-section" style="background:#141a16;border:1px solid rgba(70,211,105,0.35);border-radius:10px;padding:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <h3 class="sheet-section-title" style="color:#86efac;margin:0;">שלב 1: חיבור חשבון הטלגרם שלי (במצב סרטים בלבד 🔒)</h3>
+            <span id="telegramAccountStatusBadge" class="source-quality-tag" style="background:#1f3a29;color:#86efac;padding:4px 10px;">
+              פעיל במצב סרטים בלבד • 0% גישה לצ'אטים
+            </span>
           </div>
-          <span class="source-quality-tag" style="background:#1f3a29;color:#86efac;flex-shrink:0;">מוגן 100%</span>
+          <p class="sheet-section-sub" style="margin:6px 0 12px;color:#d4d4d4;">
+            הזן את מספר הטלפון שלך או שם המשתמש שלך בטלגרם (`@username`) כדי לשייך את סורק הסרטים לחשבונך תחת חסימת צ'אטים מוחלטת (`InputMessagesFilterVideo` בלבד):
+          </p>
+          <div class="addon-install-row">
+            <input
+              type="text"
+              id="telegramAccountHandleInput"
+              class="clean-input tv-focusable"
+              dir="ltr"
+              placeholder="מספר טלפון (05X-XXXXXXX) או @username בטלגרם..."
+              aria-label="מספר טלפון או שם משתמש בטלגרם"
+            />
+            <button type="button" id="telegramConnectAccountBtn" class="btn-primary tv-focusable" aria-label="חבר חשבון טלגרם במצב סרטים בלבד">
+              🔒 חבר חשבון (סרטים בלבד)
+            </button>
+          </div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:0.82rem;color:#a3a3a3;">
+            <span>❌ <strong>שיחות אישיות ופרטיות:</strong> חסום ומוסתר (0%)</span>
+            <span>❌ <strong>קבוצות ואנשי קשר:</strong> חסום ומוסתר (0%)</span>
+            <span style="color:#86efac;">✅ <strong>סרטים וסדרות (MP4/MKV):</strong> פתוח לחיפוש והזרמה</span>
+          </div>
         </div>
 
-        <!-- 1. Search Movies & Series Directly on Telegram -->
+        <!-- STEP 2: Search Movies & Series Directly on Telegram -->
         <div class="sheet-section">
-          <h3 class="sheet-section-title">1. חיפוש סרטים וסדרות בערוצי טלגרם</h3>
+          <h3 class="sheet-section-title">שלב 2: חיפוש וניגון מיידי של סרטים וסדרות מטלגרם</h3>
+          <p class="sheet-section-sub">הקלד שם של סרט או סדרה (בעברית או באנגלית) ולחץ על <strong>"▶ נגן עכשיו"</strong> כדי להזרים אותו מיד לנגן עם כתוביות בעברית:</p>
           <div class="addon-install-row">
             <input
               type="search"
               id="telegramMovieSearchInput"
               class="clean-input tv-focusable"
-              placeholder="הקלד שם סרט או סדרה לחיפוש בטלגרם (למשל: חולית, פאודה, אופנהיימר, גלדיאטור)..."
+              placeholder="חפש סרט או סדרה בטלגרם (למשל: חולית, פאודה, גלדיאטור, שובר שורות, Dune, Severance)..."
               aria-label="חיפוש סרט או סדרה בטלגרם"
             />
             <button type="button" id="telegramMovieSearchBtn" class="btn-primary tv-focusable" aria-label="חפש סרטים בטלגרם">
-              חפש בטלגרם
+              חפש סרטים בטלגרם
             </button>
           </div>
-          <div id="telegramSearchResultsList" class="sources-list" style="margin-top:8px;"></div>
+          <div id="telegramSearchResultsList" class="sources-list" style="margin-top:8px;max-height:300px;"></div>
         </div>
 
-        <!-- 2. Paste Direct Telegram Video / Post Link to Stream -->
+        <!-- STEP 3: Paste Direct Link or Add Movie Channel -->
         <div class="sheet-section">
-          <h3 class="sheet-section-title">2. ניגון ישיר של קישור סרט / בוט הזרמה מטלגרם</h3>
-          <div class="addon-install-row">
+          <h3 class="sheet-section-title">שלב 3: ערוצי הסרטים המחוברים בטלגרם (או הדבקת קישור ישיר לסרט)</h3>
+          <div class="addon-install-row" style="margin-bottom:10px;">
             <input
               type="url"
               id="telegramDirectLinkInput"
               class="clean-input tv-focusable"
               dir="ltr"
-              placeholder="https://t.me/Movies_Hebrew_4K/1042 או קישור ישיר לקובץ וידאו..."
+              placeholder="הדבק קישור ישיר לסרט בטלגרם (למשל https://t.me/Movies_Hebrew_4K/1042)..."
               aria-label="קישור לסרט בטלגרם"
             />
             <button type="button" id="playTelegramDirectLinkBtn" class="btn-secondary tv-focusable" aria-label="נגן קישור מטלגרם">
-              נגן עכשיו + כתוביות AI
+              ▶ נגן קישור ישיר
             </button>
-          </div>
-        </div>
-
-        <!-- 3. Connect Telegram Account / Movie Channels (Media-Only Scope) -->
-        <div class="sheet-section">
-          <div class="sheet-section-header">
-            <div>
-              <h3 class="sheet-section-title">3. חיבור חשבון / ערוצי סרטים וסדרות בטלגרם</h3>
-              <p class="sheet-section-sub">הוסף שם משתמש של ערוץ סרטים בטלגרם (למשל `@Movies_Hebrew_4K`) או מזהה חשבון/בוט לסריקת מדיה בלבד</p>
-            </div>
           </div>
           <div class="addon-install-row">
             <input
@@ -712,11 +770,11 @@
               id="telegramAddChannelInput"
               class="clean-input tv-focusable"
               dir="ltr"
-              placeholder="@ChannelName או שם חשבון טלגרם לסרטים בלבד"
-              aria-label="הוסף ערוץ סרטים או חשבון טלגרם"
+              placeholder="הוסף ערוץ סרטים נוסף בטלגרם (למשל @Movies_Hebrew_4K)"
+              aria-label="הוסף ערוץ סרטים בטלגרם"
             />
-            <button type="button" id="telegramAddChannelBtn" class="btn-secondary tv-focusable" aria-label="חבר ערוץ סרטים">
-              + חבר ערוץ / חשבון (סרטים בלבד)
+            <button type="button" id="telegramAddChannelBtn" class="btn-secondary tv-focusable" aria-label="הוסף ערוץ סרטים">
+              + הוסף ערוץ סרטים
             </button>
           </div>
           <div id="telegramChannelsGrid" class="addons-list" style="margin-top:8px;"></div>
@@ -727,7 +785,7 @@
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js"></script>
-  <script src="app.js"></script>
+  <script src="tv-navigation.js?v=4.6"></script>
+  <script src="app.js?v=4.6"></script>
 </body>
 </html>

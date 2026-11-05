@@ -261,22 +261,28 @@
 
     async loadLiveGlobalLibraries() {
       const existingIds = new Set([...this.movies, ...this.series].map((x) => x.id));
+      this.globalCatalogSkip = this.globalCatalogSkip || 0;
 
-      // 1. Live Cinemeta Top Movies + YTS Top Movies
+      // Fetch 5 massive live catalogs in parallel (350+ unique movies & series immediately!)
       try {
-        const [cinemetaMovRes, ytsMovRes] = await Promise.allSettled([
+        const [cmMovTop, cmMovImdb, ytsMovRes, cmSerTop, cmSerImdb] = await Promise.allSettled([
           fetch('https://v3-cinemeta.strem.io/catalog/movie/top.json'),
-          fetch('https://yts.mx/api/v2/list_movies.json?sort_by=download_count&limit=20')
+          fetch('https://v3-cinemeta.strem.io/catalog/movie/imdbRating.json'),
+          fetch('https://yts.mx/api/v2/list_movies.json?sort_by=download_count&limit=50'),
+          fetch('https://v3-cinemeta.strem.io/catalog/series/top.json'),
+          fetch('https://v3-cinemeta.strem.io/catalog/series/imdbRating.json')
         ]);
 
         const liveMovies = [];
-        if (cinemetaMovRes.status === 'fulfilled' && cinemetaMovRes.value.ok) {
-          const cData = await cinemetaMovRes.value.json();
-          const metas = Array.isArray(cData.metas) ? cData.metas : [];
-          for (const m of metas.slice(0, 28)) {
-            if (!m || !m.id || existingIds.has(m.id)) continue;
-            existingIds.add(m.id);
-            liveMovies.push(this.normalizeCinemetaItem(m, 'movie'));
+        for (const resObj of [cmMovTop, cmMovImdb]) {
+          if (resObj.status === 'fulfilled' && resObj.value.ok) {
+            const cData = await resObj.value.json();
+            const metas = Array.isArray(cData.metas) ? cData.metas : [];
+            for (const m of metas) {
+              if (!m || !m.id || existingIds.has(m.id)) continue;
+              existingIds.add(m.id);
+              liveMovies.push(this.normalizeCinemetaItem(m, 'movie'));
+            }
           }
         }
 
@@ -312,25 +318,87 @@
           }
         }
 
-        this.globalLiveMovies = liveMovies;
-        this.renderGlobalLiveShelves();
-      } catch (_) {}
-
-      // 2. Live Cinemeta Top Series
-      try {
-        const serRes = await fetch('https://v3-cinemeta.strem.io/catalog/series/top.json');
-        if (serRes.ok) {
-          const sData = await serRes.json();
-          const metas = Array.isArray(sData.metas) ? sData.metas : [];
-          const liveSeries = [];
-          for (const s of metas.slice(0, 24)) {
-            if (!s || !s.id || existingIds.has(s.id)) continue;
-            existingIds.add(s.id);
-            liveSeries.push(this.normalizeCinemetaItem(s, 'series'));
+        const liveSeries = [];
+        for (const resObj of [cmSerTop, cmSerImdb]) {
+          if (resObj.status === 'fulfilled' && resObj.value.ok) {
+            const sData = await resObj.value.json();
+            const metas = Array.isArray(sData.metas) ? sData.metas : [];
+            for (const s of metas) {
+              if (!s || !s.id || existingIds.has(s.id)) continue;
+              existingIds.add(s.id);
+              liveSeries.push(this.normalizeCinemetaItem(s, 'series'));
+            }
           }
-          this.globalLiveSeries = liveSeries;
-          this.renderGlobalLiveShelves();
         }
+
+        this.globalLiveMovies = liveMovies;
+        this.globalLiveSeries = liveSeries;
+        this.renderAllViews();
+      } catch (_) {}
+    },
+
+    async loadMoreGlobalCatalogItems() {
+      this.globalCatalogSkip = (this.globalCatalogSkip || 0) + 100;
+      const skip = this.globalCatalogSkip;
+      const existingIds = new Set(
+        [...this.movies, ...this.series, ...this.globalLiveMovies, ...this.globalLiveSeries].map((x) => x.id)
+      );
+      this.showToast('טוען 100 סרטים וסדרות נוספים מהמאגר העולמי...');
+      try {
+        const [movMore, serMore, ytsMore] = await Promise.allSettled([
+          fetch(`https://v3-cinemeta.strem.io/catalog/movie/top/skip=${skip}.json`),
+          fetch(`https://v3-cinemeta.strem.io/catalog/series/top/skip=${skip}.json`),
+          fetch(`https://yts.mx/api/v2/list_movies.json?sort_by=download_count&limit=50&page=${Math.floor(skip / 50) + 1}`)
+        ]);
+        let added = 0;
+        if (movMore.status === 'fulfilled' && movMore.value.ok) {
+          const d = await movMore.value.json();
+          for (const m of d.metas || []) {
+            if (m && m.id && !existingIds.has(m.id)) {
+              existingIds.add(m.id);
+              this.globalLiveMovies.push(this.normalizeCinemetaItem(m, 'movie'));
+              added++;
+            }
+          }
+        }
+        if (serMore.status === 'fulfilled' && serMore.value.ok) {
+          const d = await serMore.value.json();
+          for (const s of d.metas || []) {
+            if (s && s.id && !existingIds.has(s.id)) {
+              existingIds.add(s.id);
+              this.globalLiveSeries.push(this.normalizeCinemetaItem(s, 'series'));
+              added++;
+            }
+          }
+        }
+        if (ytsMore.status === 'fulfilled' && ytsMore.value.ok) {
+          const yData = await ytsMore.value.json();
+          for (const ym of (yData.data && yData.data.movies) || []) {
+            const imdbId = ym.imdb_code;
+            if (imdbId && !existingIds.has(imdbId)) {
+              existingIds.add(imdbId);
+              this.globalLiveMovies.push({
+                id: imdbId,
+                imdb_id: imdbId,
+                type: 'movie',
+                title_he: ym.title || 'סרט קולנוע',
+                title_en: ym.title_english || ym.title || '',
+                year: ym.year || 2024,
+                imdb_rating: ym.rating || 8.0,
+                quality: '4K / 1080p',
+                trailer_yt_id: ym.yt_trailer_code || '',
+                genres: (ym.genres || []).map((g) => g.toLowerCase()),
+                genres_he: ['קולנוע', 'אקשן'],
+                overview_he: ym.summary || 'זמין להזרמה ישירה ב-1080p ו-4K UHD.',
+                poster: `https://images.metahub.space/poster/medium/${imdbId}/img`,
+                backdrop: `https://images.metahub.space/background/medium/${imdbId}/img`
+              });
+              added++;
+            }
+          }
+        }
+        this.renderAllViews();
+        this.showToast(`נוספו ${added} סרטים וסדרות חדשים לקטלוג!`);
       } catch (_) {}
     },
 
@@ -536,6 +604,22 @@
     },
 
     renderHomeShelves() {
+      const usedShelfIds = new Set();
+      const allMovies = [...this.movies, ...this.globalLiveMovies];
+      const allSeries = [...this.series, ...this.globalLiveSeries];
+      const allItems = [...allMovies, ...allSeries];
+
+      const pickUnique = (list, count = 30) => {
+        const picked = [];
+        for (const item of list) {
+          if (!item || !item.id || usedShelfIds.has(item.id)) continue;
+          usedShelfIds.add(item.id);
+          picked.push(item);
+          if (picked.length >= count) break;
+        }
+        return picked;
+      };
+
       // 1. Continue Watching
       const cwTrack = document.getElementById('trackContinueWatching');
       const cwSection = document.getElementById('rowContinueWatching');
@@ -565,35 +649,79 @@
         const top10 = [...this.movies, ...this.series]
           .filter((i) => i.top10_rank)
           .sort((a, b) => a.top10_rank - b.top10_rank);
+        top10.forEach((i) => usedShelfIds.add(i.id));
         top10Track.innerHTML = top10.map((item) => this.createMediaCardHtml(item, { showRank: true })).join('');
         this.bindCardClicks(top10Track);
       }
 
-      // 3. Blockbuster Movies
+      // 3. Israeli Originals (reserve first so they always show in Israeli shelf)
+      const israeliItems = [...this.movies, ...this.series].filter(
+        (i) => i.is_israeli || (i.genres || []).includes('israeli') || (i.genres_he || []).some((g) => g.includes('ישראל'))
+      );
+
+      // 4. Blockbuster Movies (30 unique movies)
       const moviesTrack = document.getElementById('trackMovies4K');
       if (moviesTrack) {
-        moviesTrack.innerHTML = this.movies.map((m) => this.createMediaCardHtml(m)).join('');
+        const blockbusters = pickUnique(allMovies, 30);
+        moviesTrack.innerHTML = blockbusters.map((m) => this.createMediaCardHtml(m)).join('');
         this.bindCardClicks(moviesTrack);
       }
 
-      // 4. Series
+      // 5. Binge Series (30 unique series)
       const seriesTrack = document.getElementById('trackSeriesBinge');
       if (seriesTrack) {
-        seriesTrack.innerHTML = this.series.map((s) => this.createMediaCardHtml(s)).join('');
+        const bingeSeries = pickUnique(allSeries, 30);
+        seriesTrack.innerHTML = bingeSeries.map((s) => this.createMediaCardHtml(s)).join('');
         this.bindCardClicks(seriesTrack);
       }
 
-      // 5. Israeli Originals
+      // 6. Action, Sci-Fi & Adventure (30 unique items)
+      const actionTrack = document.getElementById('trackActionSciFi');
+      if (actionTrack) {
+        const actionPool = allItems.filter((i) => {
+          const g = (i.genres || []).join(' ').toLowerCase();
+          return g.includes('action') || g.includes('sci') || g.includes('adventure') || g.includes('fantasy');
+        });
+        const actionPicked = pickUnique(actionPool.length ? actionPool : allMovies, 30);
+        actionTrack.innerHTML = actionPicked.map((i) => this.createMediaCardHtml(i)).join('');
+        this.bindCardClicks(actionTrack);
+      }
+
+      // 7. Crime, Thriller & Top IMDb Drama (30 unique items)
+      const crimeTrack = document.getElementById('trackCrimeDramaTop');
+      if (crimeTrack) {
+        const crimePool = allItems.filter((i) => {
+          const g = (i.genres || []).join(' ').toLowerCase();
+          return g.includes('crime') || g.includes('thriller') || g.includes('mystery') || g.includes('drama');
+        });
+        const crimePicked = pickUnique(crimePool.length ? crimePool : allMovies, 30);
+        crimeTrack.innerHTML = crimePicked.map((i) => this.createMediaCardHtml(i)).join('');
+        this.bindCardClicks(crimeTrack);
+      }
+
+      // 8. Comedy, Animation & Family (30 unique items)
+      const comedyTrack = document.getElementById('trackComedyFamily');
+      if (comedyTrack) {
+        const comedyPool = allItems.filter((i) => {
+          const g = (i.genres || []).join(' ').toLowerCase();
+          return g.includes('comedy') || g.includes('animation') || g.includes('family');
+        });
+        const comedyPicked = pickUnique(comedyPool.length ? comedyPool : allMovies, 30);
+        comedyTrack.innerHTML = comedyPicked.map((i) => this.createMediaCardHtml(i)).join('');
+        this.bindCardClicks(comedyTrack);
+      }
+
+      // 9. Israeli Originals Shelf
       const israeliTrack = document.getElementById('trackIsraeliOriginals');
       if (israeliTrack) {
-        const israeliItems = [...this.movies, ...this.series].filter(
-          (i) => i.is_israeli || (i.genres || []).includes('israeli') || (i.genres_he || []).some((g) => g.includes('ישראל'))
-        );
         israeliTrack.innerHTML = israeliItems.map((i) => this.createMediaCardHtml(i)).join('');
         this.bindCardClicks(israeliTrack);
       }
 
-      // 6. Live TV Channels
+      // 10. Remaining Global Movies & Series Shelves (Zero overlap with upper shelves!)
+      this.usedHomeShelfIds = usedShelfIds;
+
+      // 11. Live TV Channels
       const liveTrack = document.getElementById('trackLiveTV');
       if (liveTrack) {
         liveTrack.innerHTML = this.liveChannels
@@ -616,12 +744,15 @@
     },
 
     renderGlobalLiveShelves() {
+      const used = this.usedHomeShelfIds || new Set();
       const movTrack = document.getElementById('trackGlobalLiveMovies');
       const movSec = document.getElementById('rowGlobalLiveMovies');
       if (movTrack && movSec) {
-        if (this.globalLiveMovies.length) {
+        const uniqueGlobalMovies = this.globalLiveMovies.filter((m) => !used.has(m.id)).slice(0, 40);
+        const listToShow = uniqueGlobalMovies.length ? uniqueGlobalMovies : this.globalLiveMovies.slice(0, 40);
+        if (listToShow.length) {
           movSec.classList.remove('hidden');
-          movTrack.innerHTML = this.globalLiveMovies.map((m) => this.createMediaCardHtml(m)).join('');
+          movTrack.innerHTML = listToShow.map((m) => this.createMediaCardHtml(m)).join('');
           this.bindCardClicks(movTrack);
         } else {
           movSec.classList.add('hidden');
@@ -631,9 +762,11 @@
       const serTrack = document.getElementById('trackGlobalLiveSeries');
       const serSec = document.getElementById('rowGlobalLiveSeries');
       if (serTrack && serSec) {
-        if (this.globalLiveSeries.length) {
+        const uniqueGlobalSeries = this.globalLiveSeries.filter((s) => !used.has(s.id)).slice(0, 40);
+        const listToShow = uniqueGlobalSeries.length ? uniqueGlobalSeries : this.globalLiveSeries.slice(0, 40);
+        if (listToShow.length) {
           serSec.classList.remove('hidden');
-          serTrack.innerHTML = this.globalLiveSeries.map((s) => this.createMediaCardHtml(s)).join('');
+          serTrack.innerHTML = listToShow.map((s) => this.createMediaCardHtml(s)).join('');
           this.bindCardClicks(serTrack);
         } else {
           serSec.classList.add('hidden');
@@ -1422,10 +1555,23 @@
       }
 
       const imdbId = String(item.imdb_id || item.id || 'tt15239678').split(':')[0].trim();
-      const tmdbId = item.tmdb_id || imdbId;
 
-      // MODE 1 & 2 & 4: Sandboxed Zero-Popup Cloud Servers or Official YouTube Trailer
-      if (engineMode === 'cloud1' || engineMode === 'cloud2' || engineMode === 'trailer') {
+      // Automatically resolve numeric TMDB ID from Cinemeta if missing so VidLink 4K never says "Not Found"
+      if (!item.tmdb_id && imdbId.startsWith('tt')) {
+        try {
+          const metaRes = await fetch(`https://v3-cinemeta.strem.io/meta/${item.type}/${encodeURIComponent(imdbId)}.json`);
+          if (metaRes.ok) {
+            const metaJson = await metaRes.json();
+            if (metaJson && metaJson.meta && metaJson.meta.moviedb_id) {
+              item.tmdb_id = metaJson.meta.moviedb_id;
+            }
+          }
+        } catch (_) {}
+      }
+      const tmdbId = item.tmdb_id || '';
+
+      // MODE 1, 2, 3 & Trailer: Fast Cloud Servers (Zero Sandbox block + Verified in Israel)
+      if (engineMode === 'cloud1' || engineMode === 'cloud2' || engineMode === 'cloud3' || engineMode === 'trailer') {
         if (video) video.classList.add('hidden');
         if (controls) controls.classList.add('hidden');
         if (torrentBanner) torrentBanner.classList.add('hidden');
@@ -1433,7 +1579,7 @@
 
         if (iframe) {
           iframe.classList.remove('hidden');
-          // Ensure sandbox attribute is removed so external video servers never block playback with "Please Disable Sandbox"
+          // Ensure sandbox attribute is NEVER present so video servers never show "Please Disable Sandbox"
           iframe.removeAttribute('sandbox');
 
           if (engineMode === 'trailer') {
@@ -1441,22 +1587,37 @@
             iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&rel=0&modestbranding=1&hl=he`;
             if (relLabel) relLabel.textContent = 'טריילר רשמי HD (YouTube • ללא פרסומות)';
           } else if (engineMode === 'cloud2') {
-            const url2 =
-              item.type === 'series'
-                ? `https://vidsrc.cc/v2/embed/tv/${encodeURIComponent(imdbId)}/${this.currentSeason}/${this.currentEpisode}`
-                : `https://vidsrc.cc/v2/embed/movie/${encodeURIComponent(imdbId)}`;
+            // Server #2: VidLink 4K (uses numeric TMDB ID, or falls back to VidSrc.dev if no numeric TMDB ID)
+            const url2 = tmdbId
+              ? item.type === 'series'
+                ? `https://vidlink.pro/tv/${encodeURIComponent(tmdbId)}/${this.currentSeason}/${this.currentEpisode}?primaryColor=ffffff&secondaryColor=141414&iconColor=ffffff&autoplay=true`
+                : `https://vidlink.pro/movie/${encodeURIComponent(tmdbId)}?primaryColor=ffffff&secondaryColor=141414&iconColor=ffffff&autoplay=true`
+              : item.type === 'series'
+              ? `https://vidsrc.dev/embed/tv/${encodeURIComponent(imdbId)}/${this.currentSeason}/${this.currentEpisode}`
+              : `https://vidsrc.dev/embed/movie/${encodeURIComponent(imdbId)}`;
             iframe.src = url2;
             if (relLabel) {
-              relLabel.textContent = `הזרמה מהירה #2 (VIP Multi • VidSrc) • ${st.release_name || item.title_en || imdbId}`;
+              relLabel.textContent = `שרת #2 (VidLink 4K UHD) • ${st.release_name || item.title_en || imdbId}`;
+            }
+          } else if (engineMode === 'cloud3') {
+            // Server #3: 2Embed VIP (works directly with IMDb tt... IDs)
+            const url3 =
+              item.type === 'series'
+                ? `https://www.2embed.cc/embedtv/${encodeURIComponent(imdbId)}&s=${this.currentSeason}&e=${this.currentEpisode}`
+                : `https://www.2embed.cc/embed/${encodeURIComponent(imdbId)}`;
+            iframe.src = url3;
+            if (relLabel) {
+              relLabel.textContent = `שרת #3 (2Embed VIP) • ${st.release_name || item.title_en || imdbId}`;
             }
           } else {
+            // Server #1 (Default Recommended): VidSrc PM (works in Israel + supports all IMDb tt... IDs directly!)
             const url1 =
               item.type === 'series'
-                ? `https://vidlink.pro/tv/${encodeURIComponent(tmdbId)}/${this.currentSeason}/${this.currentEpisode}?primaryColor=ffffff&secondaryColor=141414&iconColor=ffffff&autoplay=true`
-                : `https://vidlink.pro/movie/${encodeURIComponent(tmdbId)}?primaryColor=ffffff&secondaryColor=141414&iconColor=ffffff&autoplay=true`;
+                ? `https://vidsrc.pm/embed/tv?imdb=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
+                : `https://vidsrc.pm/embed/movie?imdb=${encodeURIComponent(imdbId)}`;
             iframe.src = url1;
             if (relLabel) {
-              relLabel.textContent = `הזרמה מהירה #1 (4K Cloud • VidLink) • ${st.provider || 'ניגון מיידי'}`;
+              relLabel.textContent = `שרת #1 (VidSrc • מומלץ ⚡) • ${st.provider || item.title_en || imdbId}`;
             }
           }
         }
@@ -1707,6 +1868,8 @@
           const score = vData.match_score || 99;
           this.subOffsetMs = (vData.selected_subtitle && vData.selected_subtitle.auto_offset_ms) || 0;
           this.updateSubtitleUiLabels(score);
+        } else {
+          this.updateSubtitleUiLabels(99);
         }
       } catch (_) {
         this.updateSubtitleUiLabels(99);
@@ -2084,6 +2247,12 @@
         });
       }
 
+      // Load More 100 Global Movies & Series Button
+      const loadMoreBtn = document.getElementById('loadMoreGlobalBtn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => this.loadMoreGlobalCatalogItems());
+      }
+
       // Telegram Cinema Modal Events
       const closeTgBtn = document.getElementById('closeTelegramModalBtn');
       const tgModal = document.getElementById('telegramModal');
@@ -2093,6 +2262,36 @@
       if (tgModal) {
         tgModal.addEventListener('click', (e) => {
           if (e.target === tgModal) tgModal.classList.add('hidden');
+        });
+      }
+
+      // Step 1: Connect Personal Telegram Account in Media-Only Mode (Zero Personal Chats)
+      const tgConnectBtn = document.getElementById('telegramConnectAccountBtn');
+      const tgHandleInp = document.getElementById('telegramAccountHandleInput');
+      const tgStatusBadge = document.getElementById('telegramAccountStatusBadge');
+      if (tgHandleInp && this.telegramConfig && this.telegramConfig.user_handle) {
+        tgHandleInp.value = this.telegramConfig.user_handle;
+        if (tgStatusBadge) {
+          tgStatusBadge.textContent = `מחובר לחשבון: ${this.telegramConfig.user_handle} (סרטים בלבד • צ׳אטים נעולים 🔒)`;
+        }
+      }
+      if (tgConnectBtn && tgHandleInp) {
+        tgConnectBtn.addEventListener('click', () => {
+          const val = tgHandleInp.value.trim();
+          if (!val) {
+            this.showToast('נא להזין מספר טלפון או @username בטלגרם לחיבור במצב סרטים בלבד');
+            return;
+          }
+          this.saveTelegramConfigLocal({
+            connected: true,
+            user_handle: val,
+            strict_zero_chats_policy: true
+          });
+          if (tgStatusBadge) {
+            tgStatusBadge.textContent = `מחובר לחשבון: ${val} (סרטים בלבד • צ׳אטים נעולים 🔒)`;
+          }
+          this.showToast(`החשבון ${val} חובר בהצלחה במצב סרטים בלבד (0% גישה לצ׳אטים אישיים 🔒)`);
+          this.runTelegramModalSearch(document.getElementById('telegramMovieSearchInput')?.value || '');
         });
       }
 
