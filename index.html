@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5.2" />
+  <link rel="stylesheet" href="styles.css?v=5.3" />
   <script>
     // Wipe any old Service Worker cache that previously served the old Sandbox player
     (function () {
@@ -426,12 +426,11 @@
           </div>
         </div>
 
-        <!-- Engine Switcher (4 Verified Ad-Shielded 1080p Servers + Official Trailer) -->
+        <!-- Engine Switcher (Direct 1080p Native Video Servers + Official Trailer) -->
         <div class="player-engine-tabs" role="tablist" aria-label="מנוע ניגון">
-          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="נגן ישיר 1080p ללא פרסומות">שרת #1 (נגן ישיר 1080p • 0% פרסומות 🛡️)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="שרת ישיר 2 טורנט וטלגרם 1080p">שרת #2 (ענן ישיר 1080p • טורנט/טלגרם 🛡️)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="שרת גיבוי 3 1080p">שרת #3 (גיבוי ענן 1080p מהיר)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud3" aria-label="שרת גיבוי 4 VIP">שרת #4 (גיבוי VIP 1080p)</button>
+          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="מקור ישיר 1 1080p ללא פרסומות">מקור ישיר #1 (1080p ראשי • 0% פרסומות 🛡️)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="מקור ישיר 2 1080p">מקור ישיר #2 (1080p גיבוי א' 🛡️)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="מקור ישיר 3 1080p">מקור ישיר #3 (1080p גיבוי ב' 🛡️)</button>
           <button type="button" class="engine-tab tv-focusable" data-engine="trailer" aria-label="נגן טריילר">טריילר רשמי</button>
         </div>
 
@@ -448,10 +447,11 @@
         <iframe
           id="cloudPlayerIframe"
           class="cloud-player-iframe hidden"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
           referrerpolicy="origin"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowfullscreen
-          title="נגן קולנוע ראשי"
+          title="נגן טריילר רשמי"
         ></iframe>
 
         <!-- Native HTML5 Video for Direct BitTorrent / Telegram MP4 & Live HLS -->
@@ -739,75 +739,99 @@
         <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
 
-      <div class="addons-sheet-body">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-          <div>
-            <h2 id="authProfilesTitle" class="sheet-title">🔐 הפרדת חשבונות וניהול עד 10 יוזרים בחשבון</h2>
-            <p class="sheet-section-sub">
-              כל חשבון מוגן בשם משתמש וסיסמה המוצפנים ב-<strong>AES-256-GCM</strong>. בכל חשבון ניתן ליצור עד <strong>10 יוזרים (פרופילים) נפרדים</strong> — כשלכל יוזר רשימת צפייה אישית והגדרת טלגרם אופציונלית משלו.
-            </p>
+      <div class="addons-sheet-body" style="padding:28px 24px;">
+        <!-- Top Bar: Current Account Pill + Switch Account Button -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.08);">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span id="currentAccountBadge" class="source-quality-tag" style="background:#1f3a29;color:#86efac;padding:6px 14px;font-size:0.86rem;border-radius:999px;">
+              חשבון פעיל: ראשי 🔒
+            </span>
+            <span style="font-size:0.84rem;color:#a3a3a3;">פרופילים בחשבון: <strong id="profilesCountLabel" style="color:#fff;">1/10</strong></span>
           </div>
-          <span id="currentAccountBadge" class="source-quality-tag" style="background:#1f3a29;color:#86efac;padding:6px 12px;font-size:0.85rem;">
-            חשבון פעיל: ראשי (מוצפן 🔒)
-          </span>
+          <button type="button" id="toggleAccountLoginViewBtn" class="btn-secondary btn-sm tv-focusable" aria-label="החלף חשבון או התחבר לחשבון אחר">
+            🔄 החלף חשבון / כניסה עם סיסמה
+          </button>
         </div>
 
-        <!-- SECTION A: UP TO 10 USERS / PROFILES IN CURRENT ACCOUNT -->
-        <div class="sheet-section">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-            <h3 class="sheet-section-title" style="margin:0;">1. מי צופה עכשיו? (יוזרים בחשבון הנוכחי — <span id="profilesCountLabel">1/10</span>)</h3>
-          </div>
-          <div id="profilesGridContainer" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-top:10px;"></div>
-
-          <!-- Add New Profile (up to 10 per account) -->
-          <div class="addon-install-row" style="margin-top:14px;">
-            <input
-              type="text"
-              id="newProfileNameInput"
-              class="clean-input tv-focusable"
-              maxlength="24"
-              placeholder="שם היוזר החדש בחשבון (ניתן להוסיף עד 10 יוזרים בחשבון)..."
-              aria-label="שם יוזר חדש"
-            />
-            <button type="button" id="addNewProfileBtn" class="btn-primary tv-focusable" aria-label="הוסף יוזר לחשבון">
-              + הוסף יוזר לחשבון (עד 10)
-            </button>
-          </div>
-        </div>
-
-        <!-- SECTION B: ACCOUNT LOGIN / CREATE SEPARATE ACCOUNT (USERNAME + PASSWORD) -->
-        <div class="sheet-section" style="border-top:1px solid rgba(255,255,255,0.1);padding-top:16px;">
-          <h3 class="sheet-section-title">2. כניסה לחשבון נפרד או פתיחת חשבון חדש (שם משתמש + סיסמה מוצפנת)</h3>
-          <p class="sheet-section-sub">
-            הזן שם משתמש וסיסמה כדי לעבור לחשבון נפרד לחלוטין (או ליצור חשבון חדש עם עד 10 יוזרים משלו). הסיסמה עוברת גיבוב `PBKDF2-SHA256` והנתונים מוצפנים ב-`AES-256-GCM`:
+        <!-- VIEW 1 (DEFAULT): NETFLIX-STYLE "WHO'S WATCHING?" PROFILE PICKER -->
+        <div id="profilesPickerView" style="padding:18px 0 8px;text-align:center;">
+          <h2 id="authProfilesTitle" style="font-size:1.75rem;font-weight:800;color:#fff;margin:0 0 6px;">מי צופה עכשיו?</h2>
+          <p style="font-size:0.95rem;color:#a3a3a3;margin:0 0 24px;">
+            בחר את הפרופיל שלך כדי להמשיך לצפות — לכל פרופיל רשימת צפייה אישית והגדרות משלו (עד 10 פרופילים בחשבון)
           </p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px;">
-            <input
-              type="text"
-              id="authUsernameInput"
-              class="clean-input tv-focusable"
-              autocomplete="username"
-              placeholder="שם משתמש לחשבון..."
-              aria-label="שם משתמש"
-            />
-            <input
-              type="password"
-              id="authPasswordInput"
-              class="clean-input tv-focusable"
-              autocomplete="current-password"
-              placeholder="סיסמה מוצפנת..."
-              aria-label="סיסמה"
-            />
+
+          <!-- Centered Profiles Grid -->
+          <div id="profilesGridContainer" style="display:flex;flex-wrap:wrap;justify-content:center;gap:18px;margin:0 auto;max-width:720px;"></div>
+
+          <!-- Inline New Profile Box (Toggled when clicking "+ הוסף פרופיל") -->
+          <div id="newProfileCreatorBox" class="hidden" style="max-width:440px;margin:22px auto 0;background:#161616;border:1px solid rgba(255,255,255,0.14);border-radius:12px;padding:16px;text-align:right;">
+            <div style="font-weight:700;font-size:0.95rem;color:#fff;margin-bottom:10px;">יצירת פרופיל צפייה חדש בחשבון</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input
+                type="text"
+                id="newProfileNameInput"
+                class="clean-input tv-focusable"
+                style="flex:1;min-width:180px;"
+                maxlength="24"
+                placeholder="הקלד שם לפרופיל (למשל: אילן, ילדים, סלון)..."
+                aria-label="שם פרופיל חדש"
+              />
+              <button type="button" id="addNewProfileBtn" class="btn-primary btn-sm tv-focusable" aria-label="שמור פרופיל חדש">
+                שמור פרופיל
+              </button>
+              <button type="button" id="cancelNewProfileBtn" class="btn-secondary btn-sm tv-focusable" aria-label="בטל הוספת פרופיל">
+                ביטול
+              </button>
+            </div>
           </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-            <button type="button" id="loginOrRegisterAccountBtn" class="btn-primary tv-focusable" aria-label="התחבר או צור חשבון מוצפן">
-              🔐 התחבר / צור חשבון נפרד
-            </button>
-            <button type="button" id="logoutToGuestAccountBtn" class="btn-secondary tv-focusable" aria-label="התנתק מהחשבון הנוכחי">
-              התנתק / החלף חשבון
+        </div>
+
+        <!-- VIEW 2 (HIDDEN UNTIL CLICKED): CLEAN ACCOUNT LOGIN / CREATE ACCOUNT -->
+        <div id="accountLoginView" class="hidden" style="max-width:460px;margin:18px auto 6px;background:#141414;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:24px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="font-size:1.25rem;font-weight:800;color:#fff;margin:0;">כניסה לחשבון או פתיחת חשבון חדש</h3>
+            <button type="button" id="backToProfilesViewBtn" class="btn-secondary btn-sm tv-focusable" aria-label="חזרה לבחירת פרופיל">
+              ← חזרה לפרופילים
             </button>
           </div>
-          <p id="authStatusMsg" style="font-size:0.85rem;color:#86efac;margin-top:6px;"></p>
+          <p style="font-size:0.88rem;color:#a3a3a3;margin:0 0 18px;line-height:1.5;">
+            הזן שם משתמש וסיסמה כדי להיכנס לחשבון שלך (או ליצור חשבון חדש ונפרד עם עד 10 פרופילים משלו).
+          </p>
+
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <label for="authUsernameInput" style="display:block;font-size:0.82rem;color:#d4d4d4;margin-bottom:4px;">שם משתמש לחשבון:</label>
+              <input
+                type="text"
+                id="authUsernameInput"
+                class="clean-input full-width tv-focusable"
+                autocomplete="username"
+                placeholder="הקלד שם משתמש..."
+                aria-label="שם משתמש"
+              />
+            </div>
+            <div>
+              <label for="authPasswordInput" style="display:block;font-size:0.82rem;color:#d4d4d4;margin-bottom:4px;">סיסמה אישית:</label>
+              <input
+                type="password"
+                id="authPasswordInput"
+                class="clean-input full-width tv-focusable"
+                autocomplete="current-password"
+                placeholder="הקלד סיסמה..."
+                aria-label="סיסמה"
+              />
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;">
+            <button type="button" id="loginOrRegisterAccountBtn" class="btn-primary tv-focusable" style="flex:1;" aria-label="התחבר או צור חשבון">
+              התחבר / צור חשבון
+            </button>
+            <button type="button" id="logoutToGuestAccountBtn" class="btn-secondary tv-focusable" aria-label="חזור לחשבון ראשי">
+              חזור לחשבון ראשי
+            </button>
+          </div>
+          <p id="authStatusMsg" style="font-size:0.85rem;color:#86efac;margin-top:10px;text-align:center;"></p>
         </div>
       </div>
     </div>
@@ -999,7 +1023,7 @@
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js?v=5.2"></script>
-  <script src="app.js?v=5.2"></script>
+  <script src="tv-navigation.js?v=5.3"></script>
+  <script src="app.js?v=5.3"></script>
 </body>
 </html>

@@ -507,14 +507,14 @@
       );
       const saltBuf = this.hexToBuf(saltHex);
       const aesKey = await window.crypto.subtle.deriveKey(
-        { name: 'PBKDF2', salt: saltBuf, iterations: 100000, hash: 'SHA-256' },
+        { name: 'PBKDF2', salt: saltBuf, iterations: 12000, hash: 'SHA-256' },
         keyMaterial,
         { name: 'AES-GCM', length: 256 },
         false,
         ['encrypt', 'decrypt']
       );
       const verifierBits = await window.crypto.subtle.deriveBits(
-        { name: 'PBKDF2', salt: enc.encode('VERIFIER_' + saltHex), iterations: 100000, hash: 'SHA-256' },
+        { name: 'PBKDF2', salt: enc.encode('VERIFIER_' + saltHex), iterations: 12000, hash: 'SHA-256' },
         keyMaterial,
         256
       );
@@ -770,6 +770,12 @@
       });
     },
 
+    getApiBase() {
+      const h = window.location.hostname;
+      if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]') return '';
+      return 'http://localhost:8092';
+    },
+
     async init() {
       this.initBuiltInVpnShield();
       await this.initDefaultEncryptedSession();
@@ -782,23 +788,21 @@
     },
 
     async initDefaultEncryptedSession() {
-      // Initialize default encrypted key for the local default account if not logged into a custom account yet
+      // Single fast key derivation on startup (zero duplicate PBKDF2 work)
       try {
-        const defaultSalt = localStorage.getItem('streamit_default_salt_v5') || CryptoVaultEngine.randomHex(16);
-        localStorage.setItem('streamit_default_salt_v5', defaultSalt);
-        const derived = await CryptoVaultEngine.deriveKeyAndVerifier('streamit_local_default_vault_v5', defaultSalt);
+        const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v5') || '{}');
+        const rec = allAccounts['ראשי'];
+        const saltToUse = (rec && rec.saltHex) || localStorage.getItem('streamit_default_salt_v5') || CryptoVaultEngine.randomHex(16);
+        localStorage.setItem('streamit_default_salt_v5', saltToUse);
+
+        const derived = await CryptoVaultEngine.deriveKeyAndVerifier('streamit_local_default_vault_v5', saltToUse);
         this.currentAccountKey = derived.aesKey;
-        this.currentAccountSaltHex = defaultSalt;
+        this.currentAccountSaltHex = saltToUse;
         this.currentAccountVerifierHex = derived.verifierHex;
 
-        const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v5') || '{}');
-        if (allAccounts['ראשי'] && allAccounts['ראשי'].cipherHex) {
-          const rec = allAccounts['ראשי'];
-          const dKey = await CryptoVaultEngine.deriveKeyAndVerifier('streamit_local_default_vault_v5', rec.saltHex);
-          const vault = await CryptoVaultEngine.decryptVaultObj(rec.cipherHex, rec.ivHex, dKey.aesKey);
+        if (rec && rec.cipherHex) {
+          const vault = await CryptoVaultEngine.decryptVaultObj(rec.cipherHex, rec.ivHex, derived.aesKey);
           if (vault && Array.isArray(vault.profiles) && vault.profiles.length) {
-            this.currentAccountKey = dKey.aesKey;
-            this.currentAccountSaltHex = rec.saltHex;
             this.accountProfiles = vault.profiles.slice(0, 10);
             this.activeProfileIndex = Math.min(vault.activeProfileIndex || 0, this.accountProfiles.length - 1);
           }
@@ -858,6 +862,21 @@
       } catch (_) {}
     },
 
+    switchAccountModalView(mode = 'profiles') {
+      const pickerView = document.getElementById('profilesPickerView');
+      const loginView = document.getElementById('accountLoginView');
+      const toggleBtn = document.getElementById('toggleAccountLoginViewBtn');
+      if (mode === 'login') {
+        if (pickerView) pickerView.classList.add('hidden');
+        if (loginView) loginView.classList.remove('hidden');
+        if (toggleBtn) toggleBtn.textContent = '← חזרה לבחירת פרופיל';
+      } else {
+        if (loginView) loginView.classList.add('hidden');
+        if (pickerView) pickerView.classList.remove('hidden');
+        if (toggleBtn) toggleBtn.textContent = '🔄 החלף חשבון / כניסה עם סיסמה';
+      }
+    },
+
     updateAccountAndProfileUi() {
       const prof = this.accountProfiles[this.activeProfileIndex] || { name: 'יוזר 1' };
       const headerLabel = document.getElementById('activeProfileHeaderLabel');
@@ -866,7 +885,7 @@
       }
       const accBadge = document.getElementById('currentAccountBadge');
       if (accBadge) {
-        accBadge.textContent = `חשבון פעיל: ${this.currentAccountUsername} (AES-256 🔒)`;
+        accBadge.textContent = `חשבון פעיל: ${this.currentAccountUsername} 🔒`;
       }
       const countLbl = document.getElementById('profilesCountLabel');
       if (countLbl) {
@@ -898,40 +917,56 @@
     renderProfilesGrid() {
       const grid = document.getElementById('profilesGridContainer');
       if (!grid) return;
-      grid.innerHTML = this.accountProfiles
+
+      const profileCardsHtml = this.accountProfiles
         .map((p, idx) => {
           const isActive = idx === this.activeProfileIndex;
           const tgConnected = p.telegramConfig && p.telegramConfig.connected;
           const initial = String(p.name || 'U').trim().charAt(0);
           return `
-            <div class="addon-card" style="flex-direction:column;align-items:center;text-align:center;padding:14px 10px;border:${
+            <div style="width:140px;display:flex;flex-direction:column;align-items:center;padding:16px 12px;border-radius:14px;border:${
               isActive ? '2px solid #ffffff' : '1px solid rgba(255,255,255,0.12)'
-            };background:${isActive ? '#222222' : '#161616'};position:relative;">
-              <div style="width:46px;height:46px;border-radius:50%;background:${
-                p.color || '#E50914'
-              };display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.2rem;color:#fff;margin-bottom:6px;">
-                ${initial}
-              </div>
-              <div style="font-weight:700;font-size:0.95rem;color:#fff;">${p.name}</div>
-              <div style="font-size:0.75rem;color:${tgConnected ? '#86efac' : '#a3a3a3'};margin:3px 0 8px;">
-                ${tgConnected ? 'טלגרם: מחובר 🔒' : 'טלגרם: ללא (כבוי)'}
-              </div>
-              <div style="display:flex;gap:6px;width:100%;justify-content:center;">
-                <button type="button" class="${
-                  isActive ? 'btn-primary' : 'btn-secondary'
-                } btn-sm tv-focusable" data-select-profile="${idx}" style="flex:1;padding:5px 8px;font-size:0.78rem;">
-                  ${isActive ? 'פעיל ✓' : 'בחר יוזר'}
-                </button>
-                ${
-                  this.accountProfiles.length > 1
-                    ? `<button type="button" class="btn-secondary btn-sm tv-focusable" data-delete-profile="${idx}" title="מחק יוזר" style="padding:5px 7px;font-size:0.75rem;color:#fca5a5;">✕</button>`
-                    : ''
-                }
-              </div>
+            };background:${isActive ? '#222222' : '#151515'};position:relative;transition:transform 0.15s ease;">
+              ${
+                this.accountProfiles.length > 1
+                  ? `<button type="button" class="tv-focusable" data-delete-profile="${idx}" title="מחק פרופיל" aria-label="מחק פרופיל ${p.name}" style="position:absolute;top:6px;left:6px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.08);color:#fca5a5;font-size:0.75rem;cursor:pointer;">✕</button>`
+                  : ''
+              }
+              <button type="button" class="tv-focusable" data-select-profile="${idx}" aria-label="בחר פרופיל ${p.name}" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;width:100%;padding:0;">
+                <div style="width:66px;height:66px;border-radius:50%;background:${
+                  p.color || '#E50914'
+                };display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.55rem;color:#fff;margin-bottom:10px;box-shadow:0 4px 14px rgba(0,0,0,0.4);">
+                  ${initial}
+                </div>
+                <div style="font-weight:700;font-size:1rem;color:#fff;margin-bottom:4px;">${p.name}</div>
+                <div style="font-size:0.74rem;color:${tgConnected ? '#86efac' : '#9ca3af'};margin-bottom:8px;">
+                  ${tgConnected ? 'טלגרם: מחובר 🔒' : 'פרופיל אישי'}
+                </div>
+                <span style="display:inline-block;padding:4px 12px;border-radius:999px;font-size:0.76rem;font-weight:600;background:${
+                  isActive ? '#ffffff' : 'rgba(255,255,255,0.1)'
+                };color:${isActive ? '#000000' : '#ffffff'};">
+                  ${isActive ? 'צופה כעת ✓' : 'בחר פרופיל'}
+                </span>
+              </button>
             </div>
           `;
         })
         .join('');
+
+      const addCardHtml =
+        this.accountProfiles.length < 10
+          ? `
+            <button type="button" id="openInlineAddProfileCard" class="tv-focusable" aria-label="הוסף פרופיל חדש לחשבון" style="width:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 12px;border-radius:14px;border:1px dashed rgba(255,255,255,0.28);background:#121212;cursor:pointer;color:#d4d4d4;">
+              <div style="width:66px;height:66px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.9rem;color:#fff;margin-bottom:10px;">
+                +
+              </div>
+              <div style="font-weight:700;font-size:0.95rem;color:#fff;margin-bottom:4px;">הוסף פרופיל</div>
+              <div style="font-size:0.74rem;color:#9ca3af;">(${this.accountProfiles.length}/10 בחשבון)</div>
+            </button>
+          `
+          : '';
+
+      grid.innerHTML = profileCardsHtml + addCardHtml;
 
       grid.querySelectorAll('[data-select-profile]').forEach((btn) => {
         btn.addEventListener('click', async () => {
@@ -941,15 +976,18 @@
           this.syncActiveProfileToAppState();
           await this.persistEncryptedAccountVault();
           this.renderAllViews();
-          this.showToast(`עברת ליוזר: ${this.accountProfiles[this.activeProfileIndex].name}`);
+          const authModal = document.getElementById('authProfilesModal');
+          if (authModal) authModal.classList.add('hidden');
+          this.showToast(`צפייה מהנה, ${this.accountProfiles[this.activeProfileIndex].name}!`);
         });
       });
 
       grid.querySelectorAll('[data-delete-profile]').forEach((btn) => {
-        btn.addEventListener('click', async () => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
           if (this.accountProfiles.length <= 1) return;
           const idx = Number(btn.getAttribute('data-delete-profile')) || 0;
-          const removedName = this.accountProfiles[idx]?.name || 'יוזר';
+          const removedName = this.accountProfiles[idx]?.name || 'פרופיל';
           this.accountProfiles.splice(idx, 1);
           if (this.activeProfileIndex >= this.accountProfiles.length) {
             this.activeProfileIndex = 0;
@@ -957,9 +995,19 @@
           this.syncActiveProfileToAppState();
           await this.persistEncryptedAccountVault();
           this.renderAllViews();
-          this.showToast(`היוזר "${removedName}" הוסר מהחשבון`);
+          this.showToast(`הפרופיל "${removedName}" הוסר מהחשבון`);
         });
       });
+
+      const openAddCard = document.getElementById('openInlineAddProfileCard');
+      const creatorBox = document.getElementById('newProfileCreatorBox');
+      const nameInp = document.getElementById('newProfileNameInput');
+      if (openAddCard && creatorBox) {
+        openAddCard.addEventListener('click', () => {
+          creatorBox.classList.remove('hidden');
+          if (nameInp) nameInp.focus();
+        });
+      }
     },
 
     async loginOrRegisterEncryptedAccount(usernameRaw, passwordRaw) {
@@ -976,7 +1024,7 @@
       if (!password || password.length < 4) {
         if (msgEl) {
           msgEl.style.color = '#fca5a5';
-          msgEl.textContent = 'נא להזין סיסמה בת 4 תווים לפחות להצפנת החשבון';
+          msgEl.textContent = 'נא להזין סיסמה בת 4 תווים לפחות';
         }
         return;
       }
@@ -985,13 +1033,12 @@
       const existing = allAccounts[username];
 
       if (existing && existing.verifierHex) {
-        // Verify password with PBKDF2-SHA256 & decrypt AES-256-GCM vault
         try {
           const derived = await CryptoVaultEngine.deriveKeyAndVerifier(password, existing.saltHex);
           if (derived.verifierHex !== existing.verifierHex) {
             if (msgEl) {
               msgEl.style.color = '#fca5a5';
-              msgEl.textContent = 'סיסמה שגויה עבור חשבון זה (פענוח AES-256 נדחה)';
+              msgEl.textContent = 'סיסמה שגויה עבור חשבון זה';
             }
             return;
           }
@@ -1007,19 +1054,15 @@
           this.activeProfileIndex = 0;
           this.syncActiveProfileToAppState();
           this.renderAllViews();
-          if (msgEl) {
-            msgEl.style.color = '#86efac';
-            msgEl.textContent = `התחברת בהצלחה לחשבון המוצפן "${username}" (${this.accountProfiles.length} יוזרים בחשבון)`;
-          }
+          this.switchAccountModalView('profiles');
           this.showToast(`התחברת לחשבון "${username}" 🔒`);
         } catch (_) {
           if (msgEl) {
             msgEl.style.color = '#fca5a5';
-            msgEl.textContent = 'שגיאה בפענוח כספת החשבון — בדוק את הסיסמה';
+            msgEl.textContent = 'שגיאה בכניסה לחשבון — בדוק את הסיסמה';
           }
         }
       } else {
-        // Create brand-new encrypted account with up to 10 user profiles
         const saltHex = CryptoVaultEngine.randomHex(16);
         const derived = await CryptoVaultEngine.deriveKeyAndVerifier(password, saltHex);
         this.currentAccountUsername = username;
@@ -1031,22 +1074,22 @@
         this.syncActiveProfileToAppState();
         await this.persistEncryptedAccountVault();
         this.renderAllViews();
-        if (msgEl) {
-          msgEl.style.color = '#86efac';
-          msgEl.textContent = `נוצר חשבון חדש ומוצפן "${username}" (AES-256-GCM)! ניתן להוסיף עד 10 יוזרים בחשבון.`;
-        }
-        this.showToast(`חשבון מוצפן חדש "${username}" נוצר בהצלחה 🔒`);
+        this.switchAccountModalView('profiles');
+        this.showToast(`חשבון חדש "${username}" נוצר בהצלחה 🔒`);
       }
     },
 
     /* ======================================================================
-       1. STANDALONE + SERVER HYBRID CATALOG & LIVE CINEMETA / YTS LIBRARIES
+       1. STANDALONE + SERVER HYBRID CATALOG & FAST NON-BLOCKING LIBRARIES
        ====================================================================== */
     async loadCatalog() {
       let loaded = false;
-      // Try local API first if running via server.py
+      const apiBase = this.getApiBase();
       try {
-        const res = await fetch('/api/catalog');
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 1800);
+        const res = await fetch(`${apiBase}/api/catalog`, { signal: ctrl.signal });
+        clearTimeout(tid);
         if (res.ok) {
           const data = await res.json();
           this.movies = Array.isArray(data.movies) ? data.movies : [];
@@ -1060,7 +1103,6 @@
         }
       } catch (_) {}
 
-      // Standalone Fallback: Load directly from ./data/hebrew_catalog.json (for GitHub Pages & Capacitor APK!)
       if (!loaded) {
         try {
           const staticRes = await fetch('./data/hebrew_catalog.json');
@@ -1074,140 +1116,81 @@
       }
     },
 
+    async fetchJsonWithTimeout(url, timeoutMs = 2500) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (_) {
+        clearTimeout(timer);
+        return null;
+      }
+    },
+
     async loadLiveGlobalLibraries() {
       const existingIds = new Set([...this.movies, ...this.series].map((x) => x.id));
       this.globalCatalogSkip = this.globalCatalogSkip || 0;
 
-      // Fetch 7 massive live catalogs in parallel (including dedicated Horror catalogs!)
+      // Instant sessionStorage cache so page refresh takes 0ms and never spins the browser!
       try {
-        const [cmMovTop, cmMovImdb, cmMovHorror, ytsMovRes, cmSerTop, cmSerImdb, cmSerHorror] = await Promise.allSettled([
-          fetch('https://v3-cinemeta.strem.io/catalog/movie/top.json'),
-          fetch('https://v3-cinemeta.strem.io/catalog/movie/imdbRating.json'),
-          fetch('https://v3-cinemeta.strem.io/catalog/movie/top/genre=Horror.json'),
-          fetch('https://yts.mx/api/v2/list_movies.json?sort_by=download_count&limit=50'),
-          fetch('https://v3-cinemeta.strem.io/catalog/series/top.json'),
-          fetch('https://v3-cinemeta.strem.io/catalog/series/imdbRating.json'),
-          fetch('https://v3-cinemeta.strem.io/catalog/series/top/genre=Horror.json')
+        const cachedRaw = sessionStorage.getItem('streamit_live_catalog_v53');
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (parsed && Array.isArray(parsed.movies) && parsed.movies.length) {
+            this.globalLiveMovies = parsed.movies;
+            this.globalLiveSeries = parsed.series || [];
+            this.renderAllViews();
+            return;
+          }
+        }
+      } catch (_) {}
+
+      // Fetch only fast Cinemeta endpoints with strict 2.5s timeout (0% yts.mx hang, 0% Google Translate loop)
+      try {
+        const [cmMovTop, cmMovHorror, cmSerTop, cmSerHorror] = await Promise.all([
+          this.fetchJsonWithTimeout('https://v3-cinemeta.strem.io/catalog/movie/top.json', 2500),
+          this.fetchJsonWithTimeout('https://v3-cinemeta.strem.io/catalog/movie/top/genre=Horror.json', 2500),
+          this.fetchJsonWithTimeout('https://v3-cinemeta.strem.io/catalog/series/top.json', 2500),
+          this.fetchJsonWithTimeout('https://v3-cinemeta.strem.io/catalog/series/top/genre=Horror.json', 2500)
         ]);
 
         const liveMovies = [];
-        for (const resObj of [cmMovTop, cmMovImdb, cmMovHorror]) {
-          if (resObj.status === 'fulfilled' && resObj.value.ok) {
-            const cData = await resObj.value.json();
-            const metas = Array.isArray(cData.metas) ? cData.metas : [];
-            for (const m of metas) {
-              if (!m || !m.id || existingIds.has(m.id)) continue;
-              existingIds.add(m.id);
-              liveMovies.push(this.normalizeCinemetaItem(m, 'movie'));
-            }
-          }
-        }
-
-        if (ytsMovRes.status === 'fulfilled' && ytsMovRes.value.ok) {
-          const yData = await ytsMovRes.value.json();
-          const yList = (yData.data && yData.data.movies) || [];
-          for (const ym of yList) {
-            const imdbId = ym.imdb_code;
-            if (!imdbId || existingIds.has(imdbId)) continue;
-            existingIds.add(imdbId);
-            const rawEnTitle = ym.title_english || ym.title || '';
-            const genresHe = (ym.genres || []).slice(0, 3).map((g) => GENRE_MAP_HE[g] || 'קולנוע');
-            liveMovies.push({
-              id: imdbId,
-              imdb_id: imdbId,
-              type: 'movie',
-              title_he: resolveHebrewTitleSync(rawEnTitle, 'movie'),
-              title_en: rawEnTitle,
-              year: ym.year || 2024,
-              imdb_rating: ym.rating || 8.0,
-              runtime_he: ym.runtime ? `${ym.runtime} דק'` : 'שעתיים',
-              quality: '1080p Full HD',
-              trailer_yt_id: ym.yt_trailer_code || '',
-              genres: (ym.genres || []).map((g) => g.toLowerCase()),
-              genres_he: genresHe.length ? genresHe : ['קולנוע', 'אקשן'],
-              overview_he: 'זמין להזרמה ישירה ומהירה ב-1080p Full HD ממגוון מאגרי טורנטים ושרתים פעילים, כולל סנכרון כתוביות בעברית (AutoSub Sync AI).',
-              poster: `https://images.metahub.space/poster/medium/${imdbId}/img`,
-              backdrop: `https://images.metahub.space/background/medium/${imdbId}/img`,
-              gallery: [
-                `https://images.metahub.space/background/medium/${imdbId}/img`,
-                ym.background_image_original || ym.large_cover_image
-              ].filter(Boolean)
-            });
+        for (const cData of [cmMovTop, cmMovHorror]) {
+          const metas = (cData && Array.isArray(cData.metas) ? cData.metas : []).slice(0, 60);
+          for (const m of metas) {
+            if (!m || !m.id || existingIds.has(m.id)) continue;
+            existingIds.add(m.id);
+            liveMovies.push(this.normalizeCinemetaItem(m, 'movie'));
           }
         }
 
         const liveSeries = [];
-        for (const resObj of [cmSerTop, cmSerImdb, cmSerHorror]) {
-          if (resObj.status === 'fulfilled' && resObj.value.ok) {
-            const sData = await resObj.value.json();
-            const metas = Array.isArray(sData.metas) ? sData.metas : [];
-            for (const s of metas) {
-              if (!s || !s.id || existingIds.has(s.id)) continue;
-              existingIds.add(s.id);
-              liveSeries.push(this.normalizeCinemetaItem(s, 'series'));
-            }
+        for (const sData of [cmSerTop, cmSerHorror]) {
+          const metas = (sData && Array.isArray(sData.metas) ? sData.metas : []).slice(0, 50);
+          for (const s of metas) {
+            if (!s || !s.id || existingIds.has(s.id)) continue;
+            existingIds.add(s.id);
+            liveSeries.push(this.normalizeCinemetaItem(s, 'series'));
           }
         }
 
         this.globalLiveMovies = liveMovies;
         this.globalLiveSeries = liveSeries;
+        try {
+          sessionStorage.setItem(
+            'streamit_live_catalog_v53',
+            JSON.stringify({ movies: liveMovies, series: liveSeries })
+          );
+        } catch (_) {}
         this.renderAllViews();
-
-        // Automatically translate any remaining titles via Google Translate GTX API in background
-        this.translateCatalogBatchToHebrew([...this.globalLiveMovies, ...this.globalLiveSeries]);
       } catch (_) {}
     },
 
-    async translateCatalogBatchToHebrew(itemsList) {
-      if (!Array.isArray(itemsList) || !itemsList.length) return;
-      const cache = getHebrewCache();
-      const toTranslate = [];
-      for (const item of itemsList) {
-        if (!item || !item.title_en) continue;
-        const key = String(item.title_en).toLowerCase().replace(/\s+/g, ' ').trim();
-        if (HEBREW_TITLES_MAP[key]) {
-          item.title_he = HEBREW_TITLES_MAP[key];
-          continue;
-        }
-        if (cache[key] && hasHebrewChars(cache[key])) {
-          item.title_he = cache[key];
-          continue;
-        }
-        toTranslate.push(item);
-      }
-
-      if (!toTranslate.length) return;
-
-      // Batch in chunks of 25 titles separated by newline for super fast translation
-      const chunkSize = 25;
-      let anyUpdated = false;
-      for (let i = 0; i < toTranslate.length; i += chunkSize) {
-        const chunk = toTranslate.slice(i, i + chunkSize);
-        const queryBlock = chunk.map((it) => it.title_en.replace(/\n/g, ' ')).join('\n');
-        try {
-          const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=iw&dt=t&q=${encodeURIComponent(queryBlock)}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            const fullTranslated = ((data && data[0]) || []).map((seg) => (seg && seg[0]) || '').join('');
-            const lines = fullTranslated.split('\n').map((l) => l.trim());
-            chunk.forEach((it, idx) => {
-              const tr = lines[idx];
-              if (tr && hasHebrewChars(tr)) {
-                it.title_he = tr;
-                const k = String(it.title_en).toLowerCase().replace(/\s+/g, ' ').trim();
-                cache[k] = tr;
-                anyUpdated = true;
-              }
-            });
-          }
-        } catch (_) {}
-      }
-
-      if (anyUpdated) {
-        saveHebrewCache();
-        this.renderAllViews();
-      }
+    async translateCatalogBatchToHebrew() {
+      // Disabled bulk background Google Translate loop on startup to prevent browser spinning and double DOM re-renders
     },
 
     async loadMoreGlobalCatalogItems() {
@@ -2546,35 +2529,16 @@
 
       const imdbId = String(item.imdb_id || item.id || 'tt15239678').split(':')[0].trim();
 
-      // Automatically resolve numeric TMDB ID from Cinemeta if missing so VidLink 4K never says "Not Found"
-      if (!item.tmdb_id && imdbId.startsWith('tt')) {
-        try {
-          const metaRes = await fetch(`https://v3-cinemeta.strem.io/meta/${item.type}/${encodeURIComponent(imdbId)}.json`);
-          if (metaRes.ok) {
-            const metaJson = await metaRes.json();
-            if (metaJson && metaJson.meta && metaJson.meta.moviedb_id) {
-              item.tmdb_id = metaJson.meta.moviedb_id;
-            }
-          }
-        } catch (_) {}
-      }
-      const tmdbId = item.tmdb_id || '';
-
-      // MODE 1 & 2 (cloud1 / torrent): Direct 1080p Native <video> HLS Stream (0% Iframes, 0% Popup Ads, 0% Sandbox Errors, 100% Custom Hebrew Subtitles!)
-      if ((engineMode === 'cloud1' || engineMode === 'torrent') && item.type !== 'live') {
-        const preferredIdx = engineMode === 'torrent' ? 1 : Number(this.preferredStreamIdx || 0);
-        const okDirect = await this.playDirectNative1080pStream(item, imdbId, preferredIdx);
-        if (okDirect) return;
-        // If running on static GitHub Pages without server.py, automatically fall back to cloud2!
-        engineMode = 'cloud2';
-        this.activePlayerEngine = 'cloud2';
-        document.querySelectorAll('[data-engine]').forEach((btn) => {
-          btn.classList.toggle('active', btn.getAttribute('data-engine') === 'cloud2');
-        });
+      // MODE 1, 2 & 3 (cloud1 / torrent / cloud2 / cloud3): 100% Native <video> Direct 1080p HLS Stream via Local Ad-Free Proxy (0% Iframes, 0% AliExpress, 0% Sandbox Errors!)
+      if ((engineMode === 'cloud1' || engineMode === 'torrent' || engineMode === 'cloud2' || engineMode === 'cloud3') && item.type !== 'live') {
+        const preferredIdx =
+          engineMode === 'torrent' ? 1 : engineMode === 'cloud2' ? 2 : Number(this.preferredStreamIdx || 0);
+        await this.playDirectNative1080pStream(item, imdbId, preferredIdx);
+        return;
       }
 
-      // MODE 3, 4 & Trailer: Cloud Embed Backup Servers (Correct Path Routes + Zero Sandbox Block)
-      if (engineMode === 'cloud2' || engineMode === 'cloud3' || engineMode === 'trailer') {
+      // MODE 4: Official YouTube Trailer Only (Strict Sandbox — Never loads ad-supported embeds!)
+      if (engineMode === 'trailer') {
         if (video) video.classList.add('hidden');
         if (controls) controls.classList.add('hidden');
         if (torrentBanner) torrentBanner.classList.add('hidden');
@@ -2582,42 +2546,10 @@
 
         if (iframe) {
           iframe.classList.remove('hidden');
-          // Remove sandbox attribute for backup embed servers so they never show "Please Disable Sandbox"
-          iframe.removeAttribute('sandbox');
-
-          if (this.serverFailoverTimer) {
-            clearTimeout(this.serverFailoverTimer);
-            this.serverFailoverTimer = null;
-          }
-
-          if (engineMode === 'trailer') {
-            const ytId = item.trailer_yt_id || 'Way9Dexny3w';
-            iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&rel=0&modestbranding=1&hl=he`;
-            if (relLabel) relLabel.textContent = 'טריילר רשמי 1080p HD (YouTube • ללא פרסומות)';
-          } else if (engineMode === 'cloud3') {
-            // Backup Server #4: Clean 2vcdn / AutoEmbed (Correct Path Routes)
-            const isLocal =
-              window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const url3 = isLocal
-              ? `/api/clean-embed?imdb_id=${encodeURIComponent(imdbId)}&type=${encodeURIComponent(item.type)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
-              : item.type === 'series'
-              ? `https://autoembed.co/tv/imdb/${encodeURIComponent(imdbId)}-${this.currentSeason}-${this.currentEpisode}`
-              : `https://autoembed.co/movie/imdb/${encodeURIComponent(imdbId)}`;
-            iframe.src = url3;
-            if (relLabel) {
-              relLabel.textContent = `שרת גיבוי #4 (1080p VIP) • ${st.release_name || item.title_he || imdbId}`;
-            }
-          } else {
-            // Backup Server #3: VidSrc PM with CORRECT PATH ROUTES (/embed/movie/{id} & /embed/tv/{id}/{s}/{e})
-            const url2 =
-              item.type === 'series'
-                ? `https://vidsrc.pm/embed/tv/${encodeURIComponent(imdbId)}/${this.currentSeason}/${this.currentEpisode}`
-                : `https://vidsrc.pm/embed/movie/${encodeURIComponent(imdbId)}`;
-            iframe.src = url2;
-            if (relLabel) {
-              relLabel.textContent = `שרת גיבוי #3 (ענן 1080p מהיר) • ${st.provider || item.title_he || imdbId}`;
-            }
-          }
+          iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
+          const ytId = item.trailer_yt_id || 'Way9Dexny3w';
+          iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&rel=0&modestbranding=1&hl=he`;
+          if (relLabel) relLabel.textContent = 'טריילר רשמי 1080p HD (YouTube • ללא פרסומות)';
         }
         return;
       }
@@ -2652,7 +2584,9 @@
     async decryptDirectStreamUrls(encB64, wasmB64) {
       if (!encB64 || !wasmB64) return [];
       const toBytes = (b64) => {
-        const bin = atob(b64);
+        let clean = String(b64).replace(/[\r\n\s]/g, '').replace(/-/g, '+').replace(/_/g, '/');
+        while (clean.length % 4) clean += '=';
+        const bin = atob(clean);
         const arr = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         return arr;
@@ -2692,21 +2626,23 @@
 
       if (torrentBanner) torrentBanner.classList.remove('hidden');
       if (torrentText) {
-        torrentText.textContent = 'מתחבר אוטומטית לשרת 1080p ישיר ונקי מפרסומות (0% חלונות קופצים)...';
+        torrentText.textContent = 'טוען סטרים ישיר ב-1080p Full HD (0% פרסומות 🛡️)...';
       }
 
+      const apiBase = this.getApiBase();
       try {
         const res = await fetch(
-          `/api/direct-stream?type=${encodeURIComponent(item.type)}&imdb_id=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
+          `${apiBase}/api/direct-stream?type=${encodeURIComponent(item.type)}&imdb_id=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
         );
-        if (!res.ok) return false;
+        if (!res.ok) throw new Error('Direct stream endpoint returned ' + res.status);
         const data = await res.json();
-        if (!data || !data.ok || !data.enc_stream_urls || !data.wasm_b64) return false;
+        if (!data || !data.ok || !data.enc_stream_urls || !data.wasm_b64) {
+          throw new Error((data && data.error) || 'Stream data unavailable');
+        }
 
         const rawUrls = await this.decryptDirectStreamUrls(data.enc_stream_urls, data.wasm_b64);
-        if (!rawUrls.length) return false;
+        if (!rawUrls.length) throw new Error('No decrypted URLs');
 
-        // Reorder so preferredServerIdx is tried first, followed by all remaining CDN mirrors for automatic failover!
         const orderedUrls = [
           rawUrls[preferredServerIdx % rawUrls.length],
           ...rawUrls.filter((_, i) => i !== preferredServerIdx % rawUrls.length)
@@ -2714,34 +2650,19 @@
 
         const tryLoadHlsIndex = async (idx) => {
           if (idx >= orderedUrls.length) {
-            if (torrentBanner) torrentBanner.classList.add('hidden');
-            this.showToast('עובר אוטומטית לשרת ענן חלופי...');
-            this.switchPlayerEngine('cloud2');
+            if (torrentText) {
+              torrentText.textContent = 'השרתים הישירים עמוסים כרגע — נסה ללחוץ על מקור #2 או #3 למעלה.';
+            }
             return;
           }
           const targetStreamUrl = orderedUrls[idx];
-          const origin = new URL(targetStreamUrl).origin;
-          let token = '';
-          try {
-            const genUrl = `${origin}/generate.php?api_token=${encodeURIComponent(data.api_token || '')}`;
-            const tokRes = await fetch(genUrl, { credentials: 'omit' });
-            if (tokRes.ok) {
-              const rawTok = (await tokRes.text()).trim();
-              if (rawTok.startsWith('{')) {
-                const j = JSON.parse(rawTok);
-                token = j.token || j.data || j.string || '';
-              } else {
-                token = rawTok;
-              }
-            }
-          } catch (_) {}
-
-          const finalM3u8 = token
-            ? `${targetStreamUrl}${targetStreamUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
-            : targetStreamUrl;
+          const playerOrigin = data.player_origin || 'https://stellarconductornexus.com';
+          const proxiedM3u8 = `${apiBase}/api/hls-proxy?url=${encodeURIComponent(targetStreamUrl)}&api_token=${encodeURIComponent(
+            data.api_token || ''
+          )}&origin=${encodeURIComponent(playerOrigin)}`;
 
           if (relLabel) {
-            relLabel.textContent = `נגן ישיר 1080p Full HD (0% פרסומות 🛡️ • מקור #${idx + 1}/${orderedUrls.length}) • ${
+            relLabel.textContent = `נגן ישיר 1080p Full HD (0% פרסומות 🛡️ • שרת #${idx + 1}/${orderedUrls.length}) • ${
               data.file_name || item.title_he || imdbId
             }`;
           }
@@ -2762,7 +2683,6 @@
 
             hls.on(window.Hls.Events.MANIFEST_PARSED, (_, manifestData) => {
               if (torrentBanner) torrentBanner.classList.add('hidden');
-              // Lock automatic quality ceiling to 1080p (never > 1080p) for smooth streaming!
               if (Array.isArray(manifestData.levels) && manifestData.levels.length) {
                 let best1080Idx = -1;
                 manifestData.levels.forEach((lvl, lIdx) => {
@@ -2788,11 +2708,11 @@
               }
             });
 
-            hls.loadSource(finalM3u8);
+            hls.loadSource(proxiedM3u8);
             hls.attachMedia(video);
           } else {
             if (torrentBanner) torrentBanner.classList.add('hidden');
-            video.src = finalM3u8;
+            video.src = proxiedM3u8;
             video.onerror = () => tryLoadHlsIndex(idx + 1);
             video.play().catch(() => {});
           }
@@ -2801,7 +2721,9 @@
         await tryLoadHlsIndex(0);
         return true;
       } catch (_) {
-        if (torrentBanner) torrentBanner.classList.add('hidden');
+        if (torrentText) {
+          torrentText.textContent = 'ודא שהשרת המקומי (localhost:8092) פעיל ברקע להזרמה ישירה ללא פרסומות.';
+        }
         return false;
       }
     },
@@ -3517,19 +3439,41 @@
         });
       });
 
-      // Encrypted Multi-Account & 10-User Profile Manager Modal
+      // Encrypted Multi-Account & 10-User Profile Manager Modal (Netflix-Style 2-View UI)
       const openAuthBtn = document.getElementById('openAuthProfilesBtn');
       const closeAuthBtn = document.getElementById('closeAuthProfilesModalBtn');
       const authModal = document.getElementById('authProfilesModal');
       const addProfBtn = document.getElementById('addNewProfileBtn');
+      const cancelProfBtn = document.getElementById('cancelNewProfileBtn');
       const newProfInp = document.getElementById('newProfileNameInput');
       const loginRegBtn = document.getElementById('loginOrRegisterAccountBtn');
       const logoutGuestBtn = document.getElementById('logoutToGuestAccountBtn');
+      const toggleLoginViewBtn = document.getElementById('toggleAccountLoginViewBtn');
+      const backToProfilesBtn = document.getElementById('backToProfilesViewBtn');
 
       if (openAuthBtn && authModal) {
         openAuthBtn.addEventListener('click', () => {
+          this.switchAccountModalView('profiles');
           this.updateAccountAndProfileUi();
           authModal.classList.remove('hidden');
+        });
+      }
+      if (toggleLoginViewBtn) {
+        toggleLoginViewBtn.addEventListener('click', () => {
+          const loginView = document.getElementById('accountLoginView');
+          const isLoginVisible = loginView && !loginView.classList.contains('hidden');
+          this.switchAccountModalView(isLoginVisible ? 'profiles' : 'login');
+        });
+      }
+      if (backToProfilesBtn) {
+        backToProfilesBtn.addEventListener('click', () => {
+          this.switchAccountModalView('profiles');
+        });
+      }
+      if (cancelProfBtn) {
+        cancelProfBtn.addEventListener('click', () => {
+          const creatorBox = document.getElementById('newProfileCreatorBox');
+          if (creatorBox) creatorBox.classList.add('hidden');
         });
       }
       if (closeAuthBtn && authModal) {
@@ -3543,7 +3487,7 @@
       if (addProfBtn && newProfInp) {
         addProfBtn.addEventListener('click', async () => {
           if (this.accountProfiles.length >= 10) {
-            this.showToast('הגעת למקסימום של 10 יוזרים בחשבון זה');
+            this.showToast('הגעת למקסימום של 10 פרופילים בחשבון זה');
             return;
           }
           const name = newProfInp.value.trim() || `יוזר ${this.accountProfiles.length + 1}`;
@@ -3553,8 +3497,10 @@
           this.syncActiveProfileToAppState();
           await this.persistEncryptedAccountVault();
           newProfInp.value = '';
+          const creatorBox = document.getElementById('newProfileCreatorBox');
+          if (creatorBox) creatorBox.classList.add('hidden');
           this.renderAllViews();
-          this.showToast(`היוזר "${name}" נוסף לחשבון (${this.accountProfiles.length}/10)`);
+          this.showToast(`הפרופיל "${name}" נוסף לחשבון (${this.accountProfiles.length}/10)`);
         });
       }
       if (loginRegBtn) {
@@ -3572,9 +3518,8 @@
           this.activeProfileIndex = 0;
           await this.initDefaultEncryptedSession();
           this.renderAllViews();
-          const msgEl = document.getElementById('authStatusMsg');
-          if (msgEl) msgEl.textContent = 'התנתקת מהחשבון — חזרת לחשבון ברירת מחדל.';
-          this.showToast('התנתקת מהחשבון');
+          this.switchAccountModalView('profiles');
+          this.showToast('חזרת לחשבון ראשי');
         });
       }
 

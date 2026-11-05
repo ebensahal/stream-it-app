@@ -58,6 +58,29 @@ mimetypes.add_type("image/svg+xml", ".svg")
 
 STATE_LOCK = threading.Lock()
 
+# Force IPv4 for external hosts so Windows Python never stalls 15s on dead IPv6 routes
+_ORIG_GETADDRINFO = socket.getaddrinfo
+
+
+def _fast_ipv4_getaddrinfo(
+    host: Any, port: Any, family: int = 0, socktype: int = 0, proto: int = 0, flags: int = 0
+) -> Any:
+    if family == 0 and host not in ("localhost", "::1", "127.0.0.1"):
+        try:
+            res = [r for r in _ORIG_GETADDRINFO(host, port, socket.AF_INET, socktype, proto, flags)]
+            if res:
+                return res
+        except Exception:
+            pass
+    return _ORIG_GETADDRINFO(host, port, family, socktype, proto, flags)
+
+
+socket.getaddrinfo = _fast_ipv4_getaddrinfo  # type: ignore
+
+DIRECT_STREAM_CACHE: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+WASM_CACHE: Dict[str, str] = {}
+HLS_TOKEN_CACHE: Dict[str, Tuple[float, str]] = {}
+
 DEFAULT_INSTALLED_ADDONS: List[Dict[str, Any]] = [
     {
         "id": "org.stremio.torrentio",
@@ -590,6 +613,7 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
 
     def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Range, X-Requested-With")
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -644,14 +668,14 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                 "ok": True,
                 "service": "STREAM IT",
                 "port": server_port,
-                "version": "5.1.0",
+                "version": "5.3.0",
                 "autosub_ai": "active",
                 "encryption": "AES-256-GCM + PBKDF2-SHA256",
                 "default_quality": "1080p Full HD",
             })
             return
 
-        # 1b. Direct 1080p Native HLS Stream Extractor (0% Iframes, 0% Ads, 0% Sandbox Errors, 100% Native <video> + Custom Hebrew Subtitles)
+        # 1b. Direct 1080p Native HLS Stream Extractor (Fast IPv4 + In-Memory Cache)
         if path == "/api/direct-stream":
             import base64 as _b64
             import re as _re
@@ -659,6 +683,13 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
             item_type = q_val("type", "movie")
             season = q_val("season", "1") or "1"
             episode = q_val("episode", "1") or "1"
+            cache_key = f"{item_type}:{imdb_id}:{season}:{episode}"
+            now_ts = time.time()
+            cached = DIRECT_STREAM_CACHE.get(cache_key)
+            if cached and (now_ts - cached[0]) < 180.0:
+                self._send_json(cached[1])
+                return
+
             ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             try:
                 if item_type == "series" or item_type == "tv":
@@ -669,14 +700,14 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                     ref_url = f"https://vidsrc.sh/embed/movie/{urllib.parse.quote(imdb_id)}/"
 
                 r1 = urllib.request.Request(vs_url, headers={"User-Agent": ua, "Referer": ref_url})
-                with urllib.request.urlopen(r1, timeout=6) as resp1:
+                with urllib.request.urlopen(r1, timeout=5) as resp1:
                     src_data = json.loads(resp1.read().decode("utf-8", errors="replace"))
                 landing_src = src_data.get("src", "")
                 if not landing_src:
                     raise ValueError("Missing landing src")
 
                 r2 = urllib.request.Request(landing_src, headers={"User-Agent": ua, "Referer": "https://vidsrc.sh/"})
-                with urllib.request.urlopen(r2, timeout=6) as resp2:
+                with urllib.request.urlopen(r2, timeout=5) as resp2:
                     landing_html = resp2.read().decode("utf-8", errors="replace")
                 m_cfg = _re.search(r"window\.CFG\s*=\s*(\{.*?\});", landing_html)
                 if not m_cfg:
@@ -685,7 +716,7 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                 player_url = urllib.parse.urljoin(landing_src, cfg_obj.get("playerUrl", ""))
 
                 r3 = urllib.request.Request(player_url, headers={"User-Agent": ua, "Referer": landing_src})
-                with urllib.request.urlopen(r3, timeout=6) as resp3:
+                with urllib.request.urlopen(r3, timeout=5) as resp3:
                     player_html = resp3.read().decode("utf-8", errors="replace")
                 m_pcfg = _re.search(r"window\.CONFIG\s*=\s*(\{.*?\});", player_html)
                 if not m_pcfg:
@@ -701,19 +732,22 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                     full_api_url,
                     headers={"User-Agent": ua, "Referer": f"{player_origin}/", "Origin": player_origin},
                 )
-                with urllib.request.urlopen(r4, timeout=6) as resp4:
+                with urllib.request.urlopen(r4, timeout=5) as resp4:
                     api_json = json.loads(resp4.read().decode("utf-8", errors="replace"))
 
                 vs_info = api_json.get("vs") or {}
-                wasm_b64 = vs_info.get("wasm", "")
+                w_key = str(vs_info.get("w", 1))
+                wasm_b64 = vs_info.get("wasm", "") or WASM_CACHE.get(w_key, "")
                 if not wasm_b64 and vs_info.get("wasm_url"):
                     wasm_full = urllib.parse.urljoin(player_origin, vs_info["wasm_url"])
                     r5 = urllib.request.Request(wasm_full, headers={"User-Agent": ua, "Referer": f"{player_origin}/"})
-                    with urllib.request.urlopen(r5, timeout=6) as resp5:
+                    with urllib.request.urlopen(r5, timeout=5) as resp5:
                         wasm_b64 = _b64.b64encode(resp5.read()).decode("ascii")
+                    if wasm_b64:
+                        WASM_CACHE[w_key] = wasm_b64
 
                 data_block = api_json.get("data") or {}
-                self._send_json({
+                payload = {
                     "ok": True,
                     "imdb_id": imdb_id,
                     "type": item_type,
@@ -723,45 +757,98 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                     "file_name": data_block.get("file_name", f"{imdb_id}.1080p.WEB-DL.H264.mp4"),
                     "backdrop": data_block.get("backdrop", ""),
                     "api_token": api_token,
+                    "player_origin": player_origin,
                     "enc_stream_urls": data_block.get("stream_urls", ""),
                     "wasm_b64": wasm_b64,
                     "wasm_w": vs_info.get("w", 1),
-                })
+                }
+                DIRECT_STREAM_CACHE[cache_key] = (now_ts, payload)
+                self._send_json(payload)
                 return
             except Exception as exc:
                 self._send_json({"ok": False, "error": str(exc), "imdb_id": imdb_id})
                 return
 
-        # 1c. Clean Ad-Free 1080p Embed Resolver (Correct Path Routes)
-        if path == "/api/clean-embed":
-            import re as _re
-            imdb_id = q_val("imdb_id", q_val("id", "tt15239678")).split(":")[0].strip()
-            item_type = q_val("type", "movie")
-            season = q_val("season", "1") or "1"
-            episode = q_val("episode", "1") or "1"
-            target_url = (
-                f"https://www.2embed.cc/embedtv/{urllib.parse.quote(imdb_id)}&s={season}&e={episode}"
-                if item_type == "series"
-                else f"https://www.2embed.cc/embed/{urllib.parse.quote(imdb_id)}"
-            )
-            resolved_player = (
-                f"https://vidsrc.pm/embed/tv/{urllib.parse.quote(imdb_id)}/{season}/{episode}"
-                if item_type == "series"
-                else f"https://vidsrc.pm/embed/movie/{urllib.parse.quote(imdb_id)}"
-            )
+        # 1c. Local Ad-Free HLS Playlist & MPEG-TS Video Segment Proxy (Injects Required Referer/Origin Headers)
+        if path == "/api/hls-proxy":
+            target_url = q_val("url", "").strip()
+            api_token = q_val("api_token", "").strip()
+            player_origin = q_val("origin", "https://stellarconductornexus.com").strip() or "https://stellarconductornexus.com"
+            server_port = getattr(self.server, "server_port", 8092)
+            if not target_url or not target_url.startswith("http"):
+                self._send_json({"ok": False, "error": "Missing or invalid target url"}, status_code=400)
+                return
+
+            ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            req_headers = {
+                "User-Agent": ua,
+                "Origin": player_origin,
+                "Referer": f"{player_origin}/",
+            }
             try:
-                req = urllib.request.Request(target_url, headers={"User-Agent": "Mozilla/5.0"})
-                with urllib.request.urlopen(req, timeout=3.5) as resp:
-                    html_raw = resp.read().decode("utf-8", errors="replace")
-                m_swish = _re.search(r"swish\?id=([a-zA-Z0-9_-]+)", html_raw)
-                if m_swish:
-                    resolved_player = f"https://2vcdn.skin/e/{m_swish.group(1)}"
-            except Exception:
-                pass
-            self.send_response(302)
-            self.send_header("Location", resolved_player)
-            self.end_headers()
-            return
+                if api_token and "token=" not in target_url:
+                    u_parsed = urllib.parse.urlparse(target_url)
+                    cdn_origin = f"{u_parsed.scheme}://{u_parsed.netloc}"
+                    tok_key = f"{cdn_origin}:{api_token}"
+                    now_ts = time.time()
+                    cached_tok = HLS_TOKEN_CACHE.get(tok_key)
+                    jwt_tok = ""
+                    if cached_tok and (now_ts - cached_tok[0]) < 600.0:
+                        jwt_tok = cached_tok[1]
+                    else:
+                        gen_url = f"{cdn_origin}/generate.php?api_token={urllib.parse.quote(api_token)}"
+                        r_tok = urllib.request.Request(gen_url, headers=req_headers)
+                        with urllib.request.urlopen(r_tok, timeout=5) as resp_tok:
+                            raw_tok = resp_tok.read().decode("utf-8", errors="replace").strip()
+                        if raw_tok.startswith("{"):
+                            try:
+                                j_tok = json.loads(raw_tok)
+                                jwt_tok = str(j_tok.get("token") or j_tok.get("data") or j_tok.get("string") or "")
+                            except Exception:
+                                jwt_tok = ""
+                        else:
+                            jwt_tok = raw_tok
+                        if jwt_tok:
+                            HLS_TOKEN_CACHE[tok_key] = (now_ts, jwt_tok)
+                    if jwt_tok:
+                        sep = "&" if "?" in target_url else "?"
+                        target_url = f"{target_url}{sep}token={urllib.parse.quote(jwt_tok)}"
+
+                r_media = urllib.request.Request(target_url, headers=req_headers)
+                with urllib.request.urlopen(r_media, timeout=8) as resp_media:
+                    raw_bytes = resp_media.read()
+
+                if raw_bytes.lstrip().startswith(b"#EXTM3U"):
+                    m3u8_text = raw_bytes.decode("utf-8", errors="replace")
+                    out_lines: List[str] = []
+                    for line in m3u8_text.splitlines():
+                        s_line = line.strip()
+                        if not s_line:
+                            out_lines.append("")
+                            continue
+                        if s_line.startswith("#"):
+                            out_lines.append(s_line)
+                            continue
+                        abs_u = urllib.parse.urljoin(target_url, s_line)
+                        proxied_u = (
+                            f"http://localhost:{server_port}/api/hls-proxy"
+                            f"?url={urllib.parse.quote(abs_u, safe='')}"
+                            f"&origin={urllib.parse.quote(player_origin, safe='')}"
+                        )
+                        out_lines.append(proxied_u)
+                    final_m3u8 = "\n".join(out_lines) + "\n"
+                    self._send_text(final_m3u8, content_type="application/vnd.apple.mpegurl; charset=utf-8")
+                    return
+
+                self.send_response(200)
+                self.send_header("Content-Type", "video/mp2t")
+                self.send_header("Content-Length", str(len(raw_bytes)))
+                self.end_headers()
+                self.wfile.write(raw_bytes)
+                return
+            except Exception as exc:
+                self._send_json({"ok": False, "error": str(exc)}, status_code=502)
+                return
 
         # 2. Full Hebrew Catalog
         if path == "/api/catalog":
@@ -1068,19 +1155,29 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
         self._send_json({"ok": False, "error": f"Unknown endpoint: {path}"}, status_code=404)
 
 
+class ThreadingHTTPServerV6(ThreadingHTTPServer):
+    address_family = socket.AF_INET6
+
+
 def run_server(port: int = 8092) -> None:
-    """Starts the lightweight multi-threaded STREAM IT server on localhost only (127.0.0.1)."""
+    """Starts the lightweight multi-threaded STREAM IT server on localhost loopback only (127.0.0.1 + ::1)."""
     load_user_state()
     server_address = ("127.0.0.1", port)
     httpd = ThreadingHTTPServer(server_address, StreamItRequestHandler)
-    print(f"============================================================")
-    print(f" STREAM IT v5.0 — Encrypted Multi-Account Cinema Platform")
-    print(f" URL: http://localhost:{port}")
-    print(f"============================================================")
+    try:
+        httpd_v6 = ThreadingHTTPServerV6(("::1", port), StreamItRequestHandler)
+        t_v6 = threading.Thread(target=httpd_v6.serve_forever, daemon=True)
+        t_v6.start()
+    except Exception:
+        pass
+    print(f"============================================================", flush=True)
+    print(f" STREAM IT v5.3 — Encrypted Multi-Account Cinema Platform", flush=True)
+    print(f" URL: http://localhost:{port}", flush=True)
+    print(f"============================================================", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\nShutting down STREAM IT server...")
+        print("\nShutting down STREAM IT server...", flush=True)
         httpd.server_close()
 
 
