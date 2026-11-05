@@ -242,14 +242,47 @@ def detect_and_decode_hebrew_bytes(raw_data: bytes) -> Tuple[str, str]:
 
 def fix_hebrew_rtl_line(line: str) -> str:
     """
-    Stage 4 Helper: Strips HTML/ASS formatting tags and normalizes Hebrew RTL text.
+    Stage 4 Helper: Strips HTML/ASS formatting tags, repairs legacy Subabi-inverted
+    Hebrew punctuation (e.g. '...שהמתים' -> 'שהמתים...', '?מה-' -> '- מה?'),
+    and locks RTL BiDi boundaries with Right-to-Left Marks (RLM) so punctuation
+    always renders on the correct side in RTL Hebrew.
     """
-    stripped = re.sub(r"<[^>]+>", "", line or "").strip()
-    if not stripped:
+    stripped = re.sub(r"<[^>]+>", "", line or "")
+    stripped = re.sub(r"\{\\[^}]+\}", "", stripped)
+    cleaned = re.sub(r"[\u200e\u200f\u202a-\u202e\u2066-\u2069]", "", stripped).strip()
+    if not cleaned:
         return ""
 
-    cleaned = stripped.replace("\u202B", "").replace("\u202C", "").replace("\u200F", "").replace("\u200E", "").strip()
-    return cleaned
+    if not HEBREW_CHAR_RE.search(cleaned):
+        return cleaned
+
+    # 1. Detect dialogue dash at start ('- שלום') or Subabi-flipped at end ('?מה-', 'שלום -')
+    has_leading_dash = False
+    if re.match(r"^-\s*", cleaned):
+        has_leading_dash = True
+        cleaned = re.sub(r"^-\s*", "", cleaned).strip()
+    elif re.search(r"[\u0590-\u05FF0-9\"'״׳]\s*-\s*$", cleaned):
+        has_leading_dash = True
+        cleaned = re.sub(r"\s*-\s*$", "", cleaned).strip()
+
+    # 2. Repair Subabi-flipped leading punctuation ('...שהמתים' -> 'שהמתים...', '."שלום"' -> '"שלום".')
+    m_lead = re.match(r"^([.!?…,;:]+)\s*(.+)$", cleaned)
+    if m_lead:
+        lead_punct = m_lead.group(1)
+        rest = m_lead.group(2).strip()
+        if not re.search(r"[.!?…,;:]$", rest):
+            cleaned = f"{rest}{lead_punct}"
+
+    # 3. Repair Subabi-flipped closing quote placed at the start ('"לך תצפה ב"צ\'ארלי' -> 'לך תצפה ב"צ\'ארלי"')
+    if cleaned.startswith('"') and not cleaned.endswith('"') and cleaned[1:].count('"') % 2 == 1:
+        cleaned = f'{cleaned[1:].strip()}"'
+
+    # 4. Re-attach dialogue dash at the logical start (right side in RTL)
+    if has_leading_dash:
+        cleaned = f"- {cleaned}"
+
+    # 5. Anchor both ends with Right-to-Left Marks (RLM \u200F) so trailing punctuation stays on the LEFT
+    return f"{RLM}{cleaned}{RLM}"
 
 
 def _parse_timestamp_to_ms(ts_str: str) -> Optional[int]:

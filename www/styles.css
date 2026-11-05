@@ -638,6 +638,7 @@ body[data-device-mode="tv"] {
   inset-inline: 0;
   height: 4px;
   background: rgba(255, 255, 255, 0.2);
+  direction: ltr;
 }
 
 .card-progress-fill {
@@ -1328,6 +1329,7 @@ body[data-device-mode="tv"] {
   text-align: center;
   pointer-events: none;
   direction: rtl;
+  unicode-bidi: isolate;
   transition: bottom 0.3s ease;
 }
 
@@ -1341,7 +1343,7 @@ body[data-device-mode="tv"] {
   border-radius: 6px;
   white-space: pre-line;
   direction: rtl;
-  unicode-bidi: plaintext;
+  unicode-bidi: isolate;
 }
 
 .subtitle-line:empty {
@@ -1529,6 +1531,7 @@ body[data-device-mode="tv"] {
   display: flex;
   align-items: center;
   gap: 12px;
+  direction: ltr;
 }
 
 .time-text {
@@ -1536,12 +1539,15 @@ body[data-device-mode="tv"] {
   font-size: 0.78rem;
   color: var(--text-secondary);
   min-width: 44px;
+  direction: ltr;
+  text-align: center;
 }
 
 .timeline-slider {
   flex: 1;
   accent-color: var(--brand-red);
   cursor: pointer;
+  direction: ltr;
 }
 
 .controls-bar-row {
@@ -1550,6 +1556,7 @@ body[data-device-mode="tv"] {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  direction: ltr;
 }
 
 .controls-group {
@@ -1588,6 +1595,7 @@ body[data-device-mode="tv"] {
 .vol-slider {
   width: 85px;
   accent-color: #ffffff;
+  direction: ltr;
 }
 
 /* ==========================================================================
@@ -2086,9 +2094,13 @@ body[data-device-mode="tv"] {
   align-items: center;
 }
 
+.auth-pass-input {
+  padding-right: 44px;
+}
+
 .auth-pass-toggle {
   position: absolute;
-  inset-inline-end: 10px;
+  right: 10px;
   background: transparent;
   border: none;
   color: #a1a1aa;

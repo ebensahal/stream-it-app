@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5.5" />
+  <link rel="stylesheet" href="styles.css?v=5.6" />
   <script>
     // Wipe any old Service Worker cache that previously served the old Sandbox player
     (function () {
@@ -631,28 +631,28 @@
 
       <!-- Native Video Bottom Controls Bar (shown in Torrent / HLS mode) -->
       <div id="nativePlayerControls" class="player-controls">
-        <div class="timeline-row">
+        <div class="timeline-row" dir="ltr">
           <span id="playerCurrentTime" class="time-text" dir="ltr">00:00</span>
-          <input type="range" id="playerSeekSlider" class="timeline-slider tv-focusable" min="0" max="1000" value="0" aria-label="ציר זמן וידאו" />
+          <input type="range" id="playerSeekSlider" class="timeline-slider tv-focusable" dir="ltr" min="0" max="1000" value="0" aria-label="ציר זמן וידאו" />
           <span id="playerDurationTime" class="time-text" dir="ltr">00:00</span>
         </div>
 
-        <div class="controls-bar-row">
-          <div class="controls-group">
+        <div class="controls-bar-row" dir="ltr">
+          <div class="controls-group" dir="ltr">
             <button type="button" id="playerPlayPauseBtn" class="ctrl-icon-btn tv-focusable" aria-label="נגן או השהה">
               <svg id="playPauseSvg" viewBox="0 0 24 24" class="icon-svg icon-fill" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
             </button>
-            <button type="button" id="playerSeekBackBtn" class="ctrl-icon-btn tv-focusable" aria-label="חזור 10 שניות">-10s</button>
-            <button type="button" id="playerSeekFwdBtn" class="ctrl-icon-btn tv-focusable" aria-label="קדם 10 שניות">+10s</button>
+            <button type="button" id="playerSeekBackBtn" class="ctrl-icon-btn tv-focusable" dir="ltr" aria-label="חזור 10 שניות">-10s</button>
+            <button type="button" id="playerSeekFwdBtn" class="ctrl-icon-btn tv-focusable" dir="ltr" aria-label="קדם 10 שניות">+10s</button>
             <button type="button" id="playerMuteBtn" class="ctrl-icon-btn tv-focusable" aria-label="השתק או בטל השתקה">
               <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
             </button>
-            <input type="range" id="playerVolumeSlider" class="vol-slider tv-focusable" min="0" max="100" value="100" aria-label="עוצמת שמע" />
+            <input type="range" id="playerVolumeSlider" class="vol-slider tv-focusable" dir="ltr" min="0" max="100" value="100" aria-label="עוצמת שמע" />
           </div>
 
-          <div class="controls-group">
-            <button type="button" id="playerQuickSubMinusBtn" class="ctrl-pill-btn tv-focusable" aria-label="הקדם כתוביות ב-0.1 שניות">כתוביות -0.1s</button>
-            <button type="button" id="playerQuickSubPlusBtn" class="ctrl-pill-btn tv-focusable" aria-label="אחר כתוביות ב-0.1 שניות">כתוביות +0.1s</button>
+          <div class="controls-group" dir="rtl">
+            <button type="button" id="playerQuickSubMinusBtn" class="ctrl-pill-btn tv-focusable" aria-label="הקדם כתוביות ב-0.1 שניות">כתוביות <span dir="ltr">-0.1s</span></button>
+            <button type="button" id="playerQuickSubPlusBtn" class="ctrl-pill-btn tv-focusable" aria-label="אחר כתוביות ב-0.1 שניות">כתוביות <span dir="ltr">+0.1s</span></button>
             <button type="button" id="playerSubToggleBtn" class="ctrl-pill-btn active tv-focusable" aria-label="הצג או הסתר כתוביות">כתוביות: פעיל</button>
             <button type="button" id="playerFullscreenBtn" class="ctrl-icon-btn tv-focusable" aria-label="מסך מלא">
               <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
@@ -817,7 +817,7 @@
 
       <form id="authGateForm" class="auth-gate-form" novalidate>
         <div class="auth-field-group">
-          <label for="authEmailInput" class="auth-field-label">כתובת אימייל רשומה (משתמש ראשי)</label>
+          <label for="authEmailInput" id="authEmailLabel" class="auth-field-label">כתובת האימייל שלך</label>
           <input
             type="email"
             id="authEmailInput"
@@ -830,15 +830,15 @@
         </div>
 
         <div class="auth-field-group">
-          <label for="authPasswordInput" class="auth-field-label">סיסמה אישית</label>
+          <label for="authPasswordInput" id="authPasswordLabel" class="auth-field-label">בחר סיסמה אישית (לפחות 4 תווים)</label>
           <div class="auth-password-wrap">
             <input
               type="password"
               id="authPasswordInput"
-              class="auth-input tv-focusable"
+              class="auth-input auth-pass-input tv-focusable"
               dir="ltr"
               autocomplete="current-password"
-              placeholder="לפחות 4 תווים..."
+              placeholder="••••••"
               required
             />
             <button type="button" id="toggleAuthPassVisBtn" class="auth-pass-toggle tv-focusable" aria-label="הצג או הסתר סיסמה">
@@ -1256,7 +1256,7 @@
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js?v=5.5"></script>
-  <script src="app.js?v=5.5"></script>
+  <script src="tv-navigation.js?v=5.6"></script>
+  <script src="app.js?v=5.6"></script>
 </body>
 </html>

@@ -890,8 +890,14 @@
       } catch (_) {}
 
       // No authenticated email account -> Enforce Mandatory Auth Gate
+      // If no accounts exist yet on this device, open directly on 'register' tab so first-time signup is 1-click!
       this.isAuthenticated = false;
-      this.showAuthGateScreen('login');
+      let hasAnySavedAccount = false;
+      try {
+        const allAcc = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
+        hasAnySavedAccount = Object.keys(allAcc).length > 0;
+      } catch (_) {}
+      this.showAuthGateScreen(hasAnySavedAccount ? 'login' : 'register');
     },
 
     showAuthGateScreen(defaultMode = 'login') {
@@ -1516,59 +1522,59 @@
 
       if (this.authMode === 'login') {
         if (!existing || !existing.verifierHex) {
-          if (msgEl) {
-            msgEl.style.color = '#fde047';
-            msgEl.textContent = 'כתובת האימייל הזו עדיין לא רשומה — העברנו אותך ללשונית הרשמה כדי לפתוח חשבון חדש!';
-          }
-          this.setAuthGateMode('register');
-          return;
-        }
+          // Seamless 1-click auto-registration if user typed a new email + password on the Login tab!
+          this.authMode = 'register';
+        } else {
+          try {
+            const derived = await CryptoVaultEngine.deriveKeyAndVerifier(password, existing.saltHex);
+            if (derived.verifierHex !== existing.verifierHex) {
+              if (msgEl) {
+                msgEl.style.color = '#fca5a5';
+                msgEl.textContent = 'הסיסמה שהוזנה שגויה עבור כתובת האימייל הזו';
+              }
+              return;
+            }
+            const vault = await CryptoVaultEngine.decryptVaultObj(existing.cipherHex, existing.ivHex, derived.aesKey);
+            this.isAuthenticated = true;
+            this.currentAccountUsername = email;
+            this.currentAccountKey = derived.aesKey;
+            this.currentAccountSaltHex = existing.saltHex;
+            this.currentAccountVerifierHex = derived.verifierHex;
+            this.accountProfiles =
+              vault && Array.isArray(vault.profiles) && vault.profiles.length
+                ? vault.profiles.slice(0, 6)
+                : [createDefaultProfile(1, email.split('@')[0])];
+            this.activeProfileIndex = 0;
 
-        try {
-          const derived = await CryptoVaultEngine.deriveKeyAndVerifier(password, existing.saltHex);
-          if (derived.verifierHex !== existing.verifierHex) {
+            localStorage.setItem(
+              'streamit_active_email_session_v6',
+              JSON.stringify({
+                email,
+                verifierHex: derived.verifierHex,
+                sessionSecret: password
+              })
+            );
+            sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+
+            this.syncActiveProfileToAppState();
+            this.renderAllViews();
+
+            const authGate = document.getElementById('authGateScreen');
+            if (authGate) authGate.classList.add('hidden');
+            this.openWhosWatchingScreen(true);
+            this.showToast(`ברוך הבא! התחברת עם ${email} — בחר מי צופה עכשיו`);
+            return;
+          } catch (_) {
             if (msgEl) {
               msgEl.style.color = '#fca5a5';
-              msgEl.textContent = 'הסיסמה שהוזנה שגויה עבור כתובת האימייל הזו';
+              msgEl.textContent = 'שגיאה בפענוח החשבון — בדוק את הסיסמה';
             }
             return;
           }
-          const vault = await CryptoVaultEngine.decryptVaultObj(existing.cipherHex, existing.ivHex, derived.aesKey);
-          this.isAuthenticated = true;
-          this.currentAccountUsername = email;
-          this.currentAccountKey = derived.aesKey;
-          this.currentAccountSaltHex = existing.saltHex;
-          this.currentAccountVerifierHex = derived.verifierHex;
-          this.accountProfiles =
-            vault && Array.isArray(vault.profiles) && vault.profiles.length
-              ? vault.profiles.slice(0, 6)
-              : [createDefaultProfile(1, email.split('@')[0])];
-          this.activeProfileIndex = 0;
-
-          localStorage.setItem(
-            'streamit_active_email_session_v6',
-            JSON.stringify({
-              email,
-              verifierHex: derived.verifierHex,
-              sessionSecret: password
-            })
-          );
-          sessionStorage.removeItem('streamit_unlocked_subuser_v6');
-
-          this.syncActiveProfileToAppState();
-          this.renderAllViews();
-
-          const authGate = document.getElementById('authGateScreen');
-          if (authGate) authGate.classList.add('hidden');
-          this.openWhosWatchingScreen(true);
-          this.showToast(`ברוך הבא! התחברת עם ${email} — בחר מי צופה עכשיו`);
-        } catch (_) {
-          if (msgEl) {
-            msgEl.style.color = '#fca5a5';
-            msgEl.textContent = 'שגיאה בפענוח החשבון — בדוק את הסיסמה';
-          }
         }
-      } else {
+      }
+
+      if (this.authMode === 'register') {
         // REGISTER NEW EMAIL ACCOUNT
         if (existing && existing.verifierHex) {
           if (msgEl) {
@@ -4042,6 +4048,50 @@
       return cues;
     },
 
+    normalizeHebrewSubtitleLine(line) {
+      let cleaned = String(line || '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\{\\[^}]+\}/g, '')
+        .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
+        .trim();
+      if (!cleaned) return '';
+      if (!/[\u0590-\u05FF]/.test(cleaned)) return cleaned;
+
+      // 1. Detect dialogue dash at start ('- שלום') or Subabi-flipped at end ('?מה-', 'שלום -')
+      let hasLeadingDash = false;
+      if (/^-\s*/.test(cleaned)) {
+        hasLeadingDash = true;
+        cleaned = cleaned.replace(/^-\s*/, '').trim();
+      } else if (/[\u0590-\u05FF0-9"'״׳]\s*-\s*$/.test(cleaned)) {
+        hasLeadingDash = true;
+        cleaned = cleaned.replace(/\s*-\s*$/, '').trim();
+      }
+
+      // 2. Repair Subabi-flipped leading punctuation ('...שהמתים' -> 'שהמתים...', '."שלום"' -> '"שלום".')
+      const mLead = cleaned.match(/^([.!?…,;:]+)\s*(.+)$/);
+      if (mLead) {
+        const leadPunct = mLead[1];
+        const rest = mLead[2].trim();
+        if (!/[.!?…,;:]$/.test(rest)) {
+          cleaned = `${rest}${leadPunct}`;
+        }
+      }
+
+      // 3. Repair Subabi-flipped closing quote placed at the start ('"לך תצפה ב"צ\'ארלי' -> 'לך תצפה ב"צ\'ארלי"')
+      const innerQuotes = (cleaned.slice(1).match(/"/g) || []).length;
+      if (cleaned.startsWith('"') && !cleaned.endsWith('"') && innerQuotes % 2 === 1) {
+        cleaned = `${cleaned.slice(1).trim()}"`;
+      }
+
+      // 4. Re-attach dialogue dash at the logical start (right side in RTL)
+      if (hasLeadingDash) {
+        cleaned = `- ${cleaned}`;
+      }
+
+      // 5. Anchor both ends with Right-to-Left Marks (\u200F) so trailing punctuation always renders on the LEFT
+      return `\u200F${cleaned}\u200F`;
+    },
+
     parseWebVttText(vttText) {
       const cues = [];
       const blocks = String(vttText || '').replace(/\r\n/g, '\n').split(/\n\n+/);
@@ -4070,12 +4120,11 @@
             Number(match[6]) * 60000 +
             Number(match[7]) * 1000 +
             Number(match[8]);
-          const rawText = lines
+          const normalizedLines = lines
             .slice(timeIdx + 1)
-            .join('\n')
-            .replace(/<[^>]+>/g, '')
-            .replace(/\{\\[^}]+\}/g, '')
-            .trim();
+            .map((ln) => this.normalizeHebrewSubtitleLine(ln))
+            .filter(Boolean);
+          const rawText = normalizedLines.join('\n').trim();
           if (rawText) cues.push({ startMs, endMs, text: rawText });
         }
       }
