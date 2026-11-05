@@ -302,6 +302,7 @@ def get_full_catalog_payload() -> Dict[str, Any]:
     categories_list = catalog_data.get("categories") or catalog_data.get("genres") or [
         {"id": "all", "name_he": "הכל"},
         {"id": "action", "name_he": "פעולה והרפתקאות"},
+        {"id": "horror", "name_he": "אימה"},
         {"id": "scifi", "name_he": "מדע בדיוני ופנטזיה"},
         {"id": "drama", "name_he": "דרמה וקולנוע"},
         {"id": "thriller", "name_he": "מתח ומסתורין"},
@@ -643,26 +644,42 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                 "ok": True,
                 "service": "STREAM IT",
                 "port": server_port,
-                "version": "3.0.0",
+                "version": "5.1.0",
                 "autosub_ai": "active",
-                "torrent_engine": "active",
-                "ad_free_native_player": True,
+                "encryption": "AES-256-GCM + PBKDF2-SHA256",
+                "default_quality": "1080p Full HD",
             })
             return
 
-        # 1b. Home Wi-Fi / LAN Network Info for Android Phone & TV Streamer
-        if path == "/api/network-info":
-            server_port = getattr(self.server, "server_port", 8092)
-            lan_ip = get_lan_ip()
-            self._send_json({
-                "ok": True,
-                "lan_ip": lan_ip,
-                "port": server_port,
-                "torrent_port": 8094,
-                "lan_url": f"http://{lan_ip}:{server_port}",
-                "localhost_url": f"http://localhost:{server_port}",
-                "privacy_mode": "100% Private Home Network (Zero Cloud / Zero Firebase Exposure)",
-            })
+        # 1b. Clean Ad-Free 1080p Embed Resolver (Zero Popups & Zero Sandbox Errors)
+        if path == "/api/clean-embed":
+            import re as _re
+            imdb_id = q_val("imdb_id", q_val("id", "tt15239678")).split(":")[0].strip()
+            item_type = q_val("type", "movie")
+            season = q_val("season", "1") or "1"
+            episode = q_val("episode", "1") or "1"
+            target_url = (
+                f"https://www.2embed.cc/embedtv/{urllib.parse.quote(imdb_id)}&s={season}&e={episode}"
+                if item_type == "series"
+                else f"https://www.2embed.cc/embed/{urllib.parse.quote(imdb_id)}"
+            )
+            resolved_player = (
+                f"https://vidsrc.pm/embed/tv?imdb={urllib.parse.quote(imdb_id)}&season={season}&episode={episode}"
+                if item_type == "series"
+                else f"https://vidsrc.pm/embed/movie?imdb={urllib.parse.quote(imdb_id)}"
+            )
+            try:
+                req = urllib.request.Request(target_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=3.5) as resp:
+                    html_raw = resp.read().decode("utf-8", errors="replace")
+                m_swish = _re.search(r"swish\?id=([a-zA-Z0-9_-]+)", html_raw)
+                if m_swish:
+                    resolved_player = f"https://2vcdn.skin/e/{m_swish.group(1)}"
+            except Exception:
+                pass
+            self.send_response(302)
+            self.send_header("Location", resolved_player)
+            self.end_headers()
             return
 
         # 2. Full Hebrew Catalog
@@ -871,8 +888,8 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
         # 10. Stremio Protocol Manifest Endpoint
         if path == "/manifest.json":
             self._send_json({
-                "id": "il.bensahal.streamit.hebrew",
-                "version": "1.0.0",
+                "id": "com.streamit.cinema.hebrew",
+                "version": "5.0.0",
                 "name": "STREAM IT — קולנוע וטלוויזיה בעברית + AutoSub AI",
                 "description": "תוסף Stremio רשמי בעברית מלאה עם הזרמת 4K וסנכרון כתוביות אוטומטי ללא דיליי",
                 "resources": ["catalog", "meta", "stream", "subtitles"],
@@ -970,75 +987,14 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
         self._send_json({"ok": False, "error": f"Unknown endpoint: {path}"}, status_code=404)
 
 
-def get_lan_ip() -> str:
-    """Detects the primary local Wi-Fi / LAN IPv4 address of this PC."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.settimeout(0.5)
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            if ip and not ip.startswith("127."):
-                return ip
-    except Exception:
-        pass
-    try:
-        hostname = socket.gethostname()
-        for addr in socket.gethostbyname_ex(hostname)[2]:
-            if not addr.startswith("127."):
-                return addr
-    except Exception:
-        pass
-    return "127.0.0.1"
-
-
-def _ensure_torrent_daemon_running() -> None:
-    """Starts the local Node.js BitTorrent-to-HTTP engine on port 8094 if not already active."""
-    import subprocess
-    daemon_script = os.path.join(BASE_DIR, "torrent_engine_daemon.js")
-    if not os.path.exists(daemon_script):
-        return
-    try:
-        with urllib.request.urlopen("http://127.0.0.1:8094/health", timeout=0.8) as r:
-            if r.status == 200:
-                data = json.loads(r.read().decode("utf-8", errors="replace"))
-                if "ffmpegAvailable" in data:
-                    return
-    except Exception:
-        pass
-    try:
-        kwargs: Dict[str, Any] = {
-            "cwd": BASE_DIR,
-            "stdout": subprocess.DEVNULL,
-            "stderr": subprocess.DEVNULL,
-        }
-        if sys.platform == "win32":
-            kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
-        subprocess.Popen(["node", daemon_script], **kwargs)
-    except Exception:
-        pass
-
-
-def _prewarm_featured_hero_async() -> None:
-    """Pre-resolves and pre-warms the #1 Hero movie torrent in the background on startup."""
-    def _worker() -> None:
-        time.sleep(1.2)
-        try:
-            resolve_streams(imdb_id="tt15239678", item_type="movie", title_en="Dune: Part Two")
-        except Exception:
-            pass
-    threading.Thread(target=_worker, daemon=True).start()
-
-
 def run_server(port: int = 8092) -> None:
-    """Starts the lightweight multi-threaded STREAM IT server on the specified port (Zero background torrent downloading)."""
-    load_user_state()  # Ensure data/user_state.json is initialized on boot
-    lan_ip = get_lan_ip()
-    server_address = ("0.0.0.0", port)
+    """Starts the lightweight multi-threaded STREAM IT server on localhost only (127.0.0.1)."""
+    load_user_state()
+    server_address = ("127.0.0.1", port)
     httpd = ThreadingHTTPServer(server_address, StreamItRequestHandler)
     print(f"============================================================")
-    print(f" STREAM IT v4.0 — Lightweight Cloud, Telegram & AutoSub AI")
-    print(f" PC Browser URL:          http://localhost:{port}")
-    print(f" Home Wi-Fi / Streamer:   http://{lan_ip}:{port}")
+    print(f" STREAM IT v5.0 — Encrypted Multi-Account Cinema Platform")
+    print(f" URL: http://localhost:{port}")
     print(f"============================================================")
     try:
         httpd.serve_forever()

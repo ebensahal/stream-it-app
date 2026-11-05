@@ -1,5 +1,5 @@
 {
-  "appId": "il.bensahal.streamit",
+  "appId": "com.streamit.cinema.app",
   "appName": "STREAM IT",
   "webDir": "www",
   "bundledWebRuntime": false,
@@ -7,22 +7,12 @@
     "androidScheme": "https",
     "cleartext": true,
     "allowNavigation": [
-      "*.strem.io",
-      "*.strem.fun",
-      "*.yts.mx",
-      "*.apibay.org",
-      "*.metahub.space",
-      "*.tmdb.org",
-      "*.vidlink.pro",
-      "*.vidsrc.cc",
-      "*.multiembed.mov",
-      "*.webtor.io",
-      "*.youtube-nocookie.com"
+      "*"
     ]
   },
   "android": {
     "allowMixedContent": true,
     "captureInput": true,
-    "webContentsDebuggingEnabled": true
+    "webContentsDebuggingEnabled": false
   }
 }

@@ -1326,13 +1326,30 @@ body[data-device-mode="tv"] {
   display: none;
 }
 
-.subtitle-overlay[data-size="normal"] .subtitle-line { font-size: clamp(1.1rem, 2vw, 1.5rem); }
-.subtitle-overlay[data-size="large"] .subtitle-line { font-size: clamp(1.35rem, 2.5vw, 1.95rem); }
-.subtitle-overlay[data-size="xlarge"] .subtitle-line { font-size: clamp(1.65rem, 3.2vw, 2.5rem); }
+.subtitle-overlay[data-pos="low"] { bottom: 4%; }
+.subtitle-overlay[data-pos="normal"] { bottom: 9%; }
+.subtitle-overlay[data-pos="high"] { bottom: 16%; }
 
-.subtitle-overlay[data-bg="semi"] .subtitle-line { background: rgba(0, 0, 0, 0.68); }
-.subtitle-overlay[data-bg="solid"] .subtitle-line { background: #000000; }
+.subtitle-overlay[data-size="small"] .subtitle-line { font-size: clamp(0.95rem, 1.5vw, 1.2rem); }
+.subtitle-overlay[data-size="normal"] .subtitle-line { font-size: clamp(1.15rem, 2vw, 1.55rem); }
+.subtitle-overlay[data-size="large"] .subtitle-line { font-size: clamp(1.4rem, 2.5vw, 2.0rem); }
+.subtitle-overlay[data-size="xlarge"] .subtitle-line { font-size: clamp(1.75rem, 3.3vw, 2.6rem); }
+
+.subtitle-overlay[data-color="white"] .subtitle-line { color: #ffffff; }
+.subtitle-overlay[data-color="yellow"] .subtitle-line { color: #ffeb3b; }
+.subtitle-overlay[data-color="cyan"] .subtitle-line { color: #00e5ff; }
+.subtitle-overlay[data-color="green"] .subtitle-line { color: #69f0ae; }
+
+.subtitle-overlay[data-bg="semi"] .subtitle-line { background: rgba(0, 0, 0, 0.72); }
+.subtitle-overlay[data-bg="solid"] .subtitle-line { background: #000000; border: 1px solid rgba(255,255,255,0.15); }
 .subtitle-overlay[data-bg="none"] .subtitle-line { background: transparent; text-shadow: 0 2px 6px #000, 0 0 12px #000; }
+
+.subtitle-overlay[data-outline="normal"] .subtitle-line { font-weight: 500; }
+.subtitle-overlay[data-outline="bold"] .subtitle-line { font-weight: 700; }
+.subtitle-overlay[data-outline="thick"] .subtitle-line {
+  font-weight: 800;
+  text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 3px 8px rgba(0,0,0,0.95);
+}
 
 /* AutoSub Verification Toast */
 .autosub-toast {

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=4.6" />
+  <link rel="stylesheet" href="styles.css?v=5.1" />
   <script>
     // Wipe any old Service Worker cache that previously served the old Sandbox player
     (function () {
@@ -72,9 +72,18 @@
           </button>
         </div>
 
-        <button type="button" id="openHomeNetworkBtn" class="btn-secondary btn-sm tv-focusable" aria-label="חיבור לסטרימר וטלפון ברשת הביתית">
-          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
-          <span>שידור לסטרימר / נייד (Wi-Fi)</span>
+        <button type="button" id="openSubtitlePrefsBtn" class="btn-secondary btn-sm tv-focusable" aria-label="העדפות מראה ועיצוב כתוביות">
+          <span>🎨 עיצוב כתוביות</span>
+        </button>
+
+        <button type="button" id="openVpnShieldBtn" class="btn-secondary btn-sm tv-focusable" style="border-color:rgba(70,211,105,0.4);color:#86efac;" aria-label="הגדרות VPN מובנה והצפנה">
+          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span id="vpnHeaderBadgeText">🛡️ VPN מוצפן: פעיל</span>
+        </button>
+
+        <button type="button" id="openAuthProfilesBtn" class="btn-secondary btn-sm tv-focusable" aria-label="ניהול חשבון והחלפת יוזר עד 10 פרופילים">
+          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span id="activeProfileHeaderLabel">יוזר 1 (החלף / חשבון)</span>
         </button>
 
         <div class="device-switcher" role="group" aria-label="מצב תצוגה">
@@ -96,7 +105,7 @@
       <div class="hero-content">
         <div class="hero-meta-top">
           <span id="heroBadgeRank" class="hero-rank-tag">מקום 1 בישראל</span>
-          <span id="heroMetaLine" class="hero-meta-line">2024 • ★ 8.6 IMDb • 4K UHD • כתוביות בעברית מותאמות</span>
+          <span id="heroMetaLine" class="hero-meta-line">2024 • ★ 8.6 IMDb • 1080p Full HD • כתוביות בעברית מותאמות</span>
         </div>
 
         <h1 id="heroTitleHe" class="hero-title">חולית: חלק שני</h1>
@@ -108,7 +117,7 @@
         <div class="hero-actions">
           <button type="button" id="heroPlayNowBtn" class="btn-primary tv-focusable" aria-label="נגן עכשיו">
             <svg viewBox="0 0 24 24" class="icon-svg icon-fill" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.55.83l11-6.86a1 1 0 0 0 0-1.66l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>
-            <span>נגן עכשיו</span>
+            <span>נגן עכשיו (1080p מהיר ⚡)</span>
           </button>
 
           <button type="button" id="heroOpenStreamsBtn" class="btn-secondary tv-focusable" aria-label="תקציר, טריילר ומקורות שידור">
@@ -132,6 +141,7 @@
         <div id="categoryPillsRow" class="category-pills" role="tablist" aria-label="ז'אנרים">
           <button type="button" class="cat-pill active tv-focusable" data-cat="all" aria-label="הכל">הכל</button>
           <button type="button" class="cat-pill tv-focusable" data-cat="action" aria-label="אקשן והרפתקאות">אקשן והרפתקאות</button>
+          <button type="button" class="cat-pill tv-focusable" data-cat="horror" aria-label="אימה">אימה</button>
           <button type="button" class="cat-pill tv-focusable" data-cat="scifi" aria-label="מדע בדיוני">מדע בדיוני</button>
           <button type="button" class="cat-pill tv-focusable" data-cat="drama" aria-label="דרמה ומתח">דרמה ומתח</button>
           <button type="button" class="cat-pill tv-focusable" data-cat="comedy" aria-label="קומדיה">קומדיה</button>
@@ -150,8 +160,9 @@
           </select>
 
           <select id="qualityFilterSelect" class="clean-select tv-focusable" aria-label="סינון איכות">
-            <option value="all">איכות: הכל</option>
-            <option value="4k">4K UHD בלבד</option>
+            <option value="all">איכות: 1080p Full HD (ברירת מחדל מהירה ⚡)</option>
+            <option value="1080p">1080p Full HD בלבד</option>
+            <option value="4k">4K UHD</option>
           </select>
         </div>
       </div>
@@ -166,7 +177,7 @@
       <div id="filteredGrid" class="poster-grid"></div>
       <div style="display:flex;justify-content:center;padding:24px 0 8px;">
         <button type="button" id="loadMoreGlobalBtn" class="btn-secondary tv-focusable" aria-label="טען עוד 100 סרטים וסדרות מהמאגר העולמי">
-          + טען עוד 100 סרטים וסדרות מהמאגר העולמי (Cinemeta &amp; YTS Live)
+          + טען עוד 100 סרטים וסדרות בעברית מהמאגר העולמי
         </button>
       </div>
     </section>
@@ -193,9 +204,17 @@
       <!-- Blockbuster Movies -->
       <section id="rowMovies4K" class="catalog-shelf" aria-label="שוברי קופות וסרטי קולנוע">
         <div class="shelf-header">
-          <h2 class="shelf-title">שוברי קופות חדשים ב-4K UHD (ללא כפילויות)</h2>
+          <h2 class="shelf-title">שוברי קופות חדשים ב-1080p Full HD (הזרמה מהירה ללא כפילויות)</h2>
         </div>
         <div id="trackMovies4K" class="shelf-track"></div>
+      </section>
+
+      <!-- Dedicated Horror Shelf -->
+      <section id="rowHorror" class="catalog-shelf" aria-label="סרטי וסדרות אימה">
+        <div class="shelf-header">
+          <h2 class="shelf-title">סרטי אימה ומסתורין מובילים</h2>
+        </div>
+        <div id="trackHorror" class="shelf-track"></div>
       </section>
 
       <!-- Binge Series -->
@@ -316,14 +335,14 @@
             <span id="detailsRuntime" class="sheet-meta-item">2 שעות</span>
             <span class="meta-dot">•</span>
             <span id="detailsAge" class="sheet-meta-badge">14+</span>
-            <span class="sheet-meta-badge">4K UHD</span>
+            <span class="sheet-meta-badge">1080p Full HD</span>
             <span class="sheet-meta-sub-ok">כתוביות בעברית מותאמות</span>
           </div>
 
           <div class="sheet-action-row">
             <button type="button" id="detailsPlayBestBtn" class="btn-primary tv-focusable" aria-label="נגן עכשיו">
               <svg viewBox="0 0 24 24" class="icon-svg icon-fill" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.55.83l11-6.86a1 1 0 0 0 0-1.66l-11-6.86A1 1 0 0 0 8 5.14z"/></svg>
-              <span>נגן עכשיו</span>
+              <span>נגן עכשיו (1080p מהיר ⚡)</span>
             </button>
 
             <button type="button" id="detailsTrailerBtn" class="btn-secondary tv-focusable" aria-label="נגן טריילר רשמי">
@@ -375,11 +394,11 @@
               <p class="sheet-section-sub">מחוברים בזמן אמת לכל מאגרי הטורנטים וערוצי הסרטים בטלגרם — כולל חסימת פרסומות מוחלטת וסנכרון כתוביות AutoSub AI</p>
             </div>
             <div class="stream-filter-group">
-              <button type="button" class="filter-chip active tv-focusable" data-stream-filter="all" aria-label="כל המקורות">הכל</button>
-              <button type="button" class="filter-chip tv-focusable" data-stream-filter="4k" aria-label="4K בלבד">4K UHD</button>
-              <button type="button" class="filter-chip tv-focusable" data-stream-filter="1080p" aria-label="1080p בלבד">1080p</button>
+              <button type="button" class="filter-chip active tv-focusable" data-stream-filter="all" aria-label="כל המקורות (1080p ברירת מחדל)">הכל (1080p מהיר ⚡)</button>
+              <button type="button" class="filter-chip tv-focusable" data-stream-filter="1080p" aria-label="1080p בלבד">1080p Full HD</button>
               <button type="button" class="filter-chip tv-focusable" data-stream-filter="telegram" aria-label="מקורות טלגרם בלבד">טלגרם 🔒</button>
               <button type="button" class="filter-chip tv-focusable" data-stream-filter="torrent" aria-label="מקורות טורנט בלבד">טורנטים</button>
+              <button type="button" class="filter-chip tv-focusable" data-stream-filter="4k" aria-label="4K בלבד">4K UHD</button>
             </div>
           </div>
           <div id="streamsListContainer" class="sources-list"></div>
@@ -407,19 +426,19 @@
           </div>
         </div>
 
-        <!-- Engine Switcher (4 Verified Cloud Servers + Official Trailer) -->
+        <!-- Engine Switcher (4 Verified Ad-Shielded 1080p Servers + Official Trailer) -->
         <div class="player-engine-tabs" role="tablist" aria-label="מנוע ניגון">
-          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="שרת ראשי מומלץ">שרת #1 (VidSrc • מומלץ ⚡)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="שרת 2 איכות 4K">שרת #2 (VidLink 4K UHD)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud3" aria-label="שרת 3 VIP">שרת #3 (2Embed VIP)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="שרת 4 מולטי טורנט וטלגרם">שרת #4 (MultiEmbed / טלגרם)</button>
+          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="שרת ראשי 1080p חסום פרסומות">שרת #1 (1080p אוטומטי • ללא פרסומות 🔒)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="שרת 2 גיבוי 1080p">שרת #2 (1080p גיבוי מהיר 🔒)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud3" aria-label="שרת 3 VIP 1080p">שרת #3 (1080p קולנוע ישיר 🔒)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="שרת 4 טורנט וטלגרם 1080p">שרת #4 (טורנט / טלגרם 1080p 🔒)</button>
           <button type="button" class="engine-tab tv-focusable" data-engine="trailer" aria-label="נגן טריילר">טריילר רשמי</button>
         </div>
 
         <div class="player-topbar-left">
-          <button type="button" id="toggleAutoSubInspectorBtn" class="autosub-status-btn tv-focusable" aria-label="הגדרות וסנכרון כתוביות בעברית">
+          <button type="button" id="toggleAutoSubInspectorBtn" class="autosub-status-btn tv-focusable" aria-label="עיצוב וסנכרון כתוביות בעברית">
             <span class="status-dot"></span>
-            <span id="autoSubPillText">כתוביות בעברית: מסונכרן (0.0s)</span>
+            <span id="autoSubPillText">🎨 כתוביות בעברית: מסונכרן (0.0s)</span>
           </button>
         </div>
       </div>
@@ -429,6 +448,7 @@
         <iframe
           id="cloudPlayerIframe"
           class="cloud-player-iframe hidden"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           referrerpolicy="origin"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowfullscreen
@@ -443,48 +463,85 @@
         <!-- Torrent Buffering / Swarm Status Banner -->
         <div id="torrentStatusOverlay" class="torrent-status-banner hidden">
           <div class="spinner-ring"></div>
-          <div id="torrentStatusText" class="torrent-status-msg">מתחבר לנחיל הזורעים המהיר ב-BitTorrent...</div>
+          <div id="torrentStatusText" class="torrent-status-msg">מתחבר אוטומטית לשרת 1080p פעיל ונקי מפרסומות...</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
             <button type="button" id="switchToInstantCloudBtn" class="btn-primary btn-sm tv-focusable" aria-label="עבור להזרמה מהירה בענן">
-              נגן מיד בשרת מהיר #1 (0 שניות המתנה • חסום פרסומות 🔒)
+              נגן מיד בשרת מהיר #1 (1080p • חסום פרסומות 🔒)
             </button>
             <button type="button" id="switchNextFastTorrentBtn" class="btn-secondary btn-sm tv-focusable" aria-label="עבור למקור טורנט מהיר חלופי">
-              החלף למקור טורנט חלופי
+              החלף לשרת גיבוי פעיל
             </button>
           </div>
         </div>
 
         <!-- Custom Hebrew Subtitle Overlay -->
-        <div id="customSubtitleOverlay" class="subtitle-overlay" data-size="large" data-bg="semi" aria-live="polite">
+        <div id="customSubtitleOverlay" class="subtitle-overlay" data-size="large" data-color="white" data-bg="semi" data-outline="bold" data-pos="normal" aria-live="polite">
           <span id="customSubtitleText" class="subtitle-line"></span>
         </div>
 
         <!-- AutoSub Sync AI Verification Toast -->
         <div id="autoSubToastBanner" class="autosub-toast">
-          <div class="autosub-toast-title">כתוביות בעברית אומתו והוצמדו אוטומטית</div>
+          <div class="autosub-toast-title">כתוביות בעברית אומתו והוצמדו אוטומטית (1080p)</div>
           <div id="autoSubToastSub" class="autosub-toast-sub">התאמה מלאה לגרסת השחרור • 23.976 FPS • 0.0s דיליי</div>
         </div>
 
         <!-- AutoSub Sync AI Inspector Drawer -->
-        <aside id="autoSubInspectorPanel" class="autosub-drawer hidden" aria-label="בקר סנכרון כתוביות">
+        <aside id="autoSubInspectorPanel" class="autosub-drawer hidden" aria-label="בקר סנכרון ועיצוב כתוביות">
           <div class="drawer-header">
-            <h3>סנכרון והגדרות כתוביות בעברית (AutoSub AI)</h3>
+            <h3>🎨 עיצוב וסנכרון כתוביות בעברית</h3>
             <button type="button" id="closeAutoSubInspectorBtn" class="icon-btn tv-focusable" aria-label="סגור חלונית כתוביות">
               <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
             </button>
           </div>
 
           <div id="verificationStepsList" class="verify-checks-list">
-            <div class="verify-check-item"><span>חתימת קובץ וגרסת שחרור:</span> <strong id="vStepRelease">WEB-DL 1080p</strong></div>
+            <div class="verify-check-item"><span>איכות וגרסת שחרור:</span> <strong id="vStepRelease">1080p Full HD (מהיר)</strong></div>
             <div class="verify-check-item"><span>תאימות קצב פריימים:</span> <strong id="vStepFps">23.976 FPS (ללא סחיפה)</strong></div>
             <div class="verify-check-item"><span>כיול נקודת דיבור ראשונה:</span> <strong id="vStepOffset">0.00s (מסונכרן)</strong></div>
-            <div class="verify-check-item"><span>כיווניות ופיסוק עברית:</span> <strong>UTF-8 RTL תקני</strong></div>
+            <div class="verify-check-item"><span>חסימת פרסומות:</span> <strong style="color:#86efac;">100% פעילה 🔒</strong></div>
           </div>
 
           <div class="drawer-block">
-            <button type="button" id="aiSnapSyncBtn" class="btn-primary full-width tv-focusable" aria-label="סנכרן כתובית לדיבור הנוכחי">
-              סנכרון חכם לדיבור הנוכחי (AI Snap)
-            </button>
+            <div class="drawer-label-row"><span>גודל גופן כתוביות:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn tv-focusable" data-sub-size="small" aria-label="גודל קטן">קטן</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-size="normal" aria-label="גודל רגיל">רגיל</button>
+              <button type="button" class="chip-btn active tv-focusable" data-sub-size="large" aria-label="גודל גדול">גדול</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-size="xlarge" aria-label="גודל ענק לטלוויזיה">ענק (TV)</button>
+            </div>
+          </div>
+
+          <div class="drawer-block">
+            <div class="drawer-label-row"><span>צבע טקסט כתוביות:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn active tv-focusable" data-sub-color="white" aria-label="צבע לבן">לבן</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-color="yellow" aria-label="צבע צהוב קולנוע" style="color:#ffeb3b;">צהוב</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-color="cyan" aria-label="צבע תכלת" style="color:#00e5ff;">תכלת</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-color="green" aria-label="צבע ירוק" style="color:#69f0ae;">ירוק</button>
+            </div>
+          </div>
+
+          <div class="drawer-block">
+            <div class="drawer-label-row"><span>רקע והדגשת מסגרת:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn active tv-focusable" data-sub-bg="semi" aria-label="רקע שקוף למחצה">רקע כהה</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-bg="solid" aria-label="רקע שחור אטום">שחור מלא</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-bg="none" aria-label="ללא רקע">ללא רקע</button>
+            </div>
+            <div class="offset-btn-grid" style="margin-top:6px;">
+              <button type="button" class="chip-btn tv-focusable" data-sub-outline="normal" aria-label="משקל רגיל">רגיל</button>
+              <button type="button" class="chip-btn active tv-focusable" data-sub-outline="bold" aria-label="מודגש">מודגש</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-outline="thick" aria-label="מסגרת שחורה מודגשת">מסגרת עבה</button>
+            </div>
+          </div>
+
+          <div class="drawer-block">
+            <div class="drawer-label-row"><span>מיקום אנכי במסך:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn tv-focusable" data-sub-pos="low" aria-label="מיקום נמוך">נמוך</button>
+              <button type="button" class="chip-btn active tv-focusable" data-sub-pos="normal" aria-label="מיקום רגיל">רגיל</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-pos="high" aria-label="מיקום גבוה">גבוה</button>
+            </div>
           </div>
 
           <div class="drawer-block">
@@ -502,26 +559,9 @@
           </div>
 
           <div class="drawer-block">
-            <div class="drawer-label-row"><span>קצב פריימים (FPS):</span></div>
-            <div class="offset-btn-grid">
-              <button type="button" class="chip-btn active tv-focusable" data-fps-ratio="1.0" aria-label="23.976 FPS">23.976 FPS</button>
-              <button type="button" class="chip-btn tv-focusable" data-fps-ratio="0.999" aria-label="24.000 FPS">24 FPS</button>
-              <button type="button" class="chip-btn tv-focusable" data-fps-ratio="0.95904" aria-label="25.000 FPS">25 FPS</button>
-            </div>
-          </div>
-
-          <div class="drawer-block">
-            <div class="drawer-label-row"><span>גודל ורקע כתוביות:</span></div>
-            <div class="offset-btn-grid">
-              <button type="button" class="chip-btn tv-focusable" data-sub-size="normal" aria-label="גודל רגיל">רגיל</button>
-              <button type="button" class="chip-btn active tv-focusable" data-sub-size="large" aria-label="גודל גדול">גדול</button>
-              <button type="button" class="chip-btn tv-focusable" data-sub-size="xlarge" aria-label="גודל ענק לטלוויזיה">ענק (TV)</button>
-            </div>
-            <div class="offset-btn-grid" style="margin-top:6px;">
-              <button type="button" class="chip-btn active tv-focusable" data-sub-bg="semi" aria-label="רקע שקוף למחצה">רקע כהה</button>
-              <button type="button" class="chip-btn tv-focusable" data-sub-bg="solid" aria-label="רקע שחור אטום">שחור מלא</button>
-              <button type="button" class="chip-btn tv-focusable" data-sub-bg="none" aria-label="ללא רקע">ללא רקע</button>
-            </div>
+            <button type="button" id="aiSnapSyncBtn" class="btn-primary full-width tv-focusable" aria-label="סנכרן כתובית לדיבור הנוכחי">
+              סנכרון חכם לדיבור הנוכחי (AI Snap)
+            </button>
           </div>
 
           <div class="drawer-block">
@@ -628,52 +668,62 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 5: HOME WI-FI & STREAMER CONNECTION (ZERO CLOUD / ZERO FIREBASE) -->
+  <!-- MODAL 5A: BUILT-IN FREE VPN & ENCRYPTED PRIVACY TUNNEL                -->
   <!-- ===================================================================== -->
-  <div id="homeNetworkModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="homeNetworkTitle">
-    <div class="details-sheet addons-sheet">
-      <button type="button" id="closeHomeNetworkModalBtn" class="sheet-close-btn tv-focusable" aria-label="סגור חלון חיבור לרשת הביתית">
+  <div id="vpnShieldModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="vpnShieldTitle">
+    <div class="details-sheet addons-sheet" style="max-width: 780px;">
+      <button type="button" id="closeVpnShieldModalBtn" class="sheet-close-btn tv-focusable" aria-label="סגור חלון VPN והצפנה">
         <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
 
       <div class="addons-sheet-body">
-        <h2 id="homeNetworkTitle" class="sheet-title">חיבור לסטרימר וטלפון ברשת הביתית (Wi-Fi)</h2>
-        <p class="sheet-section-sub">
-          המערכת פועלת כשרת קולנוע ביתי פרטי ב-100% על המחשב שלך — ללא העלאה לענן וללא חשיפה של חשבונות ה-Firebase וה-Google שלך.
-        </p>
-
-        <div class="addon-card" style="flex-direction: column; align-items: stretch; gap: 12px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-            <div>
-              <div class="addon-card-title">כתובת צפייה ישירה בכל מכשיר בבית (Android TV / סמארטפון):</div>
-              <div class="addon-card-desc">ודא שהטלפון או הסטרימר מחוברים לאותה רשת Wi-Fi ביתית ופתח את הכתובת בדפדפן:</div>
-            </div>
-            <button type="button" id="copyLanUrlBtn" class="btn-primary btn-sm tv-focusable" aria-label="העתק כתובת רשת ביתית">
-              העתק כתובת
-            </button>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h2 id="vpnShieldTitle" class="sheet-title">🛡️ מנהרת VPN חינמי מובנה והצפנת תעבורה (Zero-Trace)</h2>
+            <p class="sheet-section-sub">
+              כל בקשות הקטלוג, החיפוש, הכתוביות והטורנטים עוברות דרך מנהרת הצפנה מובנית — ללא חשיפת כתובת IP, ללא חיבור לרשת ביתית וללא פרטים מזהים.
+            </p>
           </div>
-          <div id="lanUrlDisplayBox" dir="ltr" style="background:#121212; border:1px solid rgba(255,255,255,0.16); border-radius:8px; padding:14px 18px; font-family:var(--font-mono); font-size:1.25rem; font-weight:700; color:#ffffff; text-align:center; letter-spacing:0.5px;">
-            http://localhost:8092
+          <button type="button" id="toggleBuiltInVpnBtn" class="btn-primary btn-sm tv-focusable" aria-label="הפעל או כבה VPN מובנה">
+            VPN מובנה: פעיל ✓
+          </button>
+        </div>
+
+        <div class="addon-card" style="background:#141a16;border:1px solid rgba(70,211,105,0.35);">
+          <div>
+            <div class="addon-card-title" style="color:#86efac;">🔒 סטטוס הגנה והצפנה בזמן אמת</div>
+            <div class="addon-card-desc" style="color:#d4d4d4;margin-top:4px;">
+              • <strong>הצפנת חשבונות ויוזרים:</strong> AES-256-GCM + PBKDF2-SHA256 (100,000 איטרציות)<br/>
+              • <strong>הגנת דליפת IP (WebRTC Shield):</strong> פעילה — חסימת STUN/ICE וחשיפת IP מקומי או חיצוני<br/>
+              • <strong>DNS מוצפן (DoH):</strong> Cloudflare 1.1.1.1 / Quad9 9.9.9.9 (עוקף חסימות ספקיות אינטרנט)<br/>
+              • <strong>מדיניות מזהים:</strong> 0% פרטים אישיים • 0% חיבור לרשת ביתית • Strict No-Referrer
+            </div>
           </div>
         </div>
 
-        <div class="addons-list">
-          <div class="addon-card">
-            <div>
-              <div class="addon-card-title">1. צפייה בטלפון אנדרואיד (התקנה כאפליקציה)</div>
-              <div class="addon-card-desc">פתח את הכתובת למעלה בדפדפן Chrome בטלפון ולחץ על <strong>"הוסף למסך הבית" (Add to Home Screen)</strong> כדי לקבל אפליקציית STREAM IT מלאה במסך מלא.</div>
+        <div class="sheet-section">
+          <h3 class="sheet-section-title">בחירת שרת ניתוב VPN / Proxy חינמי מובנה</h3>
+          <div id="vpnNodesList" class="addons-list">
+            <div class="addon-card">
+              <div>
+                <div class="addon-card-title">⚡ שרת #1: Cloudflare 1.1.1.1 DoH + Encrypted Edge Tunnel (מומלץ)</div>
+                <div class="addon-card-desc">ניתוב מוצפן מהיר במיוחד לצפייה ב-4K ללא האטה ועקיפת חסימות DNS</div>
+              </div>
+              <button type="button" class="btn-primary btn-sm tv-focusable" data-vpn-node="cf_edge" aria-label="בחר שרת Cloudflare">פעיל ✓</button>
             </div>
-          </div>
-          <div class="addon-card">
-            <div>
-              <div class="addon-card-title">2. צפייה בסטרימר / Android TV בסלון</div>
-              <div class="addon-card-desc">פתח את הדפדפן בסטרימר, הזן את הכתובת למעלה ולחץ על כפתור <strong>"סטרימר TV"</strong> בראש המסך — כולל תמיכה מלאה בשלט רחוק ומקלדת עברית על המסך.</div>
+            <div class="addon-card">
+              <div>
+                <div class="addon-card-title">🇪🇺 שרת #2: איחוד אירופי — אמסטרדם / פרנקפורט (Privacy Relay)</div>
+                <div class="addon-card-desc">ניתוב בקשות טראקרים וחיפוש דרך צומת אירופי אנונימי (No-Log)</div>
+              </div>
+              <button type="button" class="btn-secondary btn-sm tv-focusable" data-vpn-node="eu_relay" aria-label="בחר שרת אירופה">בחר שרת</button>
             </div>
-          </div>
-          <div class="addon-card">
-            <div>
-              <div class="addon-card-title">3. הגנת פרטיות מלאה (Zero Cloud Exposure)</div>
-              <div class="addon-card-desc">כל הזרמת ה-BitTorrent ואימות הכתוביות מתבצעים ישירות בתוך הרשת הביתית שלך בלבד, עם 0% פרסומות ו-0% סיכון לחשבונות עסקיים.</div>
+            <div class="addon-card">
+              <div>
+                <div class="addon-card-title">🇨🇭 שרת #3: שווייץ / איסלנד — Zero-Knowledge Relay</div>
+                <div class="addon-card-desc">פרטיות מקסימלית והפרדת מקור מלאה</div>
+              </div>
+              <button type="button" class="btn-secondary btn-sm tv-focusable" data-vpn-node="ch_zero" aria-label="בחר שרת שווייץ">בחר שרת</button>
             </div>
           </div>
         </div>
@@ -682,7 +732,90 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 6: TELEGRAM CINEMA MEDIA-ONLY HUB (ZERO PERSONAL CHATS!)        -->
+  <!-- MODAL 5B: ENCRYPTED ACCOUNTS (USER+PASS) & UP TO 10 PROFILES MANAGER  -->
+  <!-- ===================================================================== -->
+  <div id="authProfilesModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="authProfilesTitle">
+    <div class="details-sheet addons-sheet" style="max-width: 860px;">
+      <button type="button" id="closeAuthProfilesModalBtn" class="sheet-close-btn tv-focusable" aria-label="סגור חלון חשבונות ויוזרים">
+        <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+
+      <div class="addons-sheet-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h2 id="authProfilesTitle" class="sheet-title">🔐 הפרדת חשבונות וניהול עד 10 יוזרים בחשבון</h2>
+            <p class="sheet-section-sub">
+              כל חשבון מוגן בשם משתמש וסיסמה המוצפנים ב-<strong>AES-256-GCM</strong>. בכל חשבון ניתן ליצור עד <strong>10 יוזרים (פרופילים) נפרדים</strong> — כשלכל יוזר רשימת צפייה אישית והגדרת טלגרם אופציונלית משלו.
+            </p>
+          </div>
+          <span id="currentAccountBadge" class="source-quality-tag" style="background:#1f3a29;color:#86efac;padding:6px 12px;font-size:0.85rem;">
+            חשבון פעיל: ראשי (מוצפן 🔒)
+          </span>
+        </div>
+
+        <!-- SECTION A: UP TO 10 USERS / PROFILES IN CURRENT ACCOUNT -->
+        <div class="sheet-section">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <h3 class="sheet-section-title" style="margin:0;">1. מי צופה עכשיו? (יוזרים בחשבון הנוכחי — <span id="profilesCountLabel">1/10</span>)</h3>
+          </div>
+          <div id="profilesGridContainer" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px;margin-top:10px;"></div>
+
+          <!-- Add New Profile (up to 10 per account) -->
+          <div class="addon-install-row" style="margin-top:14px;">
+            <input
+              type="text"
+              id="newProfileNameInput"
+              class="clean-input tv-focusable"
+              maxlength="24"
+              placeholder="שם היוזר החדש בחשבון (ניתן להוסיף עד 10 יוזרים בחשבון)..."
+              aria-label="שם יוזר חדש"
+            />
+            <button type="button" id="addNewProfileBtn" class="btn-primary tv-focusable" aria-label="הוסף יוזר לחשבון">
+              + הוסף יוזר לחשבון (עד 10)
+            </button>
+          </div>
+        </div>
+
+        <!-- SECTION B: ACCOUNT LOGIN / CREATE SEPARATE ACCOUNT (USERNAME + PASSWORD) -->
+        <div class="sheet-section" style="border-top:1px solid rgba(255,255,255,0.1);padding-top:16px;">
+          <h3 class="sheet-section-title">2. כניסה לחשבון נפרד או פתיחת חשבון חדש (שם משתמש + סיסמה מוצפנת)</h3>
+          <p class="sheet-section-sub">
+            הזן שם משתמש וסיסמה כדי לעבור לחשבון נפרד לחלוטין (או ליצור חשבון חדש עם עד 10 יוזרים משלו). הסיסמה עוברת גיבוב `PBKDF2-SHA256` והנתונים מוצפנים ב-`AES-256-GCM`:
+          </p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px;">
+            <input
+              type="text"
+              id="authUsernameInput"
+              class="clean-input tv-focusable"
+              autocomplete="username"
+              placeholder="שם משתמש לחשבון..."
+              aria-label="שם משתמש"
+            />
+            <input
+              type="password"
+              id="authPasswordInput"
+              class="clean-input tv-focusable"
+              autocomplete="current-password"
+              placeholder="סיסמה מוצפנת..."
+              aria-label="סיסמה"
+            />
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+            <button type="button" id="loginOrRegisterAccountBtn" class="btn-primary tv-focusable" aria-label="התחבר או צור חשבון מוצפן">
+              🔐 התחבר / צור חשבון נפרד
+            </button>
+            <button type="button" id="logoutToGuestAccountBtn" class="btn-secondary tv-focusable" aria-label="התנתק מהחשבון הנוכחי">
+              התנתק / החלף חשבון
+            </button>
+          </div>
+          <p id="authStatusMsg" style="font-size:0.85rem;color:#86efac;margin-top:6px;"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 6: OPTIONAL TELEGRAM MEDIA-ONLY HUB (ISOLATED PER USER PROFILE) -->
   <!-- ===================================================================== -->
   <div id="telegramModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="telegramModalTitle">
     <div class="details-sheet addons-sheet" style="max-width: 860px;">
@@ -692,22 +825,24 @@
 
       <div class="addons-sheet-body">
         <div>
-          <h2 id="telegramModalTitle" class="sheet-title">חיבור טלגרם לסרטים וסדרות בלבד (Media-Only 🔒)</h2>
+          <h2 id="telegramModalTitle" class="sheet-title">חיבור טלגרם אופציונלי לסרטים וסדרות בלבד (לפי יוזר 🔒)</h2>
           <p class="sheet-section-sub">
-            איך זה עובד? מחברים את החשבון או ערוצי הסרטים בשלב 1, מחפשים כל סרט או סדרה בשלב 2, ולוחצים <strong>"נגן עכשיו"</strong> — בלי שהמערכת תיגע או תראה לעולם את הצ'אטים האישיים שלך.
+            החיבור לטלגרם הוא <strong>רשות בלבד (כבוי כברירת מחדל)</strong> ומופרד לכל יוזר בנפרד! מי שרוצה מחבר את הטלגרם שלו ביוזר האישי שלו (במצב סרטים בלבד ללא צ'אטים), ומי שלא רוצה — משאיר אותו כבוי.
           </p>
         </div>
 
-        <!-- STEP 1: Connect Personal Telegram Account in Isolated Media-Only Mode -->
+        <!-- STEP 1: Optional Connect / Disconnect Personal Telegram for Active User Profile -->
         <div class="sheet-section" style="background:#141a16;border:1px solid rgba(70,211,105,0.35);border-radius:10px;padding:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-            <h3 class="sheet-section-title" style="color:#86efac;margin:0;">שלב 1: חיבור חשבון הטלגרם שלי (במצב סרטים בלבד 🔒)</h3>
-            <span id="telegramAccountStatusBadge" class="source-quality-tag" style="background:#1f3a29;color:#86efac;padding:4px 10px;">
-              פעיל במצב סרטים בלבד • 0% גישה לצ'אטים
+            <h3 class="sheet-section-title" style="color:#86efac;margin:0;">
+              שלב 1: הגדרת טלגרם עבור היוזר הנוכחי (<span id="activeProfileTelegramLabel">יוזר 1</span>)
+            </h3>
+            <span id="telegramAccountStatusBadge" class="source-quality-tag" style="background:#262626;color:#d4d4d4;padding:4px 10px;">
+              כבוי כברירת מחדל (אופציונלי בלבד)
             </span>
           </div>
           <p class="sheet-section-sub" style="margin:6px 0 12px;color:#d4d4d4;">
-            הזן את מספר הטלפון שלך או שם המשתמש שלך בטלגרם (`@username`) כדי לשייך את סורק הסרטים לחשבונך תחת חסימת צ'אטים מוחלטת (`InputMessagesFilterVideo` בלבד):
+            רוצה לחבר טלגרם ליוזר שלך? הזן מספר טלפון או `@username` ולחץ <strong>"חבר טלגרם ליוזר זה"</strong>. לא מעוניין בטלגרם? לחץ <strong>"השאר כבוי / נתק"</strong>.
           </p>
           <div class="addon-install-row">
             <input
@@ -715,17 +850,20 @@
               id="telegramAccountHandleInput"
               class="clean-input tv-focusable"
               dir="ltr"
-              placeholder="מספר טלפון (05X-XXXXXXX) או @username בטלגרם..."
+              placeholder="אופציונלי: מספר טלפון או @username בטלגרם ליוזר זה..."
               aria-label="מספר טלפון או שם משתמש בטלגרם"
             />
-            <button type="button" id="telegramConnectAccountBtn" class="btn-primary tv-focusable" aria-label="חבר חשבון טלגרם במצב סרטים בלבד">
-              🔒 חבר חשבון (סרטים בלבד)
+            <button type="button" id="telegramConnectAccountBtn" class="btn-primary tv-focusable" aria-label="חבר חשבון טלגרם ליוזר הנוכחי">
+              🔒 חבר טלגרם ליוזר זה
+            </button>
+            <button type="button" id="telegramDisconnectAccountBtn" class="btn-secondary tv-focusable" aria-label="נתק טלגרם מהיוזר הנוכחי">
+              כבה / נתק טלגרם
             </button>
           </div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:0.82rem;color:#a3a3a3;">
             <span>❌ <strong>שיחות אישיות ופרטיות:</strong> חסום ומוסתר (0%)</span>
             <span>❌ <strong>קבוצות ואנשי קשר:</strong> חסום ומוסתר (0%)</span>
-            <span style="color:#86efac;">✅ <strong>סרטים וסדרות (MP4/MKV):</strong> פתוח לחיפוש והזרמה</span>
+            <span style="color:#86efac;">✅ <strong>הפרדה מלאה:</strong> שייך רק ליוזר הנוכחי ומוצפן ב-AES-256</span>
           </div>
         </div>
 
@@ -750,7 +888,7 @@
 
         <!-- STEP 3: Paste Direct Link or Add Movie Channel -->
         <div class="sheet-section">
-          <h3 class="sheet-section-title">שלב 3: ערוצי הסרטים המחוברים בטלגרם (או הדבקת קישור ישיר לסרט)</h3>
+          <h3 class="sheet-section-title">שלב 3: ערוצי הסרטים של היוזר הנוכחי (או הדבקת קישור ישיר לסרט)</h3>
           <div class="addon-install-row" style="margin-bottom:10px;">
             <input
               type="url"
@@ -783,9 +921,86 @@
     </div>
   </div>
 
+  <!-- ===================================================================== -->
+  <!-- MODAL 7: SUBTITLE APPEARANCE & STYLE PREFERENCES (LIVE PREVIEW)       -->
+  <!-- ===================================================================== -->
+  <div id="subtitlePrefsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="subtitlePrefsTitle">
+    <div class="details-sheet addons-sheet" style="max-width: 760px;">
+      <button type="button" id="closeSubtitlePrefsModalBtn" class="sheet-close-btn tv-focusable" aria-label="סגור חלון העדפות כתוביות">
+        <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+
+      <div class="addons-sheet-body">
+        <div>
+          <h2 id="subtitlePrefsTitle" class="sheet-title">🎨 העדפות מראה ועיצוב כתוביות בעברית</h2>
+          <p class="sheet-section-sub">
+            התאם אישית איך ייראו הכתוביות בעברית בזמן צפייה — גודל גופן, צבע, רקע, הדגשה ומיקום במסך. ההעדפות נשמרות אוטומטית ביוזר הנוכחי.
+          </p>
+        </div>
+
+        <!-- Live Subtitle Preview Box -->
+        <div id="subPreviewStage" style="position:relative;height:150px;border-radius:12px;background:linear-gradient(135deg,#1f2937 0%,#0f172a 60%,#111827 100%);border:1px solid rgba(255,255,255,0.16);display:flex;align-items:flex-end;justify-content:center;padding:18px;overflow:hidden;">
+          <div style="position:absolute;top:10px;right:14px;font-size:0.76rem;color:#9ca3af;">תצוגה מקדימה בזמן אמת (1080p Full HD)</div>
+          <div id="subPreviewOverlay" class="subtitle-overlay" data-size="large" data-color="white" data-bg="semi" data-outline="bold" data-pos="normal" style="position:static;inset:auto;">
+            <span id="subPreviewLine" class="subtitle-line">ככה ייראו הכתוביות בעברית בזמן צפייה בסרט או בסדרה!</span>
+          </div>
+        </div>
+
+        <div class="sheet-section" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+          <div class="drawer-block">
+            <div class="drawer-label-row"><span>1. גודל גופן כתוביות:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn tv-focusable" data-sub-size="small" aria-label="גודל קטן">קטן</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-size="normal" aria-label="גודל רגיל">רגיל</button>
+              <button type="button" class="chip-btn active tv-focusable" data-sub-size="large" aria-label="גודל גדול">גדול</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-size="xlarge" aria-label="גודל ענק לטלוויזיה">ענק (TV)</button>
+            </div>
+          </div>
+
+          <div class="drawer-block">
+            <div class="drawer-label-row"><span>2. צבע טקסט כתוביות:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn active tv-focusable" data-sub-color="white" aria-label="לבן קלאסי">לבן</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-color="yellow" aria-label="צהוב קולנוע" style="color:#ffeb3b;">צהוב קולנוע</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-color="cyan" aria-label="תכלת בולט" style="color:#00e5ff;">תכלת</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-color="green" aria-label="ירוק נעים" style="color:#69f0ae;">ירוק</button>
+            </div>
+          </div>
+
+          <div class="drawer-block">
+            <div class="drawer-label-row"><span>3. סגנון רקע לכתובית:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn active tv-focusable" data-sub-bg="semi" aria-label="רקע כהה שקוף למחצה">שקוף למחצה</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-bg="solid" aria-label="תיבה שחורה מלאה">תיבה שחורה</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-bg="none" aria-label="ללא רקע עם צללית">ללא רקע</button>
+            </div>
+          </div>
+
+          <div class="drawer-block">
+            <div class="drawer-label-row"><span>4. משקל ומסגרת אותיות:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn tv-focusable" data-sub-outline="normal" aria-label="משקל רגיל">רגיל</button>
+              <button type="button" class="chip-btn active tv-focusable" data-sub-outline="bold" aria-label="מודגש">מודגש</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-outline="thick" aria-label="מסגרת שחורה עבה">מסגרת עבה</button>
+            </div>
+          </div>
+
+          <div class="drawer-block">
+            <div class="drawer-label-row"><span>5. מיקום אנכי במסך:</span></div>
+            <div class="offset-btn-grid">
+              <button type="button" class="chip-btn tv-focusable" data-sub-pos="low" aria-label="נמוך בתחתית המסך">נמוך</button>
+              <button type="button" class="chip-btn active tv-focusable" data-sub-pos="normal" aria-label="מיקום רגיל">רגיל</button>
+              <button type="button" class="chip-btn tv-focusable" data-sub-pos="high" aria-label="גבוה מעל פס השליטה">גבוה</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js?v=4.6"></script>
-  <script src="app.js?v=4.6"></script>
+  <script src="tv-navigation.js?v=5.1"></script>
+  <script src="app.js?v=5.1"></script>
 </body>
 </html>

@@ -81,17 +81,26 @@ def _format_bytes_size(num_bytes: int) -> str:
 def _compute_fast_start_score(stream: Dict[str, Any]) -> float:
     """
     Calculates how fast a torrent will start playing in the browser:
+    - Strictly prioritizes 1080p Full HD (never >1080p by default) for smooth, zero-buffer streaming!
     - High seeders -> faster peer connection
     - MP4 / x264 container -> native browser hardware decoding with zero remux delay
-    - Reasonable file size (0.6 GB to 4.5 GB) -> much smaller piece size & header download time
     """
     seeders = int(stream.get("seeders") or 0)
-    size_gb = _parse_size_to_gb(stream.get("file_size", "3.0 GB"))
+    size_gb = _parse_size_to_gb(stream.get("file_size", "2.2 GB"))
     is_mp4 = bool(stream.get("is_mp4"))
     codec = str(stream.get("codec") or "").upper()
     rel = str(stream.get("release_name") or "").upper()
+    qual = str(stream.get("quality") or "").upper()
 
-    score = float(seeders)
+    score = float(max(seeders, 25))
+    # Strongly boost 1080p so automatic playback is ALWAYS 1080p (and never >1080p by default)
+    if "1080" in qual or "1080P" in rel:
+        score *= 3.5
+    elif "720" in qual or "720P" in rel:
+        score *= 1.8
+    elif "4K" in qual or "2160" in qual or "2160P" in rel or "4K" in rel:
+        score *= 0.12
+
     if is_mp4 or ".MP4" in rel or "YTS" in rel:
         score *= 2.4
     if "X264" in codec or "H264" in codec or "H.264" in rel or "X264" in rel:
@@ -102,9 +111,9 @@ def _compute_fast_start_score(stream: Dict[str, Any]) -> float:
     if 0.35 <= size_gb <= 3.8:
         score *= 1.8
     elif size_gb > 10.0:
-        score *= 0.35
+        score *= 0.25
     elif size_gb > 6.0:
-        score *= 0.6
+        score *= 0.5
 
     return round(score, 1)
 
@@ -351,7 +360,7 @@ def _fetch_torrentio_streams(imdb_id: str, item_type: str = "movie", season: int
                     "subtitle_badge_he": "כתוביות בעברית מותאמות (99%)",
                 }
             )
-            if len(streams) >= 14:
+            if len(streams) >= 24:
                 break
     except Exception:
         pass
@@ -452,7 +461,7 @@ def resolve_streams(
             combined[0]["provider"] = f"מהיר במיוחד ({orig_prov} • מומלץ לניגון מיידי)"
             _trigger_async_prewarm(combined[0].get("infoHash", ""), combined[0].get("fileIdx"))
 
-    result = combined[:18]
+    result = combined[:26]
     if result:
         with _CACHE_LOCK:
             _STREAMS_CACHE[cache_key] = {"ts": time.time(), "streams": result}
