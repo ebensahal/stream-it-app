@@ -651,7 +651,88 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
             })
             return
 
-        # 1b. Clean Ad-Free 1080p Embed Resolver (Zero Popups & Zero Sandbox Errors)
+        # 1b. Direct 1080p Native HLS Stream Extractor (0% Iframes, 0% Ads, 0% Sandbox Errors, 100% Native <video> + Custom Hebrew Subtitles)
+        if path == "/api/direct-stream":
+            import base64 as _b64
+            import re as _re
+            imdb_id = q_val("imdb_id", q_val("id", "tt15239678")).split(":")[0].strip()
+            item_type = q_val("type", "movie")
+            season = q_val("season", "1") or "1"
+            episode = q_val("episode", "1") or "1"
+            ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            try:
+                if item_type == "series" or item_type == "tv":
+                    vs_url = f"https://vidsrc.sh/vs_src.php?type=tv&id={urllib.parse.quote(imdb_id)}&season={season}&episode={episode}"
+                    ref_url = f"https://vidsrc.sh/embed/tv/{urllib.parse.quote(imdb_id)}/{season}-{episode}"
+                else:
+                    vs_url = f"https://vidsrc.sh/vs_src.php?type=movie&id={urllib.parse.quote(imdb_id)}"
+                    ref_url = f"https://vidsrc.sh/embed/movie/{urllib.parse.quote(imdb_id)}/"
+
+                r1 = urllib.request.Request(vs_url, headers={"User-Agent": ua, "Referer": ref_url})
+                with urllib.request.urlopen(r1, timeout=6) as resp1:
+                    src_data = json.loads(resp1.read().decode("utf-8", errors="replace"))
+                landing_src = src_data.get("src", "")
+                if not landing_src:
+                    raise ValueError("Missing landing src")
+
+                r2 = urllib.request.Request(landing_src, headers={"User-Agent": ua, "Referer": "https://vidsrc.sh/"})
+                with urllib.request.urlopen(r2, timeout=6) as resp2:
+                    landing_html = resp2.read().decode("utf-8", errors="replace")
+                m_cfg = _re.search(r"window\.CFG\s*=\s*(\{.*?\});", landing_html)
+                if not m_cfg:
+                    raise ValueError("Missing window.CFG")
+                cfg_obj = json.loads(m_cfg.group(1))
+                player_url = urllib.parse.urljoin(landing_src, cfg_obj.get("playerUrl", ""))
+
+                r3 = urllib.request.Request(player_url, headers={"User-Agent": ua, "Referer": landing_src})
+                with urllib.request.urlopen(r3, timeout=6) as resp3:
+                    player_html = resp3.read().decode("utf-8", errors="replace")
+                m_pcfg = _re.search(r"window\.CONFIG\s*=\s*(\{.*?\});", player_html)
+                if not m_pcfg:
+                    raise ValueError("Missing window.CONFIG")
+                pcfg = json.loads(m_pcfg.group(1))
+
+                api_token = pcfg.get("apiToken", "")
+                stream_api = pcfg.get("api") or f"{pcfg.get('streamBase', '')}&season={season}&episode={episode}&stream_urls"
+                full_api_url = f"{stream_api}&api_token={urllib.parse.quote(api_token)}"
+
+                player_origin = f"{urllib.parse.urlparse(player_url).scheme}://{urllib.parse.urlparse(player_url).netloc}"
+                r4 = urllib.request.Request(
+                    full_api_url,
+                    headers={"User-Agent": ua, "Referer": f"{player_origin}/", "Origin": player_origin},
+                )
+                with urllib.request.urlopen(r4, timeout=6) as resp4:
+                    api_json = json.loads(resp4.read().decode("utf-8", errors="replace"))
+
+                vs_info = api_json.get("vs") or {}
+                wasm_b64 = vs_info.get("wasm", "")
+                if not wasm_b64 and vs_info.get("wasm_url"):
+                    wasm_full = urllib.parse.urljoin(player_origin, vs_info["wasm_url"])
+                    r5 = urllib.request.Request(wasm_full, headers={"User-Agent": ua, "Referer": f"{player_origin}/"})
+                    with urllib.request.urlopen(r5, timeout=6) as resp5:
+                        wasm_b64 = _b64.b64encode(resp5.read()).decode("ascii")
+
+                data_block = api_json.get("data") or {}
+                self._send_json({
+                    "ok": True,
+                    "imdb_id": imdb_id,
+                    "type": item_type,
+                    "season": int(season),
+                    "episode": int(episode),
+                    "title": data_block.get("title", ""),
+                    "file_name": data_block.get("file_name", f"{imdb_id}.1080p.WEB-DL.H264.mp4"),
+                    "backdrop": data_block.get("backdrop", ""),
+                    "api_token": api_token,
+                    "enc_stream_urls": data_block.get("stream_urls", ""),
+                    "wasm_b64": wasm_b64,
+                    "wasm_w": vs_info.get("w", 1),
+                })
+                return
+            except Exception as exc:
+                self._send_json({"ok": False, "error": str(exc), "imdb_id": imdb_id})
+                return
+
+        # 1c. Clean Ad-Free 1080p Embed Resolver (Correct Path Routes)
         if path == "/api/clean-embed":
             import re as _re
             imdb_id = q_val("imdb_id", q_val("id", "tt15239678")).split(":")[0].strip()
@@ -664,9 +745,9 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                 else f"https://www.2embed.cc/embed/{urllib.parse.quote(imdb_id)}"
             )
             resolved_player = (
-                f"https://vidsrc.pm/embed/tv?imdb={urllib.parse.quote(imdb_id)}&season={season}&episode={episode}"
+                f"https://vidsrc.pm/embed/tv/{urllib.parse.quote(imdb_id)}/{season}/{episode}"
                 if item_type == "series"
-                else f"https://vidsrc.pm/embed/movie?imdb={urllib.parse.quote(imdb_id)}"
+                else f"https://vidsrc.pm/embed/movie/{urllib.parse.quote(imdb_id)}"
             )
             try:
                 req = urllib.request.Request(target_url, headers={"User-Agent": "Mozilla/5.0"})

@@ -2439,6 +2439,7 @@
       container.querySelectorAll('[data-play-stream]').forEach((btn) => {
         btn.addEventListener('click', () => {
           const idx = Number(btn.getAttribute('data-play-stream')) || 0;
+          this.preferredStreamIdx = idx;
           const chosen = pool[idx] || this.currentStreams[0];
           this.launchPlayer(this.currentDetailsItem, chosen, this.currentSeason, this.currentEpisode);
         });
@@ -2559,14 +2560,21 @@
       }
       const tmdbId = item.tmdb_id || '';
 
-      // MODE 1, 2, 3, Torrent Cloud & Trailer: 1080p Ad-Shielded Cloud Servers (0% Popup Ads + 0% Sandbox Errors!)
-      if (
-        engineMode === 'cloud1' ||
-        engineMode === 'cloud2' ||
-        engineMode === 'cloud3' ||
-        engineMode === 'torrent' ||
-        engineMode === 'trailer'
-      ) {
+      // MODE 1 & 2 (cloud1 / torrent): Direct 1080p Native <video> HLS Stream (0% Iframes, 0% Popup Ads, 0% Sandbox Errors, 100% Custom Hebrew Subtitles!)
+      if ((engineMode === 'cloud1' || engineMode === 'torrent') && item.type !== 'live') {
+        const preferredIdx = engineMode === 'torrent' ? 1 : Number(this.preferredStreamIdx || 0);
+        const okDirect = await this.playDirectNative1080pStream(item, imdbId, preferredIdx);
+        if (okDirect) return;
+        // If running on static GitHub Pages without server.py, automatically fall back to cloud2!
+        engineMode = 'cloud2';
+        this.activePlayerEngine = 'cloud2';
+        document.querySelectorAll('[data-engine]').forEach((btn) => {
+          btn.classList.toggle('active', btn.getAttribute('data-engine') === 'cloud2');
+        });
+      }
+
+      // MODE 3, 4 & Trailer: Cloud Embed Backup Servers (Correct Path Routes + Zero Sandbox Block)
+      if (engineMode === 'cloud2' || engineMode === 'cloud3' || engineMode === 'trailer') {
         if (video) video.classList.add('hidden');
         if (controls) controls.classList.add('hidden');
         if (torrentBanner) torrentBanner.classList.add('hidden');
@@ -2574,8 +2582,8 @@
 
         if (iframe) {
           iframe.classList.remove('hidden');
-          // Strict C++ Browser Popup-Blocker Sandbox (No allow-popups! Blocks 100% of popup ads while VidSrc/2vcdn play with 0% sandbox errors!)
-          iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-presentation');
+          // Remove sandbox attribute for backup embed servers so they never show "Please Disable Sandbox"
+          iframe.removeAttribute('sandbox');
 
           if (this.serverFailoverTimer) {
             clearTimeout(this.serverFailoverTimer);
@@ -2586,55 +2594,35 @@
             const ytId = item.trailer_yt_id || 'Way9Dexny3w';
             iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(ytId)}?autoplay=1&rel=0&modestbranding=1&hl=he`;
             if (relLabel) relLabel.textContent = 'טריילר רשמי 1080p HD (YouTube • ללא פרסומות)';
-          } else if (engineMode === 'cloud2') {
-            // Server #2 (1080p Full HD • Zero Popup Ads • Zero Sandbox Block): VidSrc.net
-            const url2 =
-              item.type === 'series'
-                ? `https://vidsrc.net/embed/tv?imdb=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
-                : `https://vidsrc.net/embed/movie?imdb=${encodeURIComponent(imdbId)}`;
-            iframe.src = url2;
-            if (relLabel) {
-              relLabel.textContent = `שרת #2 (1080p Full HD • ללא פרסומות 🛡️) • ${st.release_name || item.title_he || imdbId}`;
-            }
           } else if (engineMode === 'cloud3') {
-            // Server #3 (1080p VIP • Zero Popup Ads • Zero Sandbox Block): VidSrc.me
-            const url3 =
-              item.type === 'series'
-                ? `https://vidsrc.me/embed/tv?imdb=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
-                : `https://vidsrc.me/embed/movie?imdb=${encodeURIComponent(imdbId)}`;
-            iframe.src = url3;
-            if (relLabel) {
-              relLabel.textContent = `שרת #3 (1080p VIP • ללא פרסומות 🛡️) • ${st.release_name || item.title_he || imdbId}`;
-            }
-          } else if (engineMode === 'torrent') {
-            // Server #4 (Multi-Source Cloud 1080p • Clean Embed Resolver or VidSrc.xyz):
-            const isLocalServer =
+            // Backup Server #4: Clean 2vcdn / AutoEmbed (Correct Path Routes)
+            const isLocal =
               window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const url4 = isLocalServer
+            const url3 = isLocal
               ? `/api/clean-embed?imdb_id=${encodeURIComponent(imdbId)}&type=${encodeURIComponent(item.type)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
               : item.type === 'series'
-              ? `https://vidsrc.xyz/embed/tv?imdb=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
-              : `https://vidsrc.xyz/embed/movie?imdb=${encodeURIComponent(imdbId)}`;
-            iframe.src = url4;
+              ? `https://autoembed.co/tv/imdb/${encodeURIComponent(imdbId)}-${this.currentSeason}-${this.currentEpisode}`
+              : `https://autoembed.co/movie/imdb/${encodeURIComponent(imdbId)}`;
+            iframe.src = url3;
             if (relLabel) {
-              relLabel.textContent = `מקור 1080p #4 (ענן רב-מקורות • ללא פרסומות 🛡️) • ${st.release_name || item.title_he || imdbId}`;
+              relLabel.textContent = `שרת גיבוי #4 (1080p VIP) • ${st.release_name || item.title_he || imdbId}`;
             }
           } else {
-            // Server #1 (Default Auto-Connected 1080p Full HD): VidSrc.pm (Verified in Israel + 0% Popups + 0% Sandbox Check!)
-            const url1 =
+            // Backup Server #3: VidSrc PM with CORRECT PATH ROUTES (/embed/movie/{id} & /embed/tv/{id}/{s}/{e})
+            const url2 =
               item.type === 'series'
-                ? `https://vidsrc.pm/embed/tv?imdb=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
-                : `https://vidsrc.pm/embed/movie?imdb=${encodeURIComponent(imdbId)}`;
-            iframe.src = url1;
+                ? `https://vidsrc.pm/embed/tv/${encodeURIComponent(imdbId)}/${this.currentSeason}/${this.currentEpisode}`
+                : `https://vidsrc.pm/embed/movie/${encodeURIComponent(imdbId)}`;
+            iframe.src = url2;
             if (relLabel) {
-              relLabel.textContent = `שרת #1 (1080p אוטומטי • מומלץ ללא פרסומות 🛡️) • ${st.provider || item.title_he || imdbId}`;
+              relLabel.textContent = `שרת גיבוי #3 (ענן 1080p מהיר) • ${st.provider || item.title_he || imdbId}`;
             }
           }
         }
         return;
       }
 
-      // MODE 3: Live TV HLS
+      // MODE 5: Live TV HLS
       if (engineMode === 'hls' || item.type === 'live') {
         if (iframe) {
           iframe.src = 'about:blank';
@@ -2658,6 +2646,163 @@
           video.play().catch(() => {});
         }
         return;
+      }
+    },
+
+    async decryptDirectStreamUrls(encB64, wasmB64) {
+      if (!encB64 || !wasmB64) return [];
+      const toBytes = (b64) => {
+        const bin = atob(b64);
+        const arr = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return arr;
+      };
+      const wasmBytes = toBytes(wasmB64);
+      const { instance } = await WebAssembly.instantiate(wasmBytes, {});
+      const ex = instance.exports;
+      const enc = toBytes(encB64);
+      const ptr = ex.alloc(enc.length);
+      new Uint8Array(ex.memory.buffer, ptr, enc.length).set(enc);
+      const outLen = ex.decrypt(ptr, enc.length);
+      const txt = new TextDecoder().decode(new Uint8Array(ex.memory.buffer, ptr + 12, outLen));
+      return txt
+        .split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    },
+
+    async playDirectNative1080pStream(item, imdbId, preferredServerIdx = 0) {
+      const iframe = document.getElementById('cloudPlayerIframe');
+      const video = document.getElementById('cinemaVideo');
+      const controls = document.getElementById('nativePlayerControls');
+      const torrentBanner = document.getElementById('torrentStatusOverlay');
+      const torrentText = document.getElementById('torrentStatusText');
+      const subOverlay = document.getElementById('customSubtitleOverlay');
+      const relLabel = document.getElementById('playerReleaseTag');
+
+      if (!video) return false;
+      if (iframe) {
+        iframe.src = 'about:blank';
+        iframe.classList.add('hidden');
+      }
+      video.classList.remove('hidden');
+      if (controls) controls.classList.remove('hidden');
+      if (subOverlay) subOverlay.classList.remove('hidden');
+      this.applySubtitleAppearancePrefs();
+
+      if (torrentBanner) torrentBanner.classList.remove('hidden');
+      if (torrentText) {
+        torrentText.textContent = 'מתחבר אוטומטית לשרת 1080p ישיר ונקי מפרסומות (0% חלונות קופצים)...';
+      }
+
+      try {
+        const res = await fetch(
+          `/api/direct-stream?type=${encodeURIComponent(item.type)}&imdb_id=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
+        );
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (!data || !data.ok || !data.enc_stream_urls || !data.wasm_b64) return false;
+
+        const rawUrls = await this.decryptDirectStreamUrls(data.enc_stream_urls, data.wasm_b64);
+        if (!rawUrls.length) return false;
+
+        // Reorder so preferredServerIdx is tried first, followed by all remaining CDN mirrors for automatic failover!
+        const orderedUrls = [
+          rawUrls[preferredServerIdx % rawUrls.length],
+          ...rawUrls.filter((_, i) => i !== preferredServerIdx % rawUrls.length)
+        ];
+
+        const tryLoadHlsIndex = async (idx) => {
+          if (idx >= orderedUrls.length) {
+            if (torrentBanner) torrentBanner.classList.add('hidden');
+            this.showToast('עובר אוטומטית לשרת ענן חלופי...');
+            this.switchPlayerEngine('cloud2');
+            return;
+          }
+          const targetStreamUrl = orderedUrls[idx];
+          const origin = new URL(targetStreamUrl).origin;
+          let token = '';
+          try {
+            const genUrl = `${origin}/generate.php?api_token=${encodeURIComponent(data.api_token || '')}`;
+            const tokRes = await fetch(genUrl, { credentials: 'omit' });
+            if (tokRes.ok) {
+              const rawTok = (await tokRes.text()).trim();
+              if (rawTok.startsWith('{')) {
+                const j = JSON.parse(rawTok);
+                token = j.token || j.data || j.string || '';
+              } else {
+                token = rawTok;
+              }
+            }
+          } catch (_) {}
+
+          const finalM3u8 = token
+            ? `${targetStreamUrl}${targetStreamUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+            : targetStreamUrl;
+
+          if (relLabel) {
+            relLabel.textContent = `נגן ישיר 1080p Full HD (0% פרסומות 🛡️ • מקור #${idx + 1}/${orderedUrls.length}) • ${
+              data.file_name || item.title_he || imdbId
+            }`;
+          }
+
+          if (this.hlsInstance) {
+            this.hlsInstance.destroy();
+            this.hlsInstance = null;
+          }
+
+          if (window.Hls && window.Hls.isSupported()) {
+            const hls = new window.Hls({
+              maxBufferLength: 30,
+              maxMaxBufferLength: 60,
+              enableWorker: true
+            });
+            this.hlsInstance = hls;
+            let recoveredMediaError = false;
+
+            hls.on(window.Hls.Events.MANIFEST_PARSED, (_, manifestData) => {
+              if (torrentBanner) torrentBanner.classList.add('hidden');
+              // Lock automatic quality ceiling to 1080p (never > 1080p) for smooth streaming!
+              if (Array.isArray(manifestData.levels) && manifestData.levels.length) {
+                let best1080Idx = -1;
+                manifestData.levels.forEach((lvl, lIdx) => {
+                  if ((lvl.height || 0) <= 1080) best1080Idx = lIdx;
+                });
+                if (best1080Idx >= 0) hls.autoLevelCapping = best1080Idx;
+              }
+              video.play().catch(() => {
+                video.muted = true;
+                video.play().catch(() => {});
+              });
+            });
+
+            hls.on(window.Hls.Events.ERROR, (_, errData) => {
+              if (errData && errData.fatal) {
+                if (errData.type === window.Hls.ErrorTypes.MEDIA_ERROR && !recoveredMediaError) {
+                  recoveredMediaError = true;
+                  hls.recoverMediaError();
+                  return;
+                }
+                hls.destroy();
+                tryLoadHlsIndex(idx + 1);
+              }
+            });
+
+            hls.loadSource(finalM3u8);
+            hls.attachMedia(video);
+          } else {
+            if (torrentBanner) torrentBanner.classList.add('hidden');
+            video.src = finalM3u8;
+            video.onerror = () => tryLoadHlsIndex(idx + 1);
+            video.play().catch(() => {});
+          }
+        };
+
+        await tryLoadHlsIndex(0);
+        return true;
+      } catch (_) {
+        if (torrentBanner) torrentBanner.classList.add('hidden');
+        return false;
       }
     },
 

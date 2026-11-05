@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5.1" />
+  <link rel="stylesheet" href="styles.css?v=5.2" />
   <script>
     // Wipe any old Service Worker cache that previously served the old Sandbox player
     (function () {
@@ -428,10 +428,10 @@
 
         <!-- Engine Switcher (4 Verified Ad-Shielded 1080p Servers + Official Trailer) -->
         <div class="player-engine-tabs" role="tablist" aria-label="מנוע ניגון">
-          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="שרת ראשי 1080p חסום פרסומות">שרת #1 (1080p אוטומטי • ללא פרסומות 🔒)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="שרת 2 גיבוי 1080p">שרת #2 (1080p גיבוי מהיר 🔒)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud3" aria-label="שרת 3 VIP 1080p">שרת #3 (1080p קולנוע ישיר 🔒)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="שרת 4 טורנט וטלגרם 1080p">שרת #4 (טורנט / טלגרם 1080p 🔒)</button>
+          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="נגן ישיר 1080p ללא פרסומות">שרת #1 (נגן ישיר 1080p • 0% פרסומות 🛡️)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="שרת ישיר 2 טורנט וטלגרם 1080p">שרת #2 (ענן ישיר 1080p • טורנט/טלגרם 🛡️)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="שרת גיבוי 3 1080p">שרת #3 (גיבוי ענן 1080p מהיר)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud3" aria-label="שרת גיבוי 4 VIP">שרת #4 (גיבוי VIP 1080p)</button>
           <button type="button" class="engine-tab tv-focusable" data-engine="trailer" aria-label="נגן טריילר">טריילר רשמי</button>
         </div>
 
@@ -448,7 +448,6 @@
         <iframe
           id="cloudPlayerIframe"
           class="cloud-player-iframe hidden"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
           referrerpolicy="origin"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowfullscreen
@@ -1000,7 +999,7 @@
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js?v=5.1"></script>
-  <script src="app.js?v=5.1"></script>
+  <script src="tv-navigation.js?v=5.2"></script>
+  <script src="app.js?v=5.2"></script>
 </body>
 </html>
