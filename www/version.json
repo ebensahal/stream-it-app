@@ -1,0 +1,15 @@
+{
+  "version": "6.2.0",
+  "native_apk_version": "6.2",
+  "updated_at": "2026-11-06T13:46:00+02:00",
+  "ota_cdn_base": "https://raw.githubusercontent.com/ebensahal/stream-it/main",
+  "apk_download_url": "https://raw.githubusercontent.com/ebensahal/stream-it/main/STREAM_IT_TV_Streamer.apk",
+  "features": [
+    "Categorized Search Hub (Movies, Series, Live TV, Direct Streams)",
+    "Official Hebrew Title Dictionary & Bi-Directional Search",
+    "Netflix-Style Skip Intro Button for Series Episodes",
+    "Continuous Binge-Watch for Series Episodes & Movie Sequels",
+    "Admin-Only Registration Approval (Elan Master Admin)",
+    "Automatic Over-The-Air (OTA) Cloud Sync for Streamer APK"
+  ]
+}

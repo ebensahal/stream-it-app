@@ -18,6 +18,7 @@ FILES_TO_COPY = [
     "app.js",
     "tv-navigation.js",
     "manifest.webmanifest",
+    "version.json",
 ]
 
 

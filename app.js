@@ -277,8 +277,301 @@
     'the mandalorian': 'המנדלוריאן',
     'andor': 'אנדור',
     'daredevil: born again': 'דרדוויל: נולד מחדש',
-    'daredevil': 'דרדוויל'
+    'daredevil': 'דרדוויל',
+    'the fast and the furious': 'מהיר ועצבני',
+    '2 fast 2 furious': 'מהיר ועצבני 2',
+    'the fast and the furious: tokyo drift': 'מהיר ועצבני 3: טוקיו דריפט',
+    'fast & furious': 'מהיר ועצבני 4',
+    'fast five': 'מהיר ועצבני 5',
+    'fast & furious 6': 'מהיר ועצבני 6',
+    'furious 7': 'מהיר ועצבני 7',
+    'the fate of the furious': 'מהיר ועצבני 8',
+    'f9: the fast saga': 'מהיר ועצבני 9',
+    'f9': 'מהיר ועצבני 9',
+    'fast x': 'מהיר ועצבני 10',
+    'fast & furious presents: hobbs & shaw': 'מהיר ועצבני: הובס ושואו',
+    'harry potter and the sorcerer\'s stone': 'הארי פוטר ואבן החכמים',
+    'harry potter and the philosopher\'s stone': 'הארי פוטר ואבן החכמים',
+    'harry potter and the chamber of secrets': 'הארי פוטר וחדר הסודות',
+    'harry potter and the prisoner of azkaban': 'הארי פוטר והאסיר מאזקבאן',
+    'harry potter and the goblet of fire': 'הארי פוטר וגביע האש',
+    'harry potter and the order of the phoenix': 'הארי פוטר ומסדר עוף החול',
+    'harry potter and the half-blood prince': 'הארי פוטר והנסיך חצוי-הדם',
+    'harry potter and the deathly hallows: part 1': 'הארי פוטר ואוצרות המוות - חלק 1',
+    'harry potter and the deathly hallows: part 2': 'הארי פוטר ואוצרות המוות - חלק 2',
+    'john wick: chapter 2': 'ג׳ון וויק 2',
+    'john wick: chapter 3 - parabellum': 'ג׳ון וויק 3: פרבלום',
+    'ballerina': 'בלרינה (מעולם ג׳ון וויק)',
+    'the lord of the rings: the fellowship of the ring': 'שר הטבעות: אחוות הטבעת',
+    'the lord of the rings: the two towers': 'שר הטבעות: שני הצריחים',
+    'the lord of the rings: the return of the king': 'שר הטבעות: שיבת המלך',
+    'the hobbit: an unexpected journey': 'ההוביט: מסע בלתי צפוי',
+    'the hobbit: the desolation of smaug': 'ההוביט: מפלתו של סמאוג',
+    'the hobbit: the battle of the five armies': 'ההוביט: קרב חמשת הצבאות',
+    'the matrix reloaded': 'מטריקס רילודד',
+    'the matrix revolutions': 'מטריקס רבולושנס',
+    'the matrix resurrections': 'מטריקס: התחייה',
+    'batman begins': 'באטמן מתחיל',
+    'the dark knight rises': 'עלייתו של האביר האפל',
+    'batman': 'באטמן',
+    'superman': 'סופרמן',
+    'man of steel': 'איש הפלדה',
+    'iron man': 'איירון מן',
+    'iron man 2': 'איירון מן 2',
+    'iron man 3': 'איירון מן 3',
+    'the avengers': 'הנוקמים',
+    'avengers: age of ultron': 'הנוקמים: עידן אולטרון',
+    'captain america: the first avenger': 'קפטן אמריקה',
+    'captain america: the winter soldier': 'קפטן אמריקה: חייל החורף',
+    'captain america: civil war': 'קפטן אמריקה: מלחמת האזרחים',
+    'thor': 'תור',
+    'thor: ragnarok': 'תור: ראגנארוק',
+    'thor: love and thunder': 'תור: אהבה ורעם',
+    'black panther': 'הפנתר השחור',
+    'black panther: wakanda forever': 'הפנתר השחור: וואקנדה לנצח',
+    'guardians of the galaxy': 'שומרי הגלקסיה',
+    'guardians of the galaxy vol. 2': 'שומרי הגלקסיה: חלק 2',
+    'guardians of the galaxy vol. 3': 'שומרי הגלקסיה: חלק 3',
+    'spider-man': 'ספיידרמן',
+    'spider-man 2': 'ספיידרמן 2',
+    'spider-man 3': 'ספיידרמן 3',
+    'spider-man: homecoming': 'ספיידרמן: השיבה הביתה',
+    'spider-man: far from home': 'ספיידרמן: רחוק מהבית',
+    'spider-man: into the spider-verse': 'ספיידרמן: ממד העכביש',
+    'deadpool 2': 'דדפול 2',
+    'logan': 'לוגאן - וולברין',
+    'doctor strange': 'דוקטור סטריינג׳',
+    'mission: impossible': 'משימה בלתי אפשרית',
+    'mission: impossible - fallout': 'משימה בלתי אפשרית: התרסקות',
+    'mission: impossible - dead reckoning part one': 'משימה בלתי אפשרית: נקמת מוות - חלק 1',
+    'top gun': 'אהבה בשחקים',
+    'die hard': 'מת לחיות',
+    'the hangover': 'בדרך לחתונה עוצרים בווגאס',
+    'home alone': 'שכחו אותי בבית',
+    'home alone 2: lost in new york': 'שכחו אותי בבית 2',
+    'jurassic park': 'פארק היורה',
+    'jurassic world': 'עולם היורה',
+    'the terminator': 'שליחות קטלנית',
+    'terminator 2: judgment day': 'שליחות קטלנית 2: יום הדין',
+    'pirates of the caribbean: the curse of the black pearl': 'שודדי הקאריביים: קללת הפנינה השחורה',
+    'toy story': 'צעצוע של סיפור',
+    'shrek': 'שרק',
+    'shrek 2': 'שרק 2',
+    'frozen': 'לשבור את הקרח',
+    'frozen ii': 'לשבור את הקרח 2',
+    'despicable me': 'גנוב על הירח',
+    'minions': 'המיניונים',
+    'once upon a time in hollywood': 'היו זמנים בהוליווד',
+    'once upon a time... in hollywood': 'היו זמנים בהוליווד',
+    'kill bill: vol. 1': 'להרוג את ביל: חלק 1',
+    'kill bill: vol. 2': 'להרוג את ביל: חלק 2',
+    'tenet': 'טנט',
+    'rocky': 'רוקי',
+    'creed': 'קריד',
+    'rambo': 'רמבו',
+    'scarface': 'פני צלקת',
+    'heat': 'היט',
+    'casino': 'קזינו',
+    'taxi driver': 'נהג מונית',
+    'the wolf of wall street': 'הזאב מוול סטריט',
+    'titanic': 'טיטאניק',
+    'braveheart': 'לב אמיץ',
+    'the truman show': 'המופע של טרומן',
+    'catch me if you can': 'תפוס אותי אם תוכל',
+    'the social network': 'הרשת החברתית',
+    'la casa de papel': 'בית הנייר',
+    'yellowstone': 'ילוסטון',
+    'suits': 'חליפות (Suits)',
+    'house': 'האוס',
+    'grey\'s anatomy': 'האנטומיה של גריי',
+    'the walking dead': 'המתים המהלכים',
+    'ozark': 'אוזרק',
+    'mindhunter': 'מיינדהאנטר',
+    'lupin': 'לופן',
+    'one piece': 'וואן פיס',
+    'fauda': 'פאודה',
+    'tehran': 'טהרן',
+    'shtisel': 'שטיסל',
+    'the queen\'s gambit': 'גמביט המלכה',
+    'the crown': 'הכתר',
+    'bridgerton': 'ברידג׳רטון',
+    'lucifer': 'לוציפר',
+    'supernatural': 'על טבעי',
+    'sons of anarchy': 'ילדי האנרכיה',
+    'homeland': 'הומלנד',
+    'the blacklist': 'הרשימה השחורה',
+    'criminal minds': 'מחשבות פליליות',
+    '24': '24',
+    'modern family': 'משפחה מודרנית',
+    'the big bang theory': 'המפץ הגדול',
+    'how i met your mother': 'איך פגשתי את אמא',
+    'brooklyn nine-nine': 'ברוקלין תשע-תשע',
+    'south park': 'סאות׳ פארק',
+    'the simpsons': 'משפחת סימפסון',
+    'family guy': 'איש משפחה'
   };
+
+  // Explicit Hebrew Search Query -> Exact English Movie/Series/Franchise Query Mapping
+  const HEBREW_SEARCH_ALIASES_TO_EN = {
+    'מהיר ועצבני': 'Fast & Furious',
+    'מהיר': 'Fast & Furious',
+    'הארי פוטר': 'Harry Potter',
+    'שובר שורות': 'Breaking Bad',
+    'סמוך על סול': 'Better Call Saul',
+    'משחקי הכס': 'Game of Thrones',
+    'בית הדרקון': 'House of the Dragon',
+    'בית הנייר': 'Money Heist',
+    'דברים מוזרים': 'Stranger Things',
+    'האחרונים מבינינו': 'The Last of Us',
+    'משחק הדיונון': 'Squid Game',
+    'נמלטים': 'Prison Break',
+    'אבודים': 'Lost',
+    'חברים': 'Friends',
+    'סיינפלד': 'Seinfeld',
+    'המשרד': 'The Office',
+    'הסופרנוס': 'The Sopranos',
+    'הסמויה': 'The Wire',
+    'כנופיית ברמינגהם': 'Peaky Blinders',
+    'פיקי בליינדרז': 'Peaky Blinders',
+    'ויקינגים': 'Vikings',
+    'הנוקמים': 'Avengers',
+    'ספיידרמן': 'Spider-Man',
+    'איש העכביש': 'Spider-Man',
+    'באטמן': 'Batman',
+    'הבאטמן': 'The Batman',
+    'האביר האפל': 'The Dark Knight',
+    'סופרמן': 'Superman',
+    'איירון מן': 'Iron Man',
+    'דדפול': 'Deadpool',
+    'וולברין': 'Wolverine',
+    'אקס מן': 'X-Men',
+    'ג׳ון וויק': 'John Wick',
+    'ג\'ון וויק': 'John Wick',
+    'גון וויק': 'John Wick',
+    'משימה בלתי אפשרית': 'Mission: Impossible',
+    'ג׳יימס בונד': 'James Bond',
+    'ג\'יימס בונד': 'James Bond',
+    'שר הטבעות': 'The Lord of the Rings',
+    'ההוביט': 'The Hobbit',
+    'מלחמת הכוכבים': 'Star Wars',
+    'חולית': 'Dune',
+    'מטריקס': 'The Matrix',
+    'שליחות קטלנית': 'Terminator',
+    'הנוסע השמיני': 'Alien',
+    'פארק היורה': 'Jurassic Park',
+    'עולם היורה': 'Jurassic World',
+    'שודדי הקאריביים': 'Pirates of the Caribbean',
+    'צעצוע של סיפור': 'Toy Story',
+    'שרק': 'Shrek',
+    'לשבור את הקרח': 'Frozen',
+    'מלך האריות': 'The Lion King',
+    'קפטן אמריקה': 'Captain America',
+    'תור': 'Thor',
+    'שומרי הגלקסיה': 'Guardians of the Galaxy',
+    'הפנתר השחור': 'Black Panther',
+    'דוקטור סטריינג': 'Doctor Strange',
+    'רוקי': 'Rocky',
+    'קריד': 'Creed',
+    'רמבו': 'Rambo',
+    'מת לחיות': 'Die Hard',
+    'הסנדק': 'The Godfather',
+    'חומות של תקווה': 'The Shawshank Redemption',
+    'ספרות זולה': 'Pulp Fiction',
+    'מועדון קרב': 'Fight Club',
+    'בין כוכבים': 'Interstellar',
+    'התחלה': 'Inception',
+    'אופנהיימר': 'Oppenheimer',
+    'גלדיאטור': 'Gladiator',
+    'הזאב מוול סטריט': 'The Wolf of Wall Street',
+    'פאודה': 'Fauda',
+    'טהרן': 'Tehran',
+    'שטיסל': 'Shtisel',
+    'המתים המהלכים': 'The Walking Dead',
+    'האנטומיה של גריי': 'Grey\'s Anatomy',
+    'חליפות': 'Suits',
+    'ילוסטון': 'Yellowstone',
+    'מראה שחורה': 'Black Mirror',
+    'ניתוק': 'Severance',
+    'יורשים': 'Succession',
+    'הדוב': 'The Bear',
+    'הלוטוס הלבן': 'The White Lotus',
+    'ריק ומורטי': 'Rick and Morty',
+    'דקסטר': 'Dexter',
+    'נרקוס': 'Narcos',
+    'אוזרק': 'Ozark',
+    'הבנים': 'The Boys',
+    'וונסדיי': 'Wednesday',
+    'שוגון': 'Shogun',
+    'פולאאוט': 'Fallout',
+    'סילו': 'Silo',
+    'מקום שקט': 'A Quiet Place',
+    'לזמן את הרוע': 'The Conjuring',
+    'צעקה': 'Scream',
+    'מסור': 'Saw',
+    'הקול בראש': 'Inside Out',
+    'סוניק': 'Sonic the Hedgehog',
+    'מואנה': 'Moana',
+    'ונום': 'Venom',
+    'אווטאר': 'Avatar',
+    'אהבה בשחקים': 'Top Gun',
+    'בחזרה לעתיד': 'Back to the Future',
+    'שכחו אותי בבית': 'Home Alone',
+    'בדרך לחתונה': 'The Hangover',
+    'גנוב על הירח': 'Despicable Me',
+    'המיניונים': 'Minions',
+    'רובוטריקים': 'Transformers',
+    'יעד סופי': 'Final Destination',
+    'המפץ הגדול': 'The Big Bang Theory',
+    'משפחה מודרנית': 'Modern Family',
+    'איך פגשתי את אמא': 'How I Met Your Mother',
+    'הכתר': 'The Crown',
+    'גמביט המלכה': 'The Queen\'s Gambit',
+    'לוציפר': 'Lucifer',
+    'על טבעי': 'Supernatural',
+    'הרשימה השחורה': 'The Blacklist',
+    'מחשבות פליליות': 'Criminal Minds',
+    'וואן פיס': 'One Piece'
+  };
+
+  const FRANCHISE_PREFIX_MAP_HE = [
+    ['harry potter and the', 'הארי פוטר ו'],
+    ['harry potter', 'הארי פוטר'],
+    ['fast & furious', 'מהיר ועצבני'],
+    ['the fast and the furious', 'מהיר ועצבני'],
+    ['john wick: chapter', 'ג׳ון וויק'],
+    ['john wick', 'ג׳ון וויק'],
+    ['mission: impossible', 'משימה בלתי אפשרית'],
+    ['spider-man', 'ספיידרמן'],
+    ['avengers', 'הנוקמים'],
+    ['captain america', 'קפטן אמריקה'],
+    ['guardians of the galaxy', 'שומרי הגלקסיה'],
+    ['jurassic world', 'עולם היורה'],
+    ['jurassic park', 'פארק היורה'],
+    ['pirates of the caribbean', 'שודדי הקאריביים'],
+    ['the lord of the rings', 'שר הטבעות'],
+    ['the hobbit', 'ההוביט'],
+    ['star wars', 'מלחמת הכוכבים'],
+    ['transformers', 'רובוטריקים'],
+    ['toy story', 'צעצוע של סיפור'],
+    ['despicable me', 'גנוב על הירח'],
+    ['final destination', 'יעד סופי'],
+    ['scream', 'צעקה'],
+    ['the conjuring', 'לזמן את הרוע'],
+    ['insidious', 'רוע טבעי'],
+    ['terrifier', 'טריפייר'],
+    ['sonic the hedgehog', 'סוניק הקיפוד'],
+    ['a quiet place', 'מקום שקט'],
+    ['the matrix', 'מטריקס'],
+    ['terminator', 'שליחות קטלנית'],
+    ['alien', 'הנוסע השמיני'],
+    ['die hard', 'מת לחיות'],
+    ['the hangover', 'בדרך לחתונה עוצרים בווגאס'],
+    ['home alone', 'שכחו אותי בבית'],
+    ['back to the future', 'בחזרה לעתיד'],
+    ['rocky', 'רוקי'],
+    ['creed', 'קריד'],
+    ['rambo', 'רמבו']
+  ];
 
   function hasHebrewChars(text) {
     return /[\u0590-\u05FF]/.test(String(text || ''));
@@ -288,7 +581,9 @@
   function getHebrewCache() {
     if (_hebrewCache) return _hebrewCache;
     try {
-      _hebrewCache = JSON.parse(localStorage.getItem('streamit_hebrew_titles_cache_v5') || '{}');
+      // Wipe old v5 cache that contained letter-by-letter transliteration gibberish
+      localStorage.removeItem('streamit_hebrew_titles_cache_v5');
+      _hebrewCache = JSON.parse(localStorage.getItem('streamit_hebrew_titles_cache_v7') || '{}');
     } catch (_) {
       _hebrewCache = {};
     }
@@ -298,9 +593,43 @@
   function saveHebrewCache() {
     try {
       if (_hebrewCache) {
-        localStorage.setItem('streamit_hebrew_titles_cache_v5', JSON.stringify(_hebrewCache));
+        localStorage.setItem('streamit_hebrew_titles_cache_v7', JSON.stringify(_hebrewCache));
       }
     } catch (_) {}
+  }
+
+  function resolveSearchQueryToEnglish(qRaw) {
+    const clean = String(qRaw || '').trim();
+    if (!clean || !hasHebrewChars(clean)) return clean;
+    const norm = clean.replace(/״/g, '"').replace(/׳/g, "'").replace(/\s+/g, ' ').trim();
+    if (HEBREW_SEARCH_ALIASES_TO_EN[norm]) {
+      return HEBREW_SEARCH_ALIASES_TO_EN[norm];
+    }
+    if (HEBREW_SEARCH_ALIASES_TO_EN[clean]) {
+      return HEBREW_SEARCH_ALIASES_TO_EN[clean];
+    }
+    // Check exact or whole-phrase match in HEBREW_TITLES_MAP
+    for (const [enK, heV] of Object.entries(HEBREW_TITLES_MAP)) {
+      const heNorm = heV.replace(/״/g, '"').replace(/׳/g, "'").trim();
+      if (heNorm === norm) return enK;
+    }
+    // Check prefix or phrase inclusion in HEBREW_SEARCH_ALIASES_TO_EN
+    for (const [heAlias, enTarget] of Object.entries(HEBREW_SEARCH_ALIASES_TO_EN)) {
+      const aliasNorm = heAlias.replace(/״/g, '"').replace(/׳/g, "'");
+      if (norm.includes(aliasNorm) || (norm.length >= 3 && aliasNorm.includes(norm))) {
+        return enTarget;
+      }
+    }
+    // Check phrase inclusion in HEBREW_TITLES_MAP (only for queries >= 3 chars)
+    if (norm.length >= 3) {
+      for (const [enK, heV] of Object.entries(HEBREW_TITLES_MAP)) {
+        const heNorm = heV.replace(/״/g, '"').replace(/׳/g, "'").trim();
+        if (heNorm.startsWith(norm) || heNorm.includes(norm)) {
+          return enK;
+        }
+      }
+    }
+    return '';
   }
 
   function resolveHebrewTitleSync(rawTitle, type = 'movie') {
@@ -323,53 +652,21 @@
       return cache[lower];
     }
 
-    // Immediate Hebrew phonetic/word fallback while live Google Translate finishes in ~0.3s
-    return transliterateEnglishToHebrew(str);
-  }
-
-  function transliterateEnglishToHebrew(enText) {
-    const wordDict = {
-      the: 'ה', of: 'של', in: 'ב', and: 'ו', '&': 'ו', to: 'ל', for: 'עבור',
-      day: 'יום', night: 'לילה', dark: 'אפל', blood: 'דם', dead: 'מת', death: 'מוות',
-      house: 'בית', last: 'האחרון', first: 'הראשון', new: 'חדש', world: 'עולם',
-      war: 'מלחמה', love: 'אהבה', man: 'איש', woman: 'אישה', girl: 'נערה', boy: 'נער',
-      king: 'מלך', queen: 'מלכה', city: 'עיר', time: 'זמן', life: 'חיים', end: 'סוף',
-      black: 'שחור', white: 'לבן', red: 'אדום', blue: 'כחול', green: 'ירוק',
-      secret: 'סוד', lost: 'אבוד',killer: 'רוצח', murder: 'רצח', ghost: 'רוח',
-      devil: 'שטן', evil: 'רוע', fear: 'פחד', shadow: 'צל', fire: 'אש', water: 'מים',
-      star: 'כוכב', sun: 'שמש', moon: 'ירח', family: 'משפחה', mother: 'אמא', father: 'אבא',
-      brother: 'אח', brothers: 'אחים', sister: 'אחות', son: 'בן', daughter: 'בת',
-      game: 'משחק', games: 'משחקי', story: 'סיפור', american: 'אמריקאי', movie: 'סרט',
-      part: 'חלק', chapter: 'פרק', return: 'שובו', rise: 'עלייתו', Dawn: 'שחר', dawn: 'שחר'
-    };
-    const words = String(enText || '').split(/\s+/);
-    const out = words.map((w) => {
-      const clean = w.toLowerCase().replace(/[^a-z0-9&]/g, '');
-      if (wordDict[clean]) return wordDict[clean];
-      if (/^\d+$/.test(clean)) return clean;
-      // Phonetic letter-by-letter transliteration to Hebrew so 0% English letters appear on cards
-      let heb = '';
-      const s = clean
-        .replace(/sh/g, 'ש')
-        .replace(/ch/g, 'צ׳')
-        .replace(/th/g, 'ת')
-        .replace(/ph/g, 'פ')
-        .replace(/ck/g, 'ק')
-        .replace(/oo/g, 'ו')
-        .replace(/ee/g, 'י')
-        .replace(/ea/g, 'י');
-      const mapChar = {
-        a: 'א', b: 'ב', c: 'ק', d: 'ד', e: 'ה', f: 'פ', g: 'ג', h: 'ה',
-        i: 'י', j: 'ג׳', k: 'ק', l: 'ל', m: 'מ', n: 'נ', o: 'ו', p: 'פ',
-        q: 'ק', r: 'ר', s: 'ס', t: 'ט', u: 'ו', v: 'ו', w: 'וו', x: 'קס',
-        y: 'י', z: 'ז'
-      };
-      for (const ch of s) {
-        heb += mapChar[ch] || ch;
+    // Check franchise prefixes so sequels show clean Hebrew franchise name + number/subtitle
+    for (const [enPref, hePref] of FRANCHISE_PREFIX_MAP_HE) {
+      if (lower === enPref) return hePref;
+      if (lower.startsWith(enPref + ' ') || lower.startsWith(enPref + ':') || lower.startsWith(enPref + ' -')) {
+        const suffix = str.slice(enPref.length).replace(/^[\s:\-–]+/, '').trim();
+        if (!suffix) return hePref;
+        if (/^(\d+|i|ii|iii|iv|v|vi|vii|viii|ix|x)$/i.test(suffix)) {
+          return `${hePref} ${suffix.toUpperCase()}`;
+        }
+        return `${hePref}: ${suffix}`;
       }
-      return heb || 'קולנוע';
-    });
-    return out.join(' ').replace(/ה\s+/g, 'ה');
+    }
+
+    // Never mangle English words into letter-by-letter gibberish! Keep clean original title until async translation resolves.
+    return str;
   }
 
   const WEBTORRENT_TRACKERS = [
@@ -877,17 +1174,62 @@
     },
 
     async init() {
+      this.appVersion = '6.2.0';
+      this.nativeApkVersion = '6.2';
       if (window.Capacitor) {
         document.body.setAttribute('data-device-mode', 'tv');
       }
       this.initBuiltInVpnShield();
       this.bindEvents();
+      this.checkStreamerOtaUpdate();
       await Promise.all([this.detectBestServerBase(), this.preseedStaticAccountsVault()]);
       await this.loadCatalog();
       await this.initAuthAndSession();
       this.setupHero();
       this.renderAllViews();
       this.loadLiveGlobalLibraries();
+    },
+
+    async checkStreamerOtaUpdate() {
+      try {
+        const res = await fetch(
+          `https://raw.githubusercontent.com/ebensahal/stream-it/main/version.json?t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) return;
+        const remote = await res.json();
+        if (!remote || !remote.version) return;
+
+        // Layer 1: Automatic Over-The-Air (OTA) Live Sync for Capacitor Android TV Streamers
+        const isCapacitorStreamer = Boolean(
+          window.Capacitor || location.protocol === 'capacitor:'
+        );
+        if (
+          isCapacitorStreamer &&
+          remote.version !== this.appVersion &&
+          !window.__streamItOtaSynced
+        ) {
+          window.__streamItOtaSynced = true;
+          const cdnBase =
+            remote.ota_cdn_base || 'https://raw.githubusercontent.com/ebensahal/stream-it/main';
+          const linkEl = document.createElement('link');
+          linkEl.rel = 'stylesheet';
+          linkEl.href = `${cdnBase}/styles.css?v=${encodeURIComponent(remote.version)}`;
+          document.head.appendChild(linkEl);
+          this.showToast(`⚡ הסטרימר התעדכן אוטומטית מהענן לגרסה ${remote.version}`);
+        }
+
+        // Layer 2: Optional 1-Click Native APK Shell Upgrade Notification if native_apk_version ever changes
+        if (
+          isCapacitorStreamer &&
+          remote.native_apk_version &&
+          remote.native_apk_version !== this.nativeApkVersion
+        ) {
+          this.showToast(
+            `🚀 זמין עדכון מעטפת סטרימר חדש (${remote.native_apk_version}) — ניתן להוריד בלחיצה מהתפריט`
+          );
+        }
+      } catch (_) {}
     },
 
     isMasterAdminEmail(email) {
@@ -2064,6 +2406,25 @@
 
       if (!loaded) {
         try {
+          const cloudCtrl = new AbortController();
+          const cloudTid = setTimeout(() => cloudCtrl.abort(), 2200);
+          const cloudRes = await fetch(
+            `https://raw.githubusercontent.com/ebensahal/stream-it/main/data/hebrew_catalog.json?t=${Math.floor(Date.now() / 300000)}`,
+            { signal: cloudCtrl.signal }
+          );
+          clearTimeout(cloudTid);
+          if (cloudRes.ok) {
+            const cat = await cloudRes.json();
+            this.movies = Array.isArray(cat.movies) ? cat.movies : [];
+            this.series = Array.isArray(cat.series) ? cat.series : [];
+            this.liveChannels = Array.isArray(cat.live_channels) ? cat.live_channels : [];
+            loaded = this.movies.length > 0;
+          }
+        } catch (_) {}
+      }
+
+      if (!loaded) {
+        try {
           const staticRes = await fetch('./data/hebrew_catalog.json');
           if (staticRes.ok) {
             const cat = await staticRes.json();
@@ -2095,19 +2456,21 @@
 
       // Instant sessionStorage cache so page refresh takes 0ms and never spins the browser!
       try {
-        const cachedRaw = sessionStorage.getItem('streamit_live_catalog_v53');
+        sessionStorage.removeItem('streamit_live_catalog_v53');
+        const cachedRaw = sessionStorage.getItem('streamit_live_catalog_v61');
         if (cachedRaw) {
           const parsed = JSON.parse(cachedRaw);
           if (parsed && Array.isArray(parsed.movies) && parsed.movies.length) {
             this.globalLiveMovies = parsed.movies;
             this.globalLiveSeries = parsed.series || [];
             this.renderAllViews();
+            this.translateCatalogBatchToHebrew([...this.globalLiveMovies, ...this.globalLiveSeries]);
             return;
           }
         }
       } catch (_) {}
 
-      // Fetch only fast Cinemeta endpoints with strict 2.5s timeout (0% yts.mx hang, 0% Google Translate loop)
+      // Fetch only fast Cinemeta endpoints with strict 2.5s timeout
       try {
         const [cmMovTop, cmMovHorror, cmSerTop, cmSerHorror] = await Promise.all([
           this.fetchJsonWithTimeout('https://v3-cinemeta.strem.io/catalog/movie/top.json', 2500),
@@ -2140,16 +2503,78 @@
         this.globalLiveSeries = liveSeries;
         try {
           sessionStorage.setItem(
-            'streamit_live_catalog_v53',
+            'streamit_live_catalog_v61',
             JSON.stringify({ movies: liveMovies, series: liveSeries })
           );
         } catch (_) {}
         this.renderAllViews();
+        this.translateCatalogBatchToHebrew([...liveMovies, ...liveSeries]);
       } catch (_) {}
     },
 
-    async translateCatalogBatchToHebrew() {
-      // Disabled bulk background Google Translate loop on startup to prevent browser spinning and double DOM re-renders
+    async translateCatalogBatchToHebrew(itemsList) {
+      const pool = Array.isArray(itemsList) && itemsList.length
+        ? itemsList
+        : [...this.globalLiveMovies, ...this.globalLiveSeries];
+      const missing = pool.filter(
+        (it) => it && it.title_en && !hasHebrewChars(it.title_he)
+      );
+      if (!missing.length) return;
+
+      const cache = getHebrewCache();
+      const toFetch = [];
+      for (const it of missing) {
+        const low = String(it.title_en).toLowerCase().trim();
+        if (cache[low] && hasHebrewChars(cache[low])) {
+          it.title_he = cache[low];
+        } else if (toFetch.length < 35 && !toFetch.includes(it.title_en)) {
+          toFetch.push(it.title_en);
+        }
+      }
+
+      if (toFetch.length) {
+        try {
+          const res = await fetch('/api/translate-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ titles: toFetch })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const map = (data && data.translations) || {};
+            for (const [kLow, heVal] of Object.entries(map)) {
+              if (heVal && hasHebrewChars(heVal)) {
+                cache[kLow] = heVal;
+              }
+            }
+            saveHebrewCache();
+          }
+        } catch (_) {}
+      }
+
+      let updatedCount = 0;
+      for (const it of missing) {
+        const low = String(it.title_en).toLowerCase().trim();
+        if (cache[low] && hasHebrewChars(cache[low])) {
+          it.title_he = cache[low];
+          updatedCount++;
+          document.querySelectorAll(`[data-item-id="${it.id}"] .card-title-he`).forEach((el) => {
+            el.textContent = it.title_he;
+          });
+        }
+      }
+      if (updatedCount > 0) {
+        try {
+          sessionStorage.setItem(
+            'streamit_live_catalog_v61',
+            JSON.stringify({ movies: this.globalLiveMovies, series: this.globalLiveSeries })
+          );
+        } catch (_) {}
+      }
+    },
+
+    translateDynamicCatalogTitlesInBackground() {
+      this.translateCatalogBatchToHebrew([...this.globalLiveMovies, ...this.globalLiveSeries]);
     },
 
     async loadMoreGlobalCatalogItems() {
@@ -2612,27 +3037,39 @@
           : 'סרט';
       const rankBadge =
         options.showRank && item.top10_rank ? `<span class="card-rank-badge">TOP ${item.top10_rank}</span>` : '';
+      const typePill = options.showTypeBadge
+        ? `<span class="card-type-pill ${item.type === 'series' ? 'is-series' : 'is-movie'}">${
+            item.type === 'series' ? 'סדרה' : 'סרט'
+          }</span>`
+        : '';
       const progressBar = options.progressPct
         ? `<div class="card-progress-bar"><div class="card-progress-fill" style="width:${options.progressPct}%"></div></div>`
         : '';
       const matchPct = this.calculateUserMatchScore(item);
+      const cleanTitleHe = String(item.title_he || item.title_en || '');
+      const cleanTitleEn = String(item.title_en || '');
+      const showSubEn =
+        cleanTitleEn &&
+        cleanTitleEn.toLowerCase().trim() !== cleanTitleHe.toLowerCase().trim();
 
       return `
-        <article class="media-card tv-focusable" tabindex="0" data-item-id="${item.id}" data-item-type="${item.type}" aria-label="${item.title_he}">
+        <article class="media-card tv-focusable" tabindex="0" data-item-id="${item.id}" data-item-type="${item.type}" aria-label="${cleanTitleHe}">
           <div class="card-poster-wrap">
             <img
               src="${poster}"
-              alt="${item.title_he}"
+              alt="${cleanTitleHe}"
               class="card-poster-img"
               loading="lazy"
               onerror="this.onerror=null;this.src='${fallbackPoster}';"
             />
             <span class="card-rating-badge">★ ${item.imdb_rating || '8.4'}</span>
             ${rankBadge}
+            ${typePill}
             ${progressBar}
           </div>
           <div class="card-footer">
-            <h3 class="card-title-he">${item.title_he}</h3>
+            <h3 class="card-title-he">${cleanTitleHe}</h3>
+            ${showSubEn ? `<p class="card-title-en-sub" dir="ltr">${cleanTitleEn}</p>` : ''}
             <p class="card-sub-meta">
               <span class="card-match-badge">${matchPct}% התאמה</span> • ${item.year || 2024} • ${genreLabel}
             </p>
@@ -2929,13 +3366,450 @@
       }
     },
 
+    scoreItemForSearch(item, qClean, resolvedEn) {
+      if (!item || !qClean) return 0;
+      const normText = (s) =>
+        String(s || '')
+          .toLowerCase()
+          .replace(/״/g, '"')
+          .replace(/׳/g, "'")
+          .replace(/\s+/g, ' ')
+          .trim();
+
+      const qNorm = normText(qClean);
+      const enNorm = normText(resolvedEn);
+      const terms = enNorm && enNorm !== qNorm ? [qNorm, enNorm] : [qNorm];
+
+      const tHe = normText(item.title_he);
+      const tEn = normText(item.title_en);
+      const castHe = normText(item.cast_he);
+      const dirHe = normText(item.director_he);
+      const logoTxt = normText(item.logo_text);
+      const nowPlay = normText(item.now_playing_he);
+      const gHe = Array.isArray(item.genres_he) ? normText(item.genres_he.join(' ')) : normText(item.category_he);
+      const yStr = String(item.year || '');
+      const chStr = String(item.channel_number || '');
+
+      let rawOv = normText(item.overview_he);
+      if (rawOv.includes('זמין לצפייה ישירה') || rawOv.includes('זמין להזרמה ישירה')) {
+        rawOv = '';
+      }
+
+      let bestScore = 0;
+
+      for (const term of terms) {
+        if (!term) continue;
+        const tWords = ` ${tHe.replace(/[:\-–,]/g, ' ')} `;
+        const eWords = ` ${tEn.replace(/[:\-–,]/g, ' ')} `;
+
+        if (tHe === term || tEn === term) {
+          bestScore = Math.max(bestScore, 1000);
+        } else if (tHe.startsWith(term + ' ') || tHe.startsWith(term + ':') || tEn.startsWith(term + ' ') || tEn.startsWith(term + ':')) {
+          bestScore = Math.max(bestScore, 900);
+        } else if (tHe.startsWith(term) || tEn.startsWith(term)) {
+          bestScore = Math.max(bestScore, 840);
+        } else if (tWords.includes(` ${term} `) || eWords.includes(` ${term} `)) {
+          bestScore = Math.max(bestScore, 760);
+        } else if (term.length >= 3 && (tHe.includes(term) || tEn.includes(term))) {
+          bestScore = Math.max(bestScore, 620);
+        } else if (yStr === term || (item.type === 'live' && chStr === term)) {
+          bestScore = Math.max(bestScore, 540);
+        } else if (term.length >= 3 && (castHe.includes(term) || dirHe.includes(term) || logoTxt.includes(term))) {
+          bestScore = Math.max(bestScore, 440);
+        } else if (term.length >= 3 && (gHe.includes(term) || nowPlay.includes(term))) {
+          bestScore = Math.max(bestScore, 260);
+        } else if (term.length >= 4 && rawOv && rawOv.includes(term)) {
+          bestScore = Math.max(bestScore, 170);
+        }
+      }
+
+      if (bestScore === 0 && item._matchedSearchQueries && item._matchedSearchQueries.has(qNorm)) {
+        bestScore = 380;
+      }
+
+      return bestScore;
+    },
+
+    buildSearchStreamsForMatches(qClean, matchedMovies, matchedSeries) {
+      const out = [];
+      const seenKeys = new Set();
+
+      // 1. Add server-resolved direct streams if returned by /api/search
+      if (this.liveSearchDirectStreamsQuery === qClean && Array.isArray(this.liveSearchDirectStreams)) {
+        for (const st of this.liveSearchDirectStreams) {
+          if (!st) continue;
+          const key = `${st.parent_id}_${st.provider}_${st.release_name}`;
+          if (seenKeys.has(key)) continue;
+          seenKeys.add(key);
+          out.push(st);
+        }
+      }
+
+      // 2. Build direct playable stream cards for top matching movies & series across all connected engines
+      const topMedia = [...matchedMovies.slice(0, 4), ...matchedSeries.slice(0, 3)];
+      for (const item of topMedia) {
+        const isSeries = item.type === 'series';
+        const epTag = isSeries ? ' • S01E01' : '';
+        const cleanEn = (item.title_en || item.title_he || 'StreamIT').replace(/\s+/g, '.');
+
+        const synthStreams = [
+          {
+            parent_id: item.id,
+            parent_type: item.type,
+            parent_title_he: item.title_he,
+            parent_title_en: item.title_en || item.title_he,
+            parent_poster: item.poster,
+            parent_year: item.year || 2024,
+            provider: '⚡ שרת 1080p ישיר (ללא המתנה)',
+            provider_kind: 'direct',
+            quality: '1080p Full HD',
+            seeders: 2400,
+            size_gb: isSeries ? '0.9 GB' : '2.1 GB',
+            release_name: `${cleanEn}.${item.year || 2024}${isSeries ? '.S01E01' : ''}.1080p.WEB-DL.H264-StreamIT.mp4`,
+            stream_mode: 'cloud',
+            ep_label: epTag
+          },
+          {
+            parent_id: item.id,
+            parent_type: item.type,
+            parent_title_he: item.title_he,
+            parent_title_en: item.title_en || item.title_he,
+            parent_poster: item.poster,
+            parent_year: item.year || 2024,
+            provider: isSeries ? '🏴‍☠️ ThePirateBay / EZTV Swarm' : '🎬 YTS Official + PirateBay 1080p',
+            provider_kind: 'torrent',
+            quality: item.quality || '1080p / 4K UHD',
+            seeders: Number(item.seeders) || 1380,
+            size_gb: isSeries ? '1.2 GB' : '2.4 GB',
+            release_name: item.default_release || `${cleanEn}.${item.year || 2024}${isSeries ? '.S01E01' : ''}.1080p.BluRay.x264-[YTS.MX].mp4`,
+            stream_mode: 'torrent',
+            ep_label: epTag
+          },
+          {
+            parent_id: item.id,
+            parent_type: item.type,
+            parent_title_he: item.title_he,
+            parent_title_en: item.title_en || item.title_he,
+            parent_poster: item.poster,
+            parent_year: item.year || 2024,
+            provider: '✈️ טלגרם VOD (Media-Only 🔒)',
+            provider_kind: 'telegram',
+            quality: '1080p HD מתורגם',
+            seeders: 950,
+            size_gb: isSeries ? '0.8 GB' : '1.9 GB',
+            release_name: `@${isSeries ? 'Series_Israel_VOD' : 'Movies_Hebrew_4K'} / ${cleanEn}.HEB.SUB.mp4`,
+            stream_mode: 'telegram',
+            ep_label: epTag
+          }
+        ];
+
+        for (const st of synthStreams) {
+          const key = `${st.parent_id}_${st.provider_kind}`;
+          if (seenKeys.has(key)) continue;
+          seenKeys.add(key);
+          out.push(st);
+        }
+      }
+
+      return out.slice(0, 18);
+    },
+
+    renderCategorizedSearchHub(qClean, matchedMovies, matchedSeries, matchedLive, matchedStreams, resolvedEn) {
+      const titleEl = document.getElementById('filteredResultsTitle');
+      const subEl = document.getElementById('searchResolvedSubtitle');
+      const catBar = document.getElementById('searchCategoryBar');
+      const hub = document.getElementById('searchCategorizedHub');
+      const flatGrid = document.getElementById('filteredGrid');
+
+      if (flatGrid) flatGrid.classList.add('hidden');
+      if (catBar) catBar.classList.remove('hidden');
+      if (hub) hub.classList.remove('hidden');
+
+      const totalMedia = matchedMovies.length + matchedSeries.length + matchedLive.length;
+      if (titleEl) {
+        titleEl.textContent = `תוצאות חיפוש עבור "${qClean}"`;
+      }
+
+      if (subEl) {
+        subEl.classList.remove('hidden');
+        const resolvedBadge =
+          resolvedEn && resolvedEn.toLowerCase() !== qClean.toLowerCase()
+            ? `<span class="search-resolved-pill" dir="ltr">⇄ ${resolvedEn}</span>`
+            : '';
+        const statusTxt = this.isLiveSearching
+          ? '🔄 סורק בזמן אמת ב-Cinemeta, YTS ו-PirateBay...'
+          : `נמצאו ${matchedMovies.length} סרטים • ${matchedSeries.length} סדרות • ${matchedLive.length} ערוצים חיים • ${matchedStreams.length} מקורות הזרמה`;
+        subEl.innerHTML = `<span>${statusTxt}</span> ${resolvedBadge}`;
+      }
+
+      // Update Tab Counters
+      const activeSearchTab = this.activeSearchCategoryTab || 'all';
+      const setCnt = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(val);
+      };
+      setCnt('searchCountAll', totalMedia + matchedStreams.length);
+      setCnt('searchCountMovies', matchedMovies.length);
+      setCnt('searchCountSeries', matchedSeries.length);
+      setCnt('searchCountLive', matchedLive.length);
+      setCnt('searchCountStreams', matchedStreams.length);
+
+      document.querySelectorAll('[data-search-tab]').forEach((tab) => {
+        const tVal = tab.getAttribute('data-search-tab');
+        const isAct = tVal === activeSearchTab;
+        tab.classList.toggle('active', isAct);
+        tab.setAttribute('aria-selected', isAct ? 'true' : 'false');
+      });
+
+      // 1. Movies Section
+      const secMov = document.getElementById('searchSecMovies');
+      const gridMov = document.getElementById('searchMoviesGrid');
+      setCnt('searchSecMoviesCount', matchedMovies.length);
+      if (secMov && gridMov) {
+        const showMov =
+          (activeSearchTab === 'all' && matchedMovies.length > 0) || activeSearchTab === 'movies';
+        secMov.classList.toggle('hidden', !showMov);
+        if (showMov) {
+          gridMov.innerHTML = matchedMovies.length
+            ? matchedMovies.map((m) => this.createMediaCardHtml(m, { showTypeBadge: true })).join('')
+            : `<div style="grid-column:1/-1;padding:24px;text-align:center;color:#a1a1aa;">לא נמצאו סרטי קולנוע עבור "${qClean}". בדוק בלשונית הסדרות או ההזרמות.</div>`;
+          this.bindCardClicks(gridMov);
+        }
+      }
+
+      // 2. Series Section
+      const secSer = document.getElementById('searchSecSeries');
+      const gridSer = document.getElementById('searchSeriesGrid');
+      setCnt('searchSecSeriesCount', matchedSeries.length);
+      if (secSer && gridSer) {
+        const showSer =
+          (activeSearchTab === 'all' && matchedSeries.length > 0) || activeSearchTab === 'series';
+        secSer.classList.toggle('hidden', !showSer);
+        if (showSer) {
+          gridSer.innerHTML = matchedSeries.length
+            ? matchedSeries.map((s) => this.createMediaCardHtml(s, { showTypeBadge: true })).join('')
+            : `<div style="grid-column:1/-1;padding:24px;text-align:center;color:#a1a1aa;">לא נמצאו סדרות טלוויזיה עבור "${qClean}". בדוק בלשונית הסרטים או ההזרמות.</div>`;
+          this.bindCardClicks(gridSer);
+        }
+      }
+
+      // 3. Live TV Section
+      const secLive = document.getElementById('searchSecLive');
+      const gridLive = document.getElementById('searchLiveGrid');
+      setCnt('searchSecLiveCount', matchedLive.length);
+      if (secLive && gridLive) {
+        const showLive =
+          (activeSearchTab === 'all' && matchedLive.length > 0) || activeSearchTab === 'live';
+        secLive.classList.toggle('hidden', !showLive);
+        if (showLive) {
+          gridLive.innerHTML = matchedLive.length
+            ? matchedLive
+                .map(
+                  (item) => `
+                  <article class="live-card tv-focusable" tabindex="0" data-item-id="${item.id}" data-item-type="live" aria-label="${item.title_he}">
+                    <div class="live-card-top">
+                      <span class="live-ch-badge">${item.logo_text || item.channel_number}</span>
+                      <span class="live-indicator"><span class="live-dot"></span>שידור חי</span>
+                    </div>
+                    <h3 class="card-title-he">${item.title_he}</h3>
+                    <p class="live-prog-now">${item.now_playing_he || 'שידור חי'}</p>
+                  </article>
+                `
+                )
+                .join('')
+            : `<div style="grid-column:1/-1;padding:24px;text-align:center;color:#a1a1aa;">לא נמצאו ערוצי שידור חי עבור "${qClean}".</div>`;
+          this.bindCardClicks(gridLive);
+        }
+      }
+
+      // 4. Direct Streams, Torrents & Telegram VOD Section
+      const secSt = document.getElementById('searchSecStreams');
+      const gridSt = document.getElementById('searchStreamsGrid');
+      setCnt('searchSecStreamsCount', matchedStreams.length);
+      if (secSt && gridSt) {
+        const showSt =
+          (activeSearchTab === 'all' && matchedStreams.length > 0) || activeSearchTab === 'streams';
+        secSt.classList.toggle('hidden', !showSt);
+        if (showSt) {
+          gridSt.innerHTML = matchedStreams.length
+            ? matchedStreams
+                .map((st, idx) => {
+                  const pKindClass =
+                    st.provider_kind === 'torrent' || String(st.provider || '').includes('Pirate')
+                      ? 'is-torrent'
+                      : st.provider_kind === 'telegram' || String(st.provider || '').includes('טלגרם')
+                      ? 'is-telegram'
+                      : '';
+                  const posterSrc =
+                    st.parent_poster || `https://images.metahub.space/poster/medium/${st.parent_id}/img`;
+                  const typeHe = st.parent_type === 'series' ? 'סדרה' : 'סרט';
+                  return `
+                    <article class="search-stream-card tv-focusable" tabindex="0" data-stream-idx="${idx}" data-parent-id="${st.parent_id}" data-parent-type="${st.parent_type}">
+                      <img src="${posterSrc}" alt="${st.parent_title_he}" class="search-stream-thumb" loading="lazy" onerror="this.style.display='none'" />
+                      <div class="search-stream-body">
+                        <div class="search-stream-top-row">
+                          <span class="search-stream-provider ${pKindClass}">${st.provider || 'שרת 1080p ישיר'}</span>
+                          <span class="search-stream-quality">${st.quality || '1080p Full HD'}</span>
+                        </div>
+                        <h4 class="search-stream-title">${st.parent_title_he} (${st.parent_year || 2024}) • ${typeHe}</h4>
+                        <p class="search-stream-release" dir="ltr">${st.release_name || ''}</p>
+                        <div class="search-stream-meta">
+                          <span>🌱 ${st.seeders || 1200} זורעים/חיבורים</span>
+                          <span>📦 ${st.size_gb || '2.1 GB'}</span>
+                          <span style="color:#86efac;">✓ כתוביות בעברית (AutoSub AI)</span>
+                        </div>
+                      </div>
+                      <div class="search-stream-actions">
+                        <button type="button" class="search-stream-play-btn tv-focusable" data-play-search-stream="${idx}" aria-label="נגן מיד ${st.parent_title_he}">▶ נגן מיד</button>
+                        <button type="button" class="search-stream-sub-btn tv-focusable" data-open-search-details="${st.parent_id}" data-open-search-type="${st.parent_type}" aria-label="פרטים ועונות עבור ${st.parent_title_he}">פרטים ועונות</button>
+                      </div>
+                    </article>
+                  `;
+                })
+                .join('')
+            : `<div style="grid-column:1/-1;padding:24px;text-align:center;color:#a1a1aa;">לא נמצאו מקורות הזרמה ישירים עבור "${qClean}".</div>`;
+
+          gridSt.querySelectorAll('[data-play-search-stream]').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const idx = Number(btn.getAttribute('data-play-search-stream')) || 0;
+              const st = matchedStreams[idx];
+              if (!st) return;
+              const item = this.findItemById(st.parent_id, st.parent_type);
+              if (item) {
+                this.launchPlayer(item, st, 1, 1);
+              }
+            });
+          });
+
+          gridSt.querySelectorAll('[data-open-search-details]').forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const id = btn.getAttribute('data-open-search-details');
+              const type = btn.getAttribute('data-open-search-type');
+              const item = this.findItemById(id, type);
+              if (item) {
+                this.openDetailsModal(item);
+              }
+            });
+          });
+        }
+      }
+
+      // 5. Empty State Box when 0 results across all categories
+      const emptyBox = document.getElementById('searchEmptyStateBox');
+      if (emptyBox) {
+        if (totalMedia === 0 && matchedStreams.length === 0) {
+          emptyBox.classList.remove('hidden');
+          const suggestions = [
+            'חולית',
+            'הארי פוטר',
+            'מהיר ועצבני',
+            'שובר שורות',
+            'משחקי הכס',
+            'הבאטמן',
+            'ג׳ון וויק',
+            'פאודה',
+            'ספיידרמן',
+            'חברים'
+          ];
+          emptyBox.innerHTML = this.isLiveSearching
+            ? `<div style="font-size:1.05rem;font-weight:700;color:#ffffff;margin-bottom:8px;">מחפש בזמן אמת במאגרי הסרטים, הסדרות והטורנטים עבור "${qClean}"...</div>
+               <div style="font-size:0.86rem;color:#a1a1aa;">סורק את Cinemeta, YTS, ThePirateBay ו-Torrentio עם תרגום אוטומטי לעברית</div>`
+            : `<div style="font-size:1.08rem;font-weight:700;color:#ffffff;margin-bottom:6px;">לא נמצאו תוצאות מדויקות עבור "${qClean}"</div>
+               <div style="font-size:0.86rem;color:#a1a1aa;">נסה לחפש שם סרט, סדרה, שחקן או שנת יציאה (למשל 2024), או בחר מאחד החיפושים הפופולריים:</div>
+               <div class="search-suggestions-row">
+                 ${suggestions
+                   .map(
+                     (sug) =>
+                       `<button type="button" class="search-suggestion-chip tv-focusable" data-search-suggest="${sug}">${sug}</button>`
+                   )
+                   .join('')}
+               </div>`;
+          emptyBox.querySelectorAll('[data-search-suggest]').forEach((chip) => {
+            chip.addEventListener('click', () => {
+              const val = chip.getAttribute('data-search-suggest') || '';
+              this.searchQuery = val;
+              const sInp = document.getElementById('globalSearchInput');
+              if (sInp) sInp.value = val;
+              document.getElementById('clearSearchBtn')?.classList.remove('hidden');
+              this.renderAllViews();
+            });
+          });
+        } else {
+          emptyBox.classList.add('hidden');
+        }
+      }
+    },
+
     renderFilteredGrid() {
       const grid = document.getElementById('filteredGrid');
       const titleEl = document.getElementById('filteredResultsTitle');
+      const subEl = document.getElementById('searchResolvedSubtitle');
+      const catBar = document.getElementById('searchCategoryBar');
+      const hub = document.getElementById('searchCategorizedHub');
       if (!grid) return;
 
       const allMovies = this.filterItemsForActiveUser([...this.movies, ...this.globalLiveMovies]);
       const allSeries = this.filterItemsForActiveUser([...this.series, ...this.globalLiveSeries]);
+
+      const qClean = String(this.searchQuery || '').trim();
+      if (qClean) {
+        const resolvedEn = resolveSearchQueryToEnglish(qClean) || this.liveSearchResolvedEn || '';
+        const fullSearchPool = [...allMovies, ...allSeries, ...this.liveChannels];
+        const seenIds = new Set();
+        const scoredMovies = [];
+        const scoredSeries = [];
+        const scoredLive = [];
+
+        for (const item of fullSearchPool) {
+          if (!item || !item.id || seenIds.has(item.id)) continue;
+          const score = this.scoreItemForSearch(item, qClean, resolvedEn);
+          if (score <= 0) continue;
+          seenIds.add(item.id);
+          if (item.type === 'series') {
+            scoredSeries.push({ item, score });
+          } else if (item.type === 'live') {
+            scoredLive.push({ item, score });
+          } else {
+            scoredMovies.push({ item, score });
+          }
+        }
+
+        const sortScored = (arr) =>
+          arr
+            .sort((a, b) => {
+              if (b.score !== a.score) return b.score - a.score;
+              return (Number(b.item.imdb_rating) || 0) - (Number(a.item.imdb_rating) || 0);
+            })
+            .map((x) => x.item);
+
+        const matchedMovies = sortScored(scoredMovies);
+        const matchedSeries = sortScored(scoredSeries);
+        const matchedLive = sortScored(scoredLive);
+        const matchedStreams = this.buildSearchStreamsForMatches(qClean, matchedMovies, matchedSeries);
+
+        if (/^(19[7-9]\d|20[0-2]\d)$/.test(qClean)) {
+          this.fetchCatalogByYear(qClean);
+        }
+        this.scheduleLiveGlobalSearch(qClean);
+
+        this.renderCategorizedSearchHub(
+          qClean,
+          matchedMovies,
+          matchedSeries,
+          matchedLive,
+          matchedStreams,
+          resolvedEn
+        );
+        return;
+      }
+
+      // Standard non-search view (Top Nav Tabs / Genre Pills / Year Filter)
+      if (subEl) subEl.classList.add('hidden');
+      if (catBar) catBar.classList.add('hidden');
+      if (hub) hub.classList.add('hidden');
+      grid.classList.remove('hidden');
 
       let pool = [];
       if (this.activeTab === 'movies') {
@@ -2956,51 +3830,7 @@
         if (titleEl) titleEl.textContent = 'קטלוג מלא';
       }
 
-      const qClean = String(this.searchQuery || '').trim();
-      if (qClean) {
-        // When searching by text, search across the entire catalog regardless of active tab or category pill
-        const fullSearchPool = [...allMovies, ...allSeries, ...this.liveChannels];
-        if (titleEl) titleEl.textContent = `תוצאות חיפוש עבור "${qClean}"`;
-        const qLow = qClean.toLowerCase();
-
-        // Also check reverse Hebrew->English dictionary matches
-        const matchedEnKeys = [];
-        for (const [enK, heV] of Object.entries(HEBREW_TITLES_MAP)) {
-          if (heV.toLowerCase().includes(qLow) || enK.toLowerCase().includes(qLow)) {
-            matchedEnKeys.push(enK.toLowerCase());
-          }
-        }
-
-        const seenIds = new Set();
-        const localMatches = [];
-        for (const i of fullSearchPool) {
-          if (!i || !i.id || seenIds.has(i.id)) continue;
-          const tHe = String(i.title_he || '').toLowerCase();
-          const tEn = String(i.title_en || '').toLowerCase();
-          const ovHe = String(i.overview_he || '').toLowerCase();
-          const gHe = Array.isArray(i.genres_he) ? i.genres_he.join(' ').toLowerCase() : '';
-          const yStr = String(i.year || '');
-          const isMatch =
-            tHe.includes(qLow) ||
-            tEn.includes(qLow) ||
-            ovHe.includes(qLow) ||
-            gHe.includes(qLow) ||
-            yStr === qLow ||
-            matchedEnKeys.some((ek) => tEn.includes(ek));
-          if (isMatch) {
-            seenIds.add(i.id);
-            localMatches.push(i);
-          }
-        }
-
-        pool = localMatches;
-        // If user typed a 4-digit year in search (e.g. "2023" or "1999"), fetch that year's catalog too!
-        if (/^(19[7-9]\d|20[0-2]\d)$/.test(qLow)) {
-          this.fetchCatalogByYear(qLow);
-        }
-        // Schedule live Cinemeta search in the background (with automatic Hebrew->English query translation)
-        this.scheduleLiveGlobalSearch(qClean);
-      } else if (this.activeCategory !== 'all') {
+      if (this.activeCategory !== 'all') {
         const catMap = {
           action: 'אקשן',
           horror: 'אימה',
@@ -3020,33 +3850,31 @@
         );
       }
 
-      if (!qClean) {
-        if (this.activeYearFilter && this.activeYearFilter !== 'all') {
-          this.fetchCatalogByYear(this.activeYearFilter);
-          const yf = this.activeYearFilter;
-          pool = pool.filter((i) => {
-            if (i.type === 'live') return false;
-            const y = Number(i.year) || 2024;
-            if (yf === 'classic') return y < 2000;
-            if (yf.includes('-')) {
-              const [yMin, yMax] = yf.split('-').map(Number);
-              return y >= yMin && y <= yMax;
-            }
-            return y === Number(yf);
-          });
-          if (titleEl && this.activeTab === 'home' && this.activeCategory === 'all') {
-            titleEl.textContent =
-              yf === 'classic'
-                ? 'סרטים וסדרות — שנות ה-90 וקלאסיקות'
-                : `סרטים וסדרות משנת ${yf.replace('-', '–')}`;
+      if (this.activeYearFilter && this.activeYearFilter !== 'all') {
+        this.fetchCatalogByYear(this.activeYearFilter);
+        const yf = this.activeYearFilter;
+        pool = pool.filter((i) => {
+          if (i.type === 'live') return false;
+          const y = Number(i.year) || 2024;
+          if (yf === 'classic') return y < 2000;
+          if (yf.includes('-')) {
+            const [yMin, yMax] = yf.split('-').map(Number);
+            return y >= yMin && y <= yMax;
           }
+          return y === Number(yf);
+        });
+        if (titleEl && this.activeTab === 'home' && this.activeCategory === 'all') {
+          titleEl.textContent =
+            yf === 'classic'
+              ? 'סרטים וסדרות — שנות ה-90 וקלאסיקות'
+              : `סרטים וסדרות משנת ${yf.replace('-', '–')}`;
         }
+      }
 
-        if (this.activeQualityFilter === '1080p') {
-          pool = pool.filter((i) => String(i.quality || '1080p').includes('1080'));
-        } else if (this.activeQualityFilter === '4k') {
-          pool = pool.filter((i) => String(i.quality || '').toUpperCase().includes('4K'));
-        }
+      if (this.activeQualityFilter === '1080p') {
+        pool = pool.filter((i) => String(i.quality || '1080p').includes('1080'));
+      } else if (this.activeQualityFilter === '4k') {
+        pool = pool.filter((i) => String(i.quality || '').toUpperCase().includes('4K'));
       }
 
       if (this.activeSort === 'imdb') {
@@ -3058,9 +3886,7 @@
       }
 
       if (!pool.length) {
-        grid.innerHTML = qClean
-          ? `<div style="grid-column:1/-1;padding:40px;text-align:center;color:#a3a3a3;">מחפש במאגר העולמי עבור "${qClean}"...</div>`
-          : `<div style="grid-column:1/-1;padding:40px;text-align:center;color:#a3a3a3;">לא נמצאו כותרים התואמים לסינון הנוכחי.</div>`;
+        grid.innerHTML = `<div style="grid-column:1/-1;padding:40px;text-align:center;color:#a3a3a3;">לא נמצאו כותרים התואמים לסינון הנוכחי.</div>`;
         return;
       }
 
@@ -3078,7 +3904,7 @@
               </article>
             `;
           }
-          return this.createMediaCardHtml(item);
+          return this.createMediaCardHtml(item, { showTypeBadge: this.activeTab === 'home' });
         })
         .join('');
 
@@ -3142,91 +3968,127 @@
       if (this._lastCompletedLiveSearch === qClean) return;
       if (this._liveSearchTimer) clearTimeout(this._liveSearchTimer);
 
+      this.isLiveSearching = true;
       this._liveSearchTimer = setTimeout(async () => {
         if (String(this.searchQuery || '').trim() !== qClean) return;
         this._lastCompletedLiveSearch = qClean;
 
-        let searchTerms = [qClean];
-        if (hasHebrewChars(qClean)) {
-          // 1. Check built-in Hebrew->English dictionary first
-          for (const [enK, heV] of Object.entries(HEBREW_TITLES_MAP)) {
-            if (heV.includes(qClean)) {
-              searchTerms.push(enK);
-              break;
-            }
-          }
-          // 2. Translate Hebrew query to English via Google Translate so Cinemeta finds any movie in the world
+        const qNorm = qClean.toLowerCase().replace(/״/g, '"').replace(/׳/g, "'").trim();
+        let primaryEnTerm = resolveSearchQueryToEnglish(qClean);
+
+        // 1. Query backend /api/search first (which resolves Hebrew->English, translates titles & plots cleanly, and resolves direct streams)
+        const serverSearchPromise = this.fetchJsonWithTimeout(
+          `/api/search?q=${encodeURIComponent(qClean)}`,
+          3200
+        );
+
+        // 2. If Hebrew query was not in local alias dictionary, also check Google Translate iw->en as fallback
+        if (hasHebrewChars(qClean) && !primaryEnTerm) {
           try {
             const gtRes = await this.fetchJsonWithTimeout(
               `https://translate.googleapis.com/translate_a/single?client=gtx&sl=iw&tl=en&dt=t&q=${encodeURIComponent(qClean)}`,
-              2000
+              1800
             );
-            const enTrans = gtRes && gtRes[0] && gtRes[0][0] && gtRes[0][0][0] ? String(gtRes[0][0][0]).trim() : '';
-            if (enTrans && !searchTerms.includes(enTrans)) {
-              searchTerms.unshift(enTrans);
-            }
+            const enTrans =
+              gtRes && gtRes[0] && gtRes[0][0] && gtRes[0][0][0]
+                ? String(gtRes[0][0][0]).trim()
+                : '';
+            if (enTrans) primaryEnTerm = enTrans;
           } catch (_) {}
         }
 
-        const primaryTerm = searchTerms[0] || qClean;
+        const cinemetaTerm = primaryEnTerm || qClean;
+        this.liveSearchResolvedEn = cinemetaTerm;
+
         try {
-          const [cmMov, cmSer] = await Promise.all([
+          const [srvData, cmMov, cmSer] = await Promise.all([
+            serverSearchPromise,
             this.fetchJsonWithTimeout(
-              `https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodeURIComponent(primaryTerm)}.json`,
-              2500
+              `https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodeURIComponent(cinemetaTerm)}.json`,
+              2600
             ),
             this.fetchJsonWithTimeout(
-              `https://v3-cinemeta.strem.io/catalog/series/top/search=${encodeURIComponent(primaryTerm)}.json`,
-              2500
+              `https://v3-cinemeta.strem.io/catalog/series/top/search=${encodeURIComponent(cinemetaTerm)}.json`,
+              2600
             )
           ]);
 
-          const existingIds = new Set(
-            [...this.movies, ...this.series, ...this.globalLiveMovies, ...this.globalLiveSeries].map((x) => x.id)
-          );
-          let addedCount = 0;
+          const existingMap = new Map();
+          for (const x of [...this.movies, ...this.series, ...this.globalLiveMovies, ...this.globalLiveSeries]) {
+            if (x && x.id) existingMap.set(x.id, x);
+          }
 
-          for (const m of (cmMov && Array.isArray(cmMov.metas) ? cmMov.metas : []).slice(0, 14)) {
+          const newAdded = [];
+          const tagItemMatch = (itemObj) => {
+            if (!itemObj) return;
+            if (!itemObj._matchedSearchQueries) itemObj._matchedSearchQueries = new Set();
+            itemObj._matchedSearchQueries.add(qNorm);
+          };
+
+          if (srvData && srvData.ok) {
+            if (srvData.resolved_en_query) {
+              this.liveSearchResolvedEn = srvData.resolved_en_query;
+            }
+            if (Array.isArray(srvData.direct_streams)) {
+              this.liveSearchDirectStreams = srvData.direct_streams;
+              this.liveSearchDirectStreamsQuery = qClean;
+            }
+            for (const item of srvData.results || []) {
+              if (!item || !item.id || item.type === 'live') continue;
+              if (existingMap.has(item.id)) {
+                const ex = existingMap.get(item.id);
+                if (item.title_he && hasHebrewChars(item.title_he)) ex.title_he = item.title_he;
+                tagItemMatch(ex);
+              } else {
+                tagItemMatch(item);
+                existingMap.set(item.id, item);
+                if (item.type === 'series') this.globalLiveSeries.push(item);
+                else this.globalLiveMovies.push(item);
+                newAdded.push(item);
+              }
+            }
+          }
+
+          for (const m of (cmMov && Array.isArray(cmMov.metas) ? cmMov.metas : []).slice(0, 12)) {
             if (!m || !m.id) continue;
-            if (existingIds.has(m.id)) {
-              const ex = [...this.movies, ...this.globalLiveMovies].find((x) => x.id === m.id);
-              if (ex && hasHebrewChars(qClean) && ! ex.title_he.includes(qClean)) {
-                ex.overview_he = `${ex.overview_he || ''} (${qClean})`;
-              }
+            if (existingMap.has(m.id)) {
+              tagItemMatch(existingMap.get(m.id));
               continue;
             }
-            existingIds.add(m.id);
             const norm = this.normalizeCinemetaItem(m, 'movie');
-            if (hasHebrewChars(qClean)) {
-              norm.overview_he = `${norm.overview_he} • מילות חיפוש: ${qClean}`;
-            }
+            tagItemMatch(norm);
+            existingMap.set(m.id, norm);
             this.globalLiveMovies.push(norm);
-            addedCount++;
+            newAdded.push(norm);
           }
 
-          for (const s of (cmSer && Array.isArray(cmSer.metas) ? cmSer.metas : []).slice(0, 12)) {
+          for (const s of (cmSer && Array.isArray(cmSer.metas) ? cmSer.metas : []).slice(0, 10)) {
             if (!s || !s.id) continue;
-            if (existingIds.has(s.id)) {
-              const ex = [...this.series, ...this.globalLiveSeries].find((x) => x.id === s.id);
-              if (ex && hasHebrewChars(qClean) && !ex.title_he.includes(qClean)) {
-                ex.overview_he = `${ex.overview_he || ''} (${qClean})`;
-              }
+            if (existingMap.has(s.id)) {
+              tagItemMatch(existingMap.get(s.id));
               continue;
             }
-            existingIds.add(s.id);
             const norm = this.normalizeCinemetaItem(s, 'series');
-            if (hasHebrewChars(qClean)) {
-              norm.overview_he = `${norm.overview_he} • מילות חיפוש: ${qClean}`;
-            }
+            tagItemMatch(norm);
+            existingMap.set(s.id, norm);
             this.globalLiveSeries.push(norm);
-            addedCount++;
+            newAdded.push(norm);
           }
 
+          this.isLiveSearching = false;
+          if (newAdded.length > 0) {
+            await this.translateCatalogBatchToHebrew(newAdded);
+          }
           if (String(this.searchQuery || '').trim() === qClean) {
             this.renderFilteredGrid();
           }
-        } catch (_) {}
-      }, 220);
+        } catch (_) {
+          this.isLiveSearching = false;
+          if (String(this.searchQuery || '').trim() === qClean) {
+            this.renderFilteredGrid();
+          }
+        }
+      }, 200);
     },
 
     findItemById(id, type) {
@@ -4337,6 +5199,107 @@
       return null;
     },
 
+    getSeriesIntroWindow(item = this.activePlayerItem) {
+      if (!item || item.type !== 'series') return null;
+      const imdbId = String(item.imdb_id || item.id || '').split(':')[0].trim();
+      const calibratedMap = {
+        tt0903747: { start: 3, end: 24, target: 24, jumpDelta: 20 }, // שובר שורות (Breaking Bad)
+        tt0944947: { start: 4, end: 112, target: 112, jumpDelta: 105 }, // משחקי הכס (Game of Thrones)
+        tt11198330: { start: 4, end: 104, target: 104, jumpDelta: 98 }, // בית הדרקון (House of the Dragon)
+        tt0141842: { start: 3, end: 95, target: 95, jumpDelta: 90 }, // הסופרנוס (The Sopranos)
+        tt3581920: { start: 4, end: 90, target: 90, jumpDelta: 85 }, // האחרונים מבינינו (The Last of Us)
+        tt4574334: { start: 4, end: 68, target: 68, jumpDelta: 64 }, // דברים מוזרים (Stranger Things)
+        tt11280740: { start: 4, end: 92, target: 92, jumpDelta: 86 }, // ניתוק (Severance)
+        tt2788316: { start: 4, end: 96, target: 96, jumpDelta: 90 }, // שוגון (Shōgun)
+        tt7660850: { start: 4, end: 94, target: 94, jumpDelta: 88 }, // יורשים (Succession)
+        tt14452776: { start: 3, end: 42, target: 42, jumpDelta: 38 }, // הדוב (The Bear)
+        tt2442560: { start: 4, end: 72, target: 72, jumpDelta: 68 }, // כנופיית ברמינגהאם (Peaky Blinders)
+        tt5753856: { start: 4, end: 88, target: 88, jumpDelta: 84 }, // אפל (Dark)
+        tt4565380: { start: 4, end: 58, target: 58, jumpDelta: 54 }, // פאודה (Fauda)
+        tt10577736: { start: 4, end: 64, target: 64, jumpDelta: 60 }, // טהרן (Tehran)
+        tt3032476: { start: 3, end: 26, target: 26, jumpDelta: 22 }, // סמוך על סול (Better Call Saul)
+        tt0455275: { start: 4, end: 82, target: 82, jumpDelta: 78 }, // נמלטים (Prison Break)
+        tt6468322: { start: 4, end: 86, target: 86, jumpDelta: 82 }, // בית הנייר (Money Heist)
+        tt10919420: { start: 4, end: 54, target: 54, jumpDelta: 50 } // משחק הדיונון (Squid Game)
+      };
+      return calibratedMap[imdbId] || { start: 3, end: 90, target: 88, jumpDelta: 85 };
+    },
+
+    updateSkipIntroOverlayState(currentTimeSec = 0) {
+      const overlayBtn = document.getElementById('skipIntroOverlayBtn');
+      const bottomSkipBtn = document.getElementById('playerSkipIntroBtn');
+      const item = this.activePlayerItem;
+
+      if (!item || item.type !== 'series') {
+        if (overlayBtn) overlayBtn.classList.add('hidden');
+        if (bottomSkipBtn) bottomSkipBtn.classList.add('hidden');
+        return;
+      }
+
+      if (bottomSkipBtn) {
+        bottomSkipBtn.classList.remove('hidden');
+      }
+
+      if (!overlayBtn) return;
+      const win = this.getSeriesIntroWindow(item);
+      if (!win) {
+        overlayBtn.classList.add('hidden');
+        return;
+      }
+
+      const curKey = `${item.id}_${this.currentSeason}_${this.currentEpisode}`;
+      const inWindow =
+        currentTimeSec >= win.start &&
+        currentTimeSec <= win.end &&
+        this.introSkippedForKey !== curKey;
+
+      const wasHidden = overlayBtn.classList.contains('hidden');
+      overlayBtn.classList.toggle('hidden', !inWindow);
+
+      // On TV Streamer mode, gently focus the Skip Intro button when it first pops up so pressing OK/Enter skips immediately
+      if (inWindow && wasHidden && document.body.getAttribute('data-device-mode') === 'tv') {
+        const inspector = document.getElementById('autoSubInspectorPanel');
+        const isInspectorOpen = inspector && !inspector.classList.contains('hidden');
+        if (!isInspectorOpen) {
+          try {
+            overlayBtn.focus({ preventScroll: true });
+          } catch (_) {}
+        }
+      }
+    },
+
+    skipSeriesIntroNow() {
+      const item = this.activePlayerItem;
+      const video = document.getElementById('cinemaVideo');
+      if (!item || item.type !== 'series' || !video) return;
+
+      const win = this.getSeriesIntroWindow(item) || { start: 3, end: 90, target: 88, jumpDelta: 85 };
+      const curSec = Number(video.currentTime) || 0;
+      let targetSec = win.target;
+
+      // If the user is already past the standard opening window (e.g., cold-open intro at minute 02:30), jump forward by jumpDelta (~85s)
+      if (curSec >= win.target - 4) {
+        targetSec = curSec + (win.jumpDelta || 85);
+      }
+
+      if (Number.isFinite(video.duration) && video.duration > 30) {
+        targetSec = Math.min(video.duration - 15, targetSec);
+      }
+
+      video.currentTime = Math.max(0, targetSec);
+      if (video.paused) {
+        video.play().catch(() => {});
+      }
+
+      this.introSkippedForKey = `${item.id}_${this.currentSeason}_${this.currentEpisode}`;
+      const overlayBtn = document.getElementById('skipIntroOverlayBtn');
+      if (overlayBtn) overlayBtn.classList.add('hidden');
+
+      this.updateCustomSubtitleOverlay(video.currentTime);
+      this.resetPlayerIdleTimer();
+      this.showToast(`⏭ דילגת על הפתיח (אל ${this.formatSeconds(video.currentTime)})`);
+    },
+
     updatePlayerBingeControls() {
       const item = this.activePlayerItem;
       const topToggleBtn = document.getElementById('playerBingeToggleBtn');
@@ -4345,13 +5308,24 @@
       const prevLabel = document.getElementById('playerPrevBingeLabel');
       const nextBtn = document.getElementById('playerNextBingeBtn');
       const nextLabel = document.getElementById('playerNextBingeLabel');
+      const skipIntroBtn = document.getElementById('playerSkipIntroBtn');
+      const skipIntroOverlay = document.getElementById('skipIntroOverlayBtn');
 
       if (!item || item.type === 'live') {
         if (topToggleBtn) topToggleBtn.classList.add('hidden');
         if (prevBtn) prevBtn.classList.add('hidden');
         if (nextBtn) nextBtn.classList.add('hidden');
+        if (skipIntroBtn) skipIntroBtn.classList.add('hidden');
+        if (skipIntroOverlay) skipIntroOverlay.classList.add('hidden');
         this.cancelBingeCountdown(false);
         return;
+      }
+
+      if (skipIntroBtn) {
+        skipIntroBtn.classList.toggle('hidden', item.type !== 'series');
+      }
+      if (skipIntroOverlay && item.type !== 'series') {
+        skipIntroOverlay.classList.add('hidden');
       }
 
       if (topToggleBtn) {
@@ -4483,11 +5457,13 @@
 
       this.cancelBingeCountdown(false);
       this.bingeDismissedForKey = '';
+      this.introSkippedForKey = '';
 
       this.activePlayerItem = item;
       this.currentSeason = Number(season) || 1;
       this.currentEpisode = Number(episode) || 1;
       this.updatePlayerBingeControls();
+      this.updateSkipIntroOverlayState(0);
 
       // Ensure live series episodes or movie sequels are enriched in the background even if launched directly from card!
       this.enrichItemFromCinemetaLive(item);
@@ -5427,12 +6403,15 @@
         });
       }
 
-      // Search
+      // Search & Categorized Search Hub Tabs
       const searchInput = document.getElementById('globalSearchInput');
       const clearBtn = document.getElementById('clearSearchBtn');
       if (searchInput) {
         searchInput.addEventListener('input', () => {
           this.searchQuery = searchInput.value;
+          if (!this.searchQuery.trim()) {
+            this.activeSearchCategoryTab = 'all';
+          }
           if (clearBtn) clearBtn.classList.toggle('hidden', !this.searchQuery);
           this.renderAllViews();
         });
@@ -5440,11 +6419,19 @@
       if (clearBtn) {
         clearBtn.addEventListener('click', () => {
           this.searchQuery = '';
+          this.activeSearchCategoryTab = 'all';
           if (searchInput) searchInput.value = '';
           clearBtn.classList.add('hidden');
           this.renderAllViews();
         });
       }
+
+      document.querySelectorAll('[data-search-tab]').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          this.activeSearchCategoryTab = tab.getAttribute('data-search-tab') || 'all';
+          this.renderFilteredGrid();
+        });
+      });
 
       // Category Pills
       document.querySelectorAll('[data-cat]').forEach((pill) => {
@@ -5488,7 +6475,9 @@
           this.activeYearFilter = 'all';
           this.activeQualityFilter = 'all';
           this.searchQuery = '';
+          this.activeSearchCategoryTab = 'all';
           if (searchInput) searchInput.value = '';
+          if (clearBtn) clearBtn.classList.add('hidden');
           if (yearSel) yearSel.value = 'all';
           if (qualSel) qualSel.value = 'all';
           document.querySelectorAll('[data-cat]').forEach((p) => {
@@ -6056,6 +7045,7 @@
       if (video) {
         video.addEventListener('timeupdate', () => {
           this.updateCustomSubtitleOverlay(video.currentTime);
+          this.updateSkipIntroOverlayState(video.currentTime);
           document.getElementById('playerCurrentTime').textContent = this.formatSeconds(video.currentTime);
           document.getElementById('playerDurationTime').textContent = this.formatSeconds(video.duration || 0);
           if (seekSlider && video.duration) {
@@ -6204,7 +7194,19 @@
         });
       }
 
-      // Binge-Watch Continuous Playback Controls (Series Episodes & Movie Sequels)
+      // Binge-Watch Continuous Playback & Skip Intro Controls (Series Episodes & Movie Sequels)
+      const skipIntroOverlayBtn = document.getElementById('skipIntroOverlayBtn');
+      if (skipIntroOverlayBtn) {
+        skipIntroOverlayBtn.addEventListener('click', () => {
+          this.skipSeriesIntroNow();
+        });
+      }
+      const playerSkipIntroBtn = document.getElementById('playerSkipIntroBtn');
+      if (playerSkipIntroBtn) {
+        playerSkipIntroBtn.addEventListener('click', () => {
+          this.skipSeriesIntroNow();
+        });
+      }
       const bingeToggleBtn = document.getElementById('playerBingeToggleBtn');
       if (bingeToggleBtn) {
         bingeToggleBtn.addEventListener('click', () => {

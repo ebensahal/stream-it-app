@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=6.0" />
+  <link rel="stylesheet" href="styles.css?v=6.2" />
   <script>
     // Wipe any old Service Worker cache that previously served the old Sandbox player
     (function () {
@@ -243,13 +243,105 @@
       </div>
     </section>
 
-    <!-- Search / Filtered Grid View -->
+    <!-- Search / Filtered Grid View (Categorized Search Hub + Standard Filtered Grid) -->
     <section id="filteredResultsSection" class="catalog-shelf hidden" aria-label="תוצאות סינון וחיפוש">
-      <div class="shelf-header">
-        <h2 id="filteredResultsTitle" class="shelf-title">תוצאות חיפוש</h2>
-        <button type="button" id="resetFiltersBtn" class="btn-text tv-focusable" aria-label="חזור לתצוגה מלאה">נקה סינון וחזור</button>
+      <div class="shelf-header search-hub-top-header">
+        <div class="search-hub-title-group">
+          <h2 id="filteredResultsTitle" class="shelf-title">תוצאות חיפוש</h2>
+          <p id="searchResolvedSubtitle" class="search-resolved-subtitle hidden"></p>
+        </div>
+        <button type="button" id="resetFiltersBtn" class="btn-text tv-focusable" aria-label="חזור לתצוגה מלאה">נקה חיפוש וסינון ←</button>
       </div>
+
+      <!-- Categorized Search Filter Tabs (Visible during active search) -->
+      <div id="searchCategoryBar" class="search-category-bar hidden" role="tablist" aria-label="סינון תוצאות חיפוש לפי סוג תוכן">
+        <button type="button" class="search-cat-tab active tv-focusable" data-search-tab="all" role="tab" aria-selected="true" aria-label="כל התוצאות">
+          <span>הכל</span>
+          <span id="searchCountAll" class="search-cat-count">0</span>
+        </button>
+        <button type="button" class="search-cat-tab tv-focusable" data-search-tab="movies" role="tab" aria-selected="false" aria-label="סרטים">
+          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/></svg>
+          <span>סרטים</span>
+          <span id="searchCountMovies" class="search-cat-count">0</span>
+        </button>
+        <button type="button" class="search-cat-tab tv-focusable" data-search-tab="series" role="tab" aria-selected="false" aria-label="סדרות">
+          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
+          <span>סדרות</span>
+          <span id="searchCountSeries" class="search-cat-count">0</span>
+        </button>
+        <button type="button" class="search-cat-tab tv-focusable" data-search-tab="live" role="tab" aria-selected="false" aria-label="ערוצים חיים">
+          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
+          <span>ערוצים חיים</span>
+          <span id="searchCountLive" class="search-cat-count">0</span>
+        </button>
+        <button type="button" class="search-cat-tab tv-focusable" data-search-tab="streams" role="tab" aria-selected="false" aria-label="הזרמות ישירות וטורנטים">
+          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>הזרמות ישירות, טורנטים וטלגרם</span>
+          <span id="searchCountStreams" class="search-cat-count">0</span>
+        </button>
+      </div>
+
+      <!-- Categorized Search Hub Container (Separated by Movies, Series, Live TV & Direct Streams) -->
+      <div id="searchCategorizedHub" class="search-categorized-hub hidden">
+        <!-- 1. Movies Section -->
+        <div id="searchSecMovies" class="search-category-section hidden">
+          <div class="search-sec-header">
+            <div class="search-sec-title-wrap">
+              <span class="search-sec-badge movie-badge">סרטים</span>
+              <h3 class="search-sec-title">סרטי קולנוע תואמים</h3>
+              <span id="searchSecMoviesCount" class="search-sec-count">0</span>
+            </div>
+            <span class="search-sec-sub">1080p Full HD / 4K UHD • כתוביות בעברית (AutoSub AI)</span>
+          </div>
+          <div id="searchMoviesGrid" class="poster-grid"></div>
+        </div>
+
+        <!-- 2. Series Section -->
+        <div id="searchSecSeries" class="search-category-section hidden">
+          <div class="search-sec-header">
+            <div class="search-sec-title-wrap">
+              <span class="search-sec-badge series-badge">סדרות</span>
+              <h3 class="search-sec-title">סדרות טלוויזיה ובינג'</h3>
+              <span id="searchSecSeriesCount" class="search-sec-count">0</span>
+            </div>
+            <span class="search-sec-sub">כל העונות והפרקים • ניגון רציף אוטומטי</span>
+          </div>
+          <div id="searchSeriesGrid" class="poster-grid"></div>
+        </div>
+
+        <!-- 3. Live TV Channels Section -->
+        <div id="searchSecLive" class="search-category-section hidden">
+          <div class="search-sec-header">
+            <div class="search-sec-title-wrap">
+              <span class="search-sec-badge live-badge">שידור חי</span>
+              <h3 class="search-sec-title">ערוצי טלוויזיה בשידור חי</h3>
+              <span id="searchSecLiveCount" class="search-sec-count">0</span>
+            </div>
+            <span class="search-sec-sub">עידן+ ישראל וערוצי עולם ב-HD</span>
+          </div>
+          <div id="searchLiveGrid" class="poster-grid"></div>
+        </div>
+
+        <!-- 4. Direct Streams, Torrents & Telegram VOD Section -->
+        <div id="searchSecStreams" class="search-category-section hidden">
+          <div class="search-sec-header">
+            <div class="search-sec-title-wrap">
+              <span class="search-sec-badge stream-badge">הזרמות ומקורות</span>
+              <h3 class="search-sec-title">מקורות הזרמה ישירה, טורנטים וטלגרם VOD</h3>
+              <span id="searchSecStreamsCount" class="search-sec-count">0</span>
+            </div>
+            <span class="search-sec-sub">ניגון מיידי • שרת 1080p ישיר • YTS • ThePirateBay • Torrentio • טלגרם</span>
+          </div>
+          <div id="searchStreamsGrid" class="search-streams-grid"></div>
+        </div>
+
+        <!-- Empty / Live Searching State -->
+        <div id="searchEmptyStateBox" class="search-empty-state hidden"></div>
+      </div>
+
+      <!-- Standard Flat Grid (Used when browsing a single tab/genre without text search) -->
       <div id="filteredGrid" class="poster-grid"></div>
+
       <div style="display:flex;justify-content:center;padding:24px 0 8px;">
         <button type="button" id="loadMoreGlobalBtn" class="btn-secondary tv-focusable" aria-label="טען עוד 100 סרטים וסדרות מהמאגר העולמי">
           + טען עוד 100 סרטים וסדרות בעברית מהמאגר העולמי
@@ -601,6 +693,12 @@
           <div id="autoSubToastSub" class="autosub-toast-sub">התאמה מלאה לגרסת השחרור • 23.976 FPS • 0.0s דיליי</div>
         </div>
 
+        <!-- Netflix-Style Skip Intro Floating Overlay Button (Series Episodes) -->
+        <button type="button" id="skipIntroOverlayBtn" class="skip-intro-overlay-btn hidden tv-focusable" dir="rtl" aria-label="דלג על פתיח הפרק">
+          <span class="skip-intro-icon" aria-hidden="true">⏭</span>
+          <span id="skipIntroOverlayLabel" class="skip-intro-text">דלג על הפתיח</span>
+        </button>
+
         <!-- Netflix-Style Binge-Watch Up Next Card (Series Next Episode & Movie Sequels) -->
         <div id="bingeUpNextCard" class="binge-upnext-card hidden" dir="rtl" role="region" aria-label="המשך צפייה ברצף">
           <div class="binge-upnext-header">
@@ -741,6 +839,10 @@
           </div>
 
           <div class="controls-group" dir="rtl">
+            <button type="button" id="playerSkipIntroBtn" class="ctrl-pill-btn skip-intro-ctrl-btn hidden tv-focusable" aria-label="דלג על פתיח הפרק">
+              <span>⏭</span>
+              <span>דלג על פתיח</span>
+            </button>
             <button type="button" id="playerPrevBingeBtn" class="ctrl-pill-btn binge-ctrl-btn hidden tv-focusable" aria-label="עבור לפרק או לסרט הקודם">
               <span>⏮</span>
               <span id="playerPrevBingeLabel">פרק קודם</span>
@@ -1393,7 +1495,7 @@
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js?v=6.0"></script>
-  <script src="app.js?v=6.0"></script>
+  <script src="tv-navigation.js?v=6.2"></script>
+  <script src="app.js?v=6.2"></script>
 </body>
 </html>

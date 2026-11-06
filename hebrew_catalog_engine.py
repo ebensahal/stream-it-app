@@ -1467,6 +1467,399 @@ def _save_translation_cache(cache: Dict[str, str]) -> None:
             pass
 
 
+OFFICIAL_HEBREW_TITLES_DICT: Dict[str, str] = {
+    "dune: part two": "חולית: חלק שני",
+    "dune: part one": "חולית: חלק ראשון",
+    "dune": "חולית",
+    "oppenheimer": "אופנהיימר",
+    "interstellar": "בין כוכבים",
+    "inception": "התחלה",
+    "the dark knight": "האביר האפל",
+    "the dark knight rises": "עלייתו של האביר האפל",
+    "batman begins": "באטמן מתחיל",
+    "the batman": "הבאטמן",
+    "batman": "באטמן",
+    "batman v superman: dawn of justice": "באטמן נגד סופרמן: שחר הצדק",
+    "joker": "ג'וקר",
+    "joker: folie à deux": "ג'וקר: טירוף בשניים",
+    "the shawshank redemption": "חומות של תקווה",
+    "the godfather": "הסנדק",
+    "the godfather part ii": "הסנדק 2",
+    "the godfather part iii": "הסנדק 3",
+    "pulp fiction": "ספרות זולה",
+    "fight club": "מועדון קרב",
+    "forrest gump": "פורסט גאמפ",
+    "the matrix": "מטריקס",
+    "the matrix reloaded": "מטריקס רילודד",
+    "the matrix revolutions": "מטריקס רבולושנס",
+    "the matrix resurrections": "מטריקס: התחייה",
+    "goodfellas": "החבר'ה הטובים",
+    "se7en": "שבעה חטאים",
+    "the silence of the lambs": "שתיקת הכבשים",
+    "parasite": "פרזיטים",
+    "whiplash": "וויפלאש",
+    "the prestige": "יוקרה",
+    "the departed": "השתולים",
+    "django unchained": "ג'אנגו ללא מעצורים",
+    "the wolf of wall street": "הזאב מוול סטריט",
+    "inglourious basterds": "ממזרים חסרי כבוד",
+    "once upon a time in hollywood": "היו זמנים בהוליווד",
+    "once upon a time... in hollywood": "היו זמנים בהוליווד",
+    "kill bill: vol. 1": "להרוג את ביל: חלק 1",
+    "kill bill: vol. 2": "להרוג את ביל: חלק 2",
+    "shutter island": "שאטר איילנד",
+    "memento": "ממנטו",
+    "tenet": "טנט",
+    "avengers: endgame": "הנוקמים: סוף המשחק",
+    "avengers: infinity war": "הנוקמים: מלחמת האינסוף",
+    "the avengers": "הנוקמים",
+    "avengers: age of ultron": "הנוקמים: עידן אולטרון",
+    "spider-man: no way home": "ספיידרמן: אין דרך הביתה",
+    "spider-man: far from home": "ספיידרמן: רחוק מהבית",
+    "spider-man: homecoming": "ספיידרמן: השיבה הביתה",
+    "spider-man: into the spider-verse": "ספיידרמן: ממד העכביש",
+    "spider-man: across the spider-verse": "ספיידרמן: ברחבי ממדי העכביש",
+    "spider-man": "ספיידרמן",
+    "spider-man 2": "ספיידרמן 2",
+    "spider-man 3": "ספיידרמן 3",
+    "iron man": "איירון מן",
+    "iron man 2": "איירון מן 2",
+    "iron man 3": "איירון מן 3",
+    "captain america: the first avenger": "קפטן אמריקה",
+    "captain america: the winter soldier": "קפטן אמריקה: חייל החורף",
+    "captain america: civil war": "קפטן אמריקה: מלחמת האזרחים",
+    "captain america: brave new world": "קפטן אמריקה: עולם חדש מופלא",
+    "thor": "תור",
+    "thor: ragnarok": "תור: ראגנארוק",
+    "thor: love and thunder": "תור: אהבה ורעם",
+    "black panther": "הפנתר השחור",
+    "black panther: wakanda forever": "הפנתר השחור: וואקנדה לנצח",
+    "guardians of the galaxy": "שומרי הגלקסיה",
+    "guardians of the galaxy vol. 2": "שומרי הגלקסיה: חלק 2",
+    "guardians of the galaxy vol. 3": "שומרי הגלקסיה: חלק 3",
+    "deadpool": "דדפול",
+    "deadpool 2": "דדפול 2",
+    "deadpool & wolverine": "דדפול ווולברין",
+    "logan": "לוגאן - וולברין",
+    "doctor strange": "דוקטור סטריינג'",
+    "top gun: maverick": "אהבה בשחקים: מאווריק",
+    "top gun": "אהבה בשחקים",
+    "avatar": "אווטאר",
+    "avatar: the way of water": "אווטאר: דרכם של המים",
+    "john wick": "ג'ון וויק",
+    "john wick: chapter 2": "ג'ון וויק 2",
+    "john wick: chapter 3 - parabellum": "ג'ון וויק 3: פרבלום",
+    "john wick: chapter 4": "ג'ון וויק 4",
+    "the fast and the furious": "מהיר ועצבני",
+    "2 fast 2 furious": "מהיר ועצבני 2",
+    "the fast and the furious: tokyo drift": "מהיר ועצבני 3: טוקיו דריפט",
+    "fast & furious": "מהיר ועצבני 4",
+    "fast five": "מהיר ועצבני 5",
+    "fast & furious 6": "מהיר ועצבני 6",
+    "furious 7": "מהיר ועצבני 7",
+    "the fate of the furious": "מהיר ועצבני 8",
+    "f9: the fast saga": "מהיר ועצבני 9",
+    "fast x": "מהיר ועצבני 10",
+    "fast & furious presents: hobbs & shaw": "מהיר ועצבני: הובס ושואו",
+    "harry potter and the sorcerer's stone": "הארי פוטר ואבן החכמים",
+    "harry potter and the philosopher's stone": "הארי פוטר ואבן החכמים",
+    "harry potter and the chamber of secrets": "הארי פוטר וחדר הסודות",
+    "harry potter and the prisoner of azkaban": "הארי פוטר והאסיר מאזקבאן",
+    "harry potter and the goblet of fire": "הארי פוטר וגביע האש",
+    "harry potter and the order of the phoenix": "הארי פוטר ומסדר עוף החול",
+    "harry potter and the half-blood prince": "הארי פוטר והנסיך חצוי-הדם",
+    "harry potter and the deathly hallows: part 1": "הארי פוטר ואוצרות המוות - חלק 1",
+    "harry potter and the deathly hallows: part 2": "הארי פוטר ואוצרות המוות - חלק 2",
+    "the lord of the rings: the fellowship of the ring": "שר הטבעות: אחוות הטבעת",
+    "the lord of the rings: the two towers": "שר הטבעות: שני הצריחים",
+    "the lord of the rings: the return of the king": "שר הטבעות: שיבת המלך",
+    "mission: impossible": "משימה בלתי אפשרית",
+    "mission: impossible - fallout": "משימה בלתי אפשרית: התרסקות",
+    "mission: impossible - dead reckoning part one": "משימה בלתי אפשרית: נקמת מוות - חלק ראשון",
+    "gladiator": "גלדיאטור",
+    "gladiator ii": "גלדיאטור 2",
+    "inside out": "הקול בראש",
+    "inside out 2": "הקול בראש 2",
+    "moana": "מואנה",
+    "moana 2": "מואנה 2",
+    "the lion king": "מלך האריות",
+    "mufasa: the lion king": "מופאסה: מלך האריות",
+    "sonic the hedgehog": "סוניק הקיפוד",
+    "sonic the hedgehog 2": "סוניק הקיפוד 2",
+    "sonic the hedgehog 3": "סוניק הקיפוד 3",
+    "venom": "ונום",
+    "venom: let there be carnage": "ונום 2",
+    "venom: the last dance": "ונום: הריקוד האחרון",
+    "wicked": "מרשעת",
+    "anora": "אנורה",
+    "conclave": "עד קצה העולם (קונקלווה)",
+    "the brutalist": "הברוטליסט",
+    "the substance": "יופי מסוכן",
+    "nosferatu": "נוספרטו",
+    "alien": "הנוסע השמיני",
+    "aliens": "שובו של הנוסע השמיני",
+    "alien: romulus": "הנוסע השמיני: רומולוס",
+    "a quiet place": "מקום שקט",
+    "a quiet place part ii": "מקום שקט 2",
+    "a quiet place: day one": "מקום שקט: היום הראשון",
+    "die hard": "מת לחיות",
+    "the hangover": "בדרך לחתונה עוצרים בווגאס",
+    "home alone": "שכחו אותי בבית",
+    "back to the future": "בחזרה לעתיד",
+    "jurassic park": "פארק היורה",
+    "jurassic world": "עולם היורה",
+    "terminator 2: judgment day": "שליחות קטלנית 2: יום הדין",
+    "the terminator": "שליחות קטלנית",
+    "breaking bad": "שובר שורות",
+    "better call saul": "סמוך על סול",
+    "game of thrones": "משחקי הכס",
+    "house of the dragon": "בית הדרקון",
+    "the sopranos": "הסופרנוס",
+    "the wire": "הסמויה",
+    "chernobyl": "צ'רנוביל",
+    "band of brothers": "אחים לנשק",
+    "stranger things": "דברים מוזרים",
+    "severance": "ניתוק",
+    "the last of us": "האחרונים מבינינו",
+    "the bear": "הדוב",
+    "shogun": "שוגון",
+    "shōgun": "שוגון",
+    "fallout": "פולאאוט",
+    "silo": "סילו",
+    "the white lotus": "הלוטוס הלבן",
+    "succession": "יורשים",
+    "fargo": "פארגו",
+    "true detective": "בלש אמיתי",
+    "peaky blinders": "כנופיית ברמינגהם (פיקי בליינדרז)",
+    "black mirror": "מראה שחורה",
+    "dark": "אפל (דארק)",
+    "squid game": "משחק הדיונון",
+    "the boys": "הבנים",
+    "invincible": "בלתי מנוצח",
+    "arcane": "ארקיין",
+    "rick and morty": "ריק ומורטי",
+    "the office": "המשרד",
+    "friends": "חברים",
+    "seinfeld": "סיינפלד",
+    "dexter": "דקסטר",
+    "prison break": "נמלטים",
+    "lost": "אבודים",
+    "sherlock": "שרלוק",
+    "vikings": "ויקינגים",
+    "narcos": "נרקוס",
+    "money heist": "בית הנייר",
+    "la casa de papel": "בית הנייר",
+    "wednesday": "וונסדיי",
+    "from": "אין מוצא (From)",
+    "the penguin": "הפינגווין",
+    "reacher": "ריצ'ר",
+    "slow horses": "סוסים איטיים",
+    "ted lasso": "טד לאסו",
+    "the mandalorian": "המנדלוריאן",
+    "andor": "אנדור",
+    "daredevil": "דרדוויל",
+    "daredevil: born again": "דרדוויל: נולד מחדש",
+    "fauda": "פאודה",
+    "tehran": "טהרן",
+    "shtisel": "שטיסל",
+    "yellowstone": "ילוסטון",
+    "suits": "חליפות (Suits)",
+    "house": "האוס",
+    "grey's anatomy": "האנטומיה של גריי",
+    "the walking dead": "המתים המהלכים",
+    "ozark": "אוזרק",
+    "lupin": "לופן",
+    "one piece": "וואן פיס",
+}
+
+HEBREW_SEARCH_TO_ENGLISH_DICT: Dict[str, str] = {
+    "מהיר ועצבני": "Fast & Furious",
+    "מהיר": "Fast & Furious",
+    "הארי פוטר": "Harry Potter",
+    "שובר שורות": "Breaking Bad",
+    "סמוך על סול": "Better Call Saul",
+    "משחקי הכס": "Game of Thrones",
+    "בית הדרקון": "House of the Dragon",
+    "בית הנייר": "Money Heist",
+    "דברים מוזרים": "Stranger Things",
+    "האחרונים מבינינו": "The Last of Us",
+    "משחק הדיונון": "Squid Game",
+    "נמלטים": "Prison Break",
+    "אבודים": "Lost",
+    "חברים": "Friends",
+    "סיינפלד": "Seinfeld",
+    "המשרד": "The Office",
+    "הסופרנוס": "The Sopranos",
+    "הסמויה": "The Wire",
+    "כנופיית ברמינגהם": "Peaky Blinders",
+    "פיקי בליינדרז": "Peaky Blinders",
+    "ויקינגים": "Vikings",
+    "הנוקמים": "Avengers",
+    "ספיידרמן": "Spider-Man",
+    "איש העכביש": "Spider-Man",
+    "באטמן": "Batman",
+    "הבאטמן": "The Batman",
+    "האביר האפל": "The Dark Knight",
+    "סופרמן": "Superman",
+    "איירון מן": "Iron Man",
+    "דדפול": "Deadpool",
+    "וולברין": "Wolverine",
+    "אקס מן": "X-Men",
+    "ג'ון וויק": "John Wick",
+    "ג׳ון וויק": "John Wick",
+    "גון וויק": "John Wick",
+    "משימה בלתי אפשרית": "Mission: Impossible",
+    "ג'יימס בונד": "James Bond",
+    "שר הטבעות": "The Lord of the Rings",
+    "ההוביט": "The Hobbit",
+    "מלחמת הכוכבים": "Star Wars",
+    "חולית": "Dune",
+    "מטריקס": "The Matrix",
+    "שליחות קטלנית": "Terminator",
+    "הנוסע השמיני": "Alien",
+    "פארק היורה": "Jurassic Park",
+    "עולם היורה": "Jurassic World",
+    "שודדי הקאריביים": "Pirates of the Caribbean",
+    "צעצוע של סיפור": "Toy Story",
+    "שרק": "Shrek",
+    "לשבור את הקרח": "Frozen",
+    "מלך האריות": "The Lion King",
+    "קפטן אמריקה": "Captain America",
+    "תור": "Thor",
+    "שומרי הגלקסיה": "Guardians of the Galaxy",
+    "הפנתר השחור": "Black Panther",
+    "דוקטור סטריינג": "Doctor Strange",
+    "רוקי": "Rocky",
+    "קריד": "Creed",
+    "רמבו": "Rambo",
+    "מת לחיות": "Die Hard",
+    "הסנדק": "The Godfather",
+    "חומות של תקווה": "The Shawshank Redemption",
+    "ספרות זולה": "Pulp Fiction",
+    "מועדון קרב": "Fight Club",
+    "בין כוכבים": "Interstellar",
+    "התחלה": "Inception",
+    "אופנהיימר": "Oppenheimer",
+    "גלדיאטור": "Gladiator",
+    "הזאב מוול סטריט": "The Wolf of Wall Street",
+    "פאודה": "Fauda",
+    "טהרן": "Tehran",
+    "שטיסל": "Shtisel",
+    "המתים המהלכים": "The Walking Dead",
+    "האנטומיה של גריי": "Grey's Anatomy",
+    "חליפות": "Suits",
+    "ילוסטון": "Yellowstone",
+    "מראה שחורה": "Black Mirror",
+    "ניתוק": "Severance",
+    "יורשים": "Succession",
+    "הדוב": "The Bear",
+    "הלוטוס הלבן": "The White Lotus",
+    "ריק ומורטי": "Rick and Morty",
+    "דקסטר": "Dexter",
+    "נרקוס": "Narcos",
+    "אוזרק": "Ozark",
+    "הבנים": "The Boys",
+    "וונסדיי": "Wednesday",
+    "שוגון": "Shogun",
+    "פולאאוט": "Fallout",
+    "סילו": "Silo",
+    "מקום שקט": "A Quiet Place",
+    "לזמן את הרוע": "The Conjuring",
+    "צעקה": "Scream",
+    "מסור": "Saw",
+    "הקול בראש": "Inside Out",
+    "סוניק": "Sonic the Hedgehog",
+    "מואנה": "Moana",
+    "ונום": "Venom",
+    "אווטאר": "Avatar",
+    "אהבה בשחקים": "Top Gun",
+    "בחזרה לעתיד": "Back to the Future",
+    "שכחו אותי בבית": "Home Alone",
+}
+
+
+def resolve_official_hebrew_title(name_en: str) -> str:
+    """Resolves an English movie/series title to its authentic Hebrew title without mangling."""
+    clean = (name_en or "").strip()
+    if not clean:
+        return ""
+    if any("\u0590" <= ch <= "\u05FF" for ch in clean):
+        return clean
+    low = clean.lower().strip()
+    if low in OFFICIAL_HEBREW_TITLES_DICT:
+        return OFFICIAL_HEBREW_TITLES_DICT[low]
+    # Check franchise prefixes so sequels translate accurately
+    franchise_prefixes = [
+        ("harry potter", "הארי פוטר"),
+        ("fast & furious", "מהיר ועצבני"),
+        ("the fast and the furious", "מהיר ועצבני"),
+        ("john wick", "ג'ון וויק"),
+        ("mission: impossible", "משימה בלתי אפשרית"),
+        ("spider-man", "ספיידרמן"),
+        ("avengers", "הנוקמים"),
+        ("captain america", "קפטן אמריקה"),
+        ("guardians of the galaxy", "שומרי הגלקסיה"),
+        ("jurassic world", "עולם היורה"),
+        ("jurassic park", "פארק היורה"),
+        ("pirates of the caribbean", "שודדי הקאריביים"),
+        ("the lord of the rings", "שר הטבעות"),
+        ("the hobbit", "ההוביט"),
+        ("star wars", "מלחמת הכוכבים"),
+        ("transformers", "רובוטריקים"),
+        ("toy story", "צעצוע של סיפור"),
+        ("despicable me", "גנוב על הירח"),
+        ("final destination", "יעד סופי"),
+        ("scream", "צעקה"),
+        ("the conjuring", "לזמן את הרוע"),
+        ("insidious", "רוע טבעי"),
+        ("terrifier", "טריפייר"),
+        ("sonic the hedgehog", "סוניק הקיפוד"),
+    ]
+    for en_pref, he_pref in franchise_prefixes:
+        if low.startswith(en_pref):
+            rest = clean[len(en_pref):].strip(" :-–")
+            if not rest:
+                return he_pref
+            rest_he = translate_to_hebrew(rest)
+            return f"{he_pref}: {rest_he}"
+    translated = translate_to_hebrew(clean)
+    return translated or clean
+
+
+def translate_query_he_to_en(query: str) -> str:
+    """Translates a Hebrew search query to its exact English movie/series search term."""
+    clean = (query or "").strip()
+    if not clean:
+        return ""
+    if not any("\u0590" <= ch <= "\u05FF" for ch in clean):
+        return clean
+    norm = clean.replace("״", '"').replace("׳", "'").strip()
+    if norm in HEBREW_SEARCH_TO_ENGLISH_DICT:
+        return HEBREW_SEARCH_TO_ENGLISH_DICT[norm]
+    # Check reverse lookup in OFFICIAL_HEBREW_TITLES_DICT
+    for en_k, he_v in OFFICIAL_HEBREW_TITLES_DICT.items():
+        he_norm = he_v.replace("״", '"').replace("׳", "'")
+        if he_norm == norm or norm in he_norm:
+            return en_k
+    for he_k, en_v in HEBREW_SEARCH_TO_ENGLISH_DICT.items():
+        if he_k in norm or norm in he_k:
+            return en_v
+    # Fallback to Google Translate iw -> en
+    try:
+        q = urllib.parse.quote(clean)
+        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=iw&tl=en&dt=t&q={q}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
+            payload = json.loads(resp.read().decode("utf-8", errors="replace"))
+        if isinstance(payload, list) and payload and isinstance(payload[0], list):
+            en_text = "".join(part[0] for part in payload[0] if part and part[0]).strip()
+            if en_text:
+                return en_text
+    except Exception:
+        pass
+    return clean
+
+
 def translate_to_hebrew(text: str) -> str:
     """Translates English metadata strings to natural Hebrew with disk caching."""
     clean = (text or "").strip()
@@ -1474,6 +1867,10 @@ def translate_to_hebrew(text: str) -> str:
         return ""
     if any("\u0590" <= ch <= "\u05FF" for ch in clean):
         return clean
+
+    low = clean.lower().strip()
+    if low in OFFICIAL_HEBREW_TITLES_DICT:
+        return OFFICIAL_HEBREW_TITLES_DICT[low]
 
     cache = _load_translation_cache()
     if clean in cache:
@@ -1523,28 +1920,39 @@ def get_full_catalog() -> Dict[str, Any]:
     }
 
 
-def _fetch_live_cinemeta_search(query: str, media_type: str = "movie") -> List[Dict[str, Any]]:
-    """Queries live Stremio Cinemeta catalog and translates metadata to Hebrew on the fly."""
-    q_enc = urllib.parse.quote(query.strip())
+def _fetch_live_cinemeta_search(
+    query: str, media_type: str = "movie", en_query_override: str = ""
+) -> List[Dict[str, Any]]:
+    """Queries live Stremio Cinemeta catalog using resolved English query and translates metadata to Hebrew."""
+    en_query = en_query_override or translate_query_he_to_en(query)
+    q_enc = urllib.parse.quote(en_query.strip())
     url = f"https://v3-cinemeta.strem.io/catalog/{media_type}/top/search={q_enc}.json"
     results: List[Dict[str, Any]] = []
+    cache = _load_translation_cache()
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "StreamIt/2.0"})
-        with urllib.request.urlopen(req, timeout=3.5) as resp:
+        with urllib.request.urlopen(req, timeout=2.5) as resp:
             data = json.loads(resp.read().decode("utf-8", errors="replace"))
         metas = data.get("metas") or []
-        for m in metas[:6]:
+        for idx, m in enumerate(metas[:8]):
             imdb_id = str(m.get("imdb_id") or m.get("id") or "")
             if not imdb_id.startswith("tt"):
                 continue
-            name_en = str(m.get("name") or "")
-            desc_en = str(m.get("description") or "")
-            title_he = translate_to_hebrew(name_en) if name_en else name_en
-            overview_he = (
-                translate_to_hebrew(desc_en)
-                if desc_en
-                else f"{title_he} — זמין לצפייה ישירה ב-4K/1080p עם סנכרון כתוביות אוטומטי בעברית."
-            )
+            name_en = str(m.get("name") or "").strip()
+            if not name_en:
+                continue
+            raw_rating = m.get("imdbRating")
+            # Filter out obscure unrated junk entries returned by Cinemeta (e.g. "Breaking Bad Wolf")
+            if idx >= 2 and not raw_rating and name_en.lower() not in OFFICIAL_HEBREW_TITLES_DICT:
+                continue
+
+            desc_en = str(m.get("description") or "").strip()
+            # Only perform live network translation for top 3 uncached titles to keep response <0.4s
+            if name_en.lower() in OFFICIAL_HEBREW_TITLES_DICT or name_en in cache or idx < 3:
+                title_he = resolve_official_hebrew_title(name_en)
+            else:
+                title_he = cache.get(name_en) or name_en
+
             raw_genres = m.get("genres") or []
             genres_he = [GENRE_EN_TO_HE.get(g, "דרמה") for g in raw_genres[:3]] or ["דרמה"]
             year_str = str(m.get("releaseInfo") or "2024")[:4]
@@ -1553,9 +1961,14 @@ def _fetch_live_cinemeta_search(query: str, media_type: str = "movie") -> List[D
             except ValueError:
                 year_val = 2024
             try:
-                rating_val = float(m.get("imdbRating") or 7.8)
+                rating_val = float(raw_rating or 7.8)
             except ValueError:
                 rating_val = 7.8
+
+            if desc_en and desc_en in cache:
+                overview_he = cache[desc_en]
+            else:
+                overview_he = f"{title_he} ({year_val}) — זמין לצפייה ישירה ב-4K/1080p עם סנכרון כתוביות אוטומטי בעברית."
 
             backdrop = m.get("background") or f"https://images.metahub.space/background/medium/{imdb_id}/img"
             results.append(
@@ -1572,6 +1985,7 @@ def _fetch_live_cinemeta_search(query: str, media_type: str = "movie") -> List[D
                     "quality": "1080p Full HD",
                     "audio": "Dolby Atmos",
                     "seeders": 940,
+                    "genres": [str(g).lower() for g in raw_genres[:3]],
                     "genres_he": list(dict.fromkeys(genres_he)),
                     "overview_he": overview_he,
                     "poster": m.get("poster") or f"https://images.metahub.space/poster/medium/{imdb_id}/img",
@@ -1584,15 +1998,53 @@ def _fetch_live_cinemeta_search(query: str, media_type: str = "movie") -> List[D
     return results
 
 
+def _score_catalog_item_match(item: Dict[str, Any], q_low: str, en_low: str) -> int:
+    """Computes strict relevance score for a catalog item against the user query."""
+    if not q_low:
+        return 100
+    t_he = str(item.get("title_he") or "").lower().replace("׳", "'").replace("״", '"')
+    t_en = str(item.get("title_en") or "").lower().replace("׳", "'").replace("״", '"')
+    cast_he = str(item.get("cast_he") or "").lower()
+    dir_he = str(item.get("director_he") or "").lower()
+    year_str = str(item.get("year") or "")
+    ov_he = str(item.get("overview_he") or "").lower()
+    # Ignore boilerplate overview fallback
+    if "זמין לצפייה ישירה" in ov_he:
+        ov_he = ""
+
+    score = 0
+    for term in ({q_low, en_low} if en_low else {q_low}):
+        if not term:
+            continue
+        if t_he == term or t_en == term:
+            score = max(score, 1000)
+        elif t_he.startswith(term) or t_en.startswith(term):
+            score = max(score, 850)
+        elif f" {term}" in f" {t_he} " or f" {term}" in f" {t_en} ":
+            score = max(score, 720)
+        elif len(term) >= 3 and (term in t_he or term in t_en):
+            score = max(score, 580)
+        elif year_str == term:
+            score = max(score, 500)
+        elif len(term) >= 3 and (term in cast_he or term in dir_he):
+            score = max(score, 400)
+        elif len(term) >= 4 and term in ov_he:
+            score = max(score, 180)
+    return score
+
+
 def search_catalog(
     query: str = "",
     item_type: str = "all",
     genre: str = "all",
     sort_by: str = "popularity",
 ) -> Dict[str, Any]:
-    """Searches local catalog and enriches with live Cinemeta Hebrew-translated results."""
+    """Searches local catalog with strict relevance ranking and enriches with live Cinemeta Hebrew-translated results."""
     cat = get_full_catalog()
-    q_low = (query or "").strip().lower()
+    q_clean = (query or "").strip()
+    q_low = q_clean.lower().replace("׳", "'").replace("״", '"')
+    en_resolved = translate_query_he_to_en(q_clean) if q_clean else ""
+    en_low = en_resolved.lower().replace("׳", "'").replace("״", '"')
     g_low = (genre or "all").strip().lower()
     t_low = (item_type or "all").strip().lower()
 
@@ -1604,40 +2056,41 @@ def search_catalog(
     if t_low in ("all", "live", "channels"):
         pool.extend(cat.get("live_channels") or [])
 
-    matched: List[Dict[str, Any]] = []
+    scored_matches: List[ Any ] = []
     seen_ids = set()
 
     for item in pool:
-        if q_low:
-            haystack = " ".join(
-                [
-                    str(item.get("title_he", "")),
-                    str(item.get("title_en", "")),
-                    str(item.get("overview_he", "")),
-                    str(item.get("director_he", "")),
-                    str(item.get("cast_he", "")),
-                ]
-            ).lower()
-            if q_low not in haystack:
-                continue
         if g_low and g_low not in ("all", "הכל"):
             g_list = [str(x).lower() for x in (item.get("genres") or []) + (item.get("genres_he") or [])]
             if not any(g_low in g for g in g_list):
                 continue
-        matched.append(item)
+        if q_low:
+            sc = _score_catalog_item_match(item, q_low, en_low)
+            if sc <= 0:
+                continue
+            scored_matches.append((sc, item))
+        else:
+            scored_matches.append((100, item))
         seen_ids.add(item.get("id"))
 
-    if q_low and len(matched) < 3 and t_low in ("all", "movie", "series"):
-        search_types = ["movie", "series"] if t_low == "all" else [t_low]
+    if q_low and len(q_low) >= 2 and t_low in ("all", "movie", "movies", "series", "tv"):
+        search_types = ["movie", "series"] if t_low == "all" else (["movie"] if "mov" in t_low else ["series"])
         for st in search_types:
-            for remote_item in _fetch_live_cinemeta_search(query, st):
+            for remote_item in _fetch_live_cinemeta_search(q_clean, st, en_query_override=en_resolved):
                 if remote_item["id"] not in seen_ids:
-                    matched.append(remote_item)
+                    sc = _score_catalog_item_match(remote_item, q_low, en_low)
+                    if sc <= 0:
+                        sc = 450
+                    scored_matches.append((sc, remote_item))
                     seen_ids.add(remote_item["id"])
+
+    scored_matches.sort(key=lambda pair: (pair[0], float(pair[1].get("imdb_rating") or 7.5)), reverse=True)
+    matched = [pair[1] for pair in scored_matches]
 
     return {
         "ok": True,
         "query": query,
+        "resolved_en_query": en_resolved,
         "results": matched,
         "movies": [x for x in matched if x.get("type") == "movie"],
         "series": [x for x in matched if x.get("type") == "series"],
