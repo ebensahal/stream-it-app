@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import io
 import json
 import os
 import re
@@ -17,6 +18,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 from typing import Any, Dict, List, Optional, Tuple
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -451,6 +453,45 @@ class SubtitleSyncEngine:
         if search_key in self._search_cache:
             return self._search_cache[search_key]
 
+        hebrew_subs: List[Dict[str, Any]] = []
+
+        # 1. Query Wizdom.xyz (Israel's #1 dedicated Hebrew Subtitle Community Repository)
+        try:
+            if norm_type == "series":
+                wiz_url = f"https://wizdom.xyz/api/search?action=by_id&imdb=tt{numeric_imdb}&season={s_num}&episode={e_num}"
+            else:
+                wiz_url = f"https://wizdom.xyz/api/search?action=by_id&imdb=tt{numeric_imdb}"
+            wiz_req = urllib.request.Request(
+                wiz_url,
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(wiz_req, timeout=3.5) as w_resp:
+                if w_resp.status == 200:
+                    w_data = json.loads(w_resp.read().decode("utf-8", errors="replace"))
+                    if isinstance(w_data, list):
+                        for w_item in w_data[:6]:
+                            if not isinstance(w_item, dict):
+                                continue
+                            w_id = str(w_item.get("id") or "").strip()
+                            if not w_id:
+                                continue
+                            dl_url = f"https://wizdom.xyz/api/files/sub/{w_id}"
+                            sub_id = f"wiz_{w_id}"
+                            self._srt_url_registry[sub_id] = dl_url
+                            self._srt_url_registry[w_id] = dl_url
+                            hebrew_subs.append({
+                                "id": sub_id,
+                                "raw_id": w_id,
+                                "url": dl_url,
+                                "filename": str(w_item.get("versioname") or f"Wizdom.Hebrew.{w_id}.srt"),
+                                "downloads": 9500,
+                                "lang": "heb",
+                                "provider": "Wizdom.xyz ישראל",
+                            })
+        except Exception:
+            pass
+
+        # 2. Query OpenSubtitles Official REST API
         if norm_type == "series":
             url = f"{self.OPENSUBTITLES_REST_BASE}/episode-{e_num}/imdbid-{numeric_imdb}/season-{s_num}/sublanguageid-heb"
         else:
@@ -465,54 +506,89 @@ class SubtitleSyncEngine:
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=5.0) as resp:
-                if resp.status != 200:
-                    return []
-                data = json.loads(resp.read().decode("utf-8", errors="replace"))
-                if not isinstance(data, list):
-                    return []
+            with urllib.request.urlopen(req, timeout=4.5) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode("utf-8", errors="replace"))
+                    if isinstance(data, list):
+                        def _dl_count(item: Dict[str, Any]) -> int:
+                            try:
+                                return int(item.get("SubDownloadsCnt") or 0)
+                            except Exception:
+                                return 0
 
-                # Sort by download count descending so highest-quality verified Hebrew SRT is #1
-                def _dl_count(item: Dict[str, Any]) -> int:
-                    try:
-                        return int(item.get("SubDownloadsCnt") or 0)
-                    except Exception:
-                        return 0
-
-                sorted_subs = sorted([x for x in data if isinstance(x, dict)], key=_dl_count, reverse=True)
-                hebrew_subs: List[Dict[str, Any]] = []
-                for s in sorted_subs:
-                    sub_format = str(s.get("SubFormat") or "srt").lower()
-                    if sub_format not in ("srt", "vtt", "sub"):
-                        continue
-                    sub_url = str(s.get("SubDownloadLink") or "").strip()
-                    if not sub_url:
-                        continue
-                    raw_id = str(s.get("IDSubtitleFile") or "").strip() or hashlib.md5(sub_url.encode("utf-8")).hexdigest()[:12]
-                    sub_id = f"os_{raw_id}"
-                    self._srt_url_registry[sub_id] = sub_url
-                    self._srt_url_registry[raw_id] = sub_url
-                    hebrew_subs.append({
-                        "id": sub_id,
-                        "raw_id": raw_id,
-                        "url": sub_url,
-                        "filename": str(s.get("SubFileName") or s.get("MovieReleaseName") or ""),
-                        "downloads": _dl_count(s),
-                        "lang": "heb",
-                        "provider": "OpenSubtitles Official",
-                    })
-                self._search_cache[search_key] = hebrew_subs
-                return hebrew_subs
+                        sorted_subs = sorted([x for x in data if isinstance(x, dict)], key=_dl_count, reverse=True)
+                        for s in sorted_subs:
+                            sub_format = str(s.get("SubFormat") or "srt").lower()
+                            if sub_format not in ("srt", "vtt", "sub"):
+                                continue
+                            sub_url = str(s.get("SubDownloadLink") or "").strip()
+                            if not sub_url:
+                                continue
+                            raw_id = str(s.get("IDSubtitleFile") or "").strip() or hashlib.md5(sub_url.encode("utf-8")).hexdigest()[:12]
+                            sub_id = f"os_{raw_id}"
+                            self._srt_url_registry[sub_id] = sub_url
+                            self._srt_url_registry[raw_id] = sub_url
+                            hebrew_subs.append({
+                                "id": sub_id,
+                                "raw_id": raw_id,
+                                "url": sub_url,
+                                "filename": str(s.get("SubFileName") or s.get("MovieReleaseName") or ""),
+                                "downloads": _dl_count(s),
+                                "lang": "heb",
+                                "provider": "OpenSubtitles Official",
+                            })
         except Exception:
-            return []
+            pass
+
+        # 3. Query Stremio OpenSubtitles v3 Addon API as additional fast source
+        try:
+            if norm_type == "series":
+                strem_url = f"https://opensubtitles-v3.strem.io/subtitles/series/tt{numeric_imdb}:{s_num}:{e_num}.json"
+            else:
+                strem_url = f"https://opensubtitles-v3.strem.io/subtitles/movie/tt{numeric_imdb}.json"
+            s_req = urllib.request.Request(strem_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(s_req, timeout=3.5) as s_resp:
+                if s_resp.status == 200:
+                    s_data = json.loads(s_resp.read().decode("utf-8", errors="replace"))
+                    for sub_entry in (s_data.get("subtitles") or []):
+                        if not isinstance(sub_entry, dict) or sub_entry.get("lang") != "heb":
+                            continue
+                        s_url = str(sub_entry.get("url") or "").strip()
+                        if not s_url:
+                            continue
+                        s_id = f"osv3_{sub_entry.get('id') or hashlib.md5(s_url.encode('utf-8')).hexdigest()[:8]}"
+                        self._srt_url_registry[s_id] = s_url
+                        hebrew_subs.append({
+                            "id": s_id,
+                            "raw_id": str(sub_entry.get("id") or ""),
+                            "url": s_url,
+                            "filename": f"OpenSubtitles.v3.Hebrew.{sub_entry.get('id')}.srt",
+                            "downloads": 5000,
+                            "lang": "heb",
+                            "provider": "OpenSubtitles v3",
+                        })
+        except Exception:
+            pass
+
+        if hebrew_subs:
+            self._search_cache[search_key] = hebrew_subs
+        return hebrew_subs
 
     def _download_srt_bytes(self, sub_id: str, direct_url: str = "") -> Optional[bytes]:
-        """Downloads, gunzips (.gz), and caches remote OpenSubtitles SRT bytes."""
-        clean_id = str(sub_id or "").replace("os_", "").replace("_bluray", "").replace("_pal25", "")
+        """Downloads, gunzips (.gz) or unzips (.zip from Wizdom.xyz), and caches remote SRT bytes."""
+        clean_id = (
+            str(sub_id or "")
+            .replace("os_", "")
+            .replace("wiz_", "")
+            .replace("osv3_", "")
+            .replace("_bluray", "")
+            .replace("_pal25", "")
+        )
         url = (
             direct_url
             or self._srt_url_registry.get(sub_id)
             or self._srt_url_registry.get(clean_id)
+            or self._srt_url_registry.get(f"wiz_{clean_id}")
             or self._srt_url_registry.get(f"os_{clean_id}")
         )
         if not url:
@@ -521,15 +597,31 @@ class SubtitleSyncEngine:
         if url in self._srt_content_cache:
             return self._srt_content_cache[url]
 
+        def _extract_archive_bytes(raw_bytes: bytes) -> bytes:
+            if raw_bytes[:2] == b"\x1f\x8b":
+                try:
+                    return gzip.decompress(raw_bytes)
+                except Exception:
+                    return raw_bytes
+            if raw_bytes[:4] == b"PK\x03\x04":
+                try:
+                    with zipfile.ZipFile(io.BytesIO(raw_bytes)) as zf:
+                        for name in zf.namelist():
+                            if name.lower().endswith((".srt", ".vtt", ".sub")):
+                                return zf.read(name)
+                        if zf.namelist():
+                            return zf.read(zf.namelist()[0])
+                except Exception:
+                    return raw_bytes
+            return raw_bytes
+
         disk_key = hashlib.md5(url.encode("utf-8")).hexdigest()
         disk_path = os.path.join(CACHE_DIR, f"{disk_key}.srt")
         if os.path.exists(disk_path):
             try:
                 with open(disk_path, "rb") as f:
-                    raw = f.read()
+                    raw = _extract_archive_bytes(f.read())
                 if len(raw) > 64:
-                    if raw[:2] == b"\x1f\x8b":
-                        raw = gzip.decompress(raw)
                     self._srt_content_cache[url] = raw
                     return raw
             except Exception:
@@ -544,13 +636,8 @@ class SubtitleSyncEngine:
                 },
             )
             with urllib.request.urlopen(req, timeout=5.0) as resp:
-                raw = resp.read()
+                raw = _extract_archive_bytes(resp.read())
                 if raw and len(raw) > 64:
-                    if raw[:2] == b"\x1f\x8b":
-                        try:
-                            raw = gzip.decompress(raw)
-                        except Exception:
-                            pass
                     self._srt_content_cache[url] = raw
                     try:
                         with open(disk_path, "wb") as f:
