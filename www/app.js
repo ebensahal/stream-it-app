@@ -39,7 +39,51 @@
     Romance: 'רומנטיקה'
   };
 
-  // Comprehensive Built-in Hebrew Titles Dictionary + Automatic Live Google Translate Engine
+  // Official Israeli Theatrical & Broadcast Marketing Titles by IMDb ID (Zero Literal Word-for-Word Translation!)
+  const ISRAELI_TITLES_BY_IMDB = {
+    tt26581740: 'שעת הנעלמים', // Weapons (2025/2026) — Official Israeli Cinema Title!
+    tt20215234: 'עד שיצא עשן לבן', // Conclave
+    tt29623480: 'רוז הרובוטית', // The Wild Robot
+    tt21382296: 'טרור באוויר', // Carry-On
+    tt28015403: 'פחד אלוהים', // Heretic
+    tt17279496: 'הקרב על אמריקה', // Civil War
+    tt26584495: 'נפש תאומה', // Companion
+    tt17526714: 'יופי מסוכן', // The Substance
+    tt27403986: 'מושבע מס׳ 2', // Juror #2
+    tt11563598: 'אנונימי לגמרי', // A Complete Unknown
+    tt20221436: 'אמיליה פרז', // Emilia Pérez
+    tt21823606: 'כאב אמיתי', // A Real Pain
+    tt28082769: '5 בספטמבר', // September 5
+    tt30144839: 'קרב רודף קרב', // One Battle After Another
+    tt12042730: 'פרויקט הייל מרי', // Project Hail Mary
+    tt4712810: 'האשליה 3', // Now You See Me: Now You Don't
+    tt7181546: 'בלרינה', // Ballerina (From the World of John Wick)
+    tt9603208: 'משימה בלתי אפשרית: חשבון אחרון', // Mission: Impossible - The Final Reckoning
+    tt20969586: 'ת׳אנדרבולטס', // Thunderbolts*
+    tt10676052: 'ארבעת המופלאים: צעדים ראשונים', // The Fantastic Four: First Steps
+    tt9813792: 'אין מוצא', // From
+    tt30826447: 'רק לא זה', // Nobody Wants This
+    tt24053860: 'יום התן', // The Day of the Jackal
+    tt14186672: 'איש האדמה', // Landman
+    tt31938062: 'הפיט', // The Pitt
+    tt31806037: 'התבגרות', // Adolescence
+    tt0306414: 'הסמויה', // The Wire
+    tt0141842: 'הסופרנוס', // The Sopranos
+    tt0903747: 'שובר שורות', // Breaking Bad
+    tt3032476: 'סמוך על סול', // Better Call Saul
+    tt0455275: 'נמלטים', // Prison Break
+    tt0411008: 'אבודים', // Lost
+    tt1839578: 'מבוקש', // Person of Interest
+    tt0452046: 'מחשבות פליליות', // Criminal Minds
+    tt1196946: 'המנטליסט', // The Mentalist
+    tt1358522: 'צווארון לבן', // White Collar
+    tt1632701: 'חליפות', // Suits
+    tt2442560: 'כנופיית ברמינגהם', // Peaky Blinders
+    tt6468322: 'בית הנייר', // Money Heist (La Casa de Papel)
+    tt10919420: 'משחק הדיונון' // Squid Game
+  };
+
+  // Comprehensive Built-in Israeli Theatrical & Broadcast Marketing Titles Dictionary
   const HEBREW_TITLES_MAP = {
     'sleepy hollow': 'סליפי הולו',
     'hereditary': 'תורשתי',
@@ -50,7 +94,7 @@
     'scream 7': 'צעקה 7',
     'the conjuring': 'לזמן את הרוע',
     'the conjuring 2': 'לזמן את הרוע 2',
-    'weapons': 'כלי נשק',
+    'weapons': 'שעת הנעלמים',
     'the cycle': 'המעגל',
     'verity': 'וריטי',
     'disclosure day': 'יום החשיפה',
@@ -92,7 +136,7 @@
     'five nights at freddy\'s': 'חמישה לילות אצל פרדי',
     'beetlejuice beetlejuice': 'ביטלג׳וס ביטלג׳וס',
     'anora': 'אנורה',
-    'conclave': 'עד קצה העולם (קונקלווה)',
+    'conclave': 'עד שיצא עשן לבן',
     'the brutalist': 'הברוטליסט',
     'wicked': 'מרשעת',
     'gladiator ii': 'גלדיאטור 2',
@@ -108,15 +152,15 @@
     'venom: the last dance': 'ונום: הריקוד האחרון',
     'venom': 'ונום',
     'red one': 'מבצע סנטה',
-    'carry-on': 'מטען יד',
-    'the wild robot': 'רובוט פראי',
+    'carry-on': 'טרור באוויר',
+    'the wild robot': 'רוז הרובוטית',
     'inside out 2': 'הקול בראש 2',
     'inside out': 'הקול בראש',
     'deadpool & wolverine': 'דדפול ווולברין',
     'deadpool': 'דדפול',
     'furiosa: a mad max saga': 'פיוריוסה: סאגת מקס הזועם',
     'mad max: fury road': 'מקס הזועם: כביש הזעם',
-    'civil war': 'קרב על אמריקה',
+    'civil war': 'הקרב על אמריקה',
     'challengers': 'מתחרים',
     'the fall guy': 'הכפיל',
     'twisters': 'טוויסטרס',
@@ -125,7 +169,7 @@
     'blink twice': 'צאי מזה',
     'it ends with us': 'איתנו זה נגמר',
     'the gorge': 'הנקיק',
-    'companion': 'שותפה מושלמת',
+    'companion': 'נפש תאומה',
     'mickey 17': 'מיקי 17',
     'captain america: brave new world': 'קפטן אמריקה: עולם חדש מופלא',
     'the monkey': 'הקוף',
@@ -137,6 +181,22 @@
     'sinners': 'חוטאים',
     'final destination: bloodlines': 'יעד סופי: קשרי דם',
     'final destination': 'יעד סופי',
+    'juror #2': 'מושבע מס׳ 2',
+    'a complete unknown': 'אנונימי לגמרי',
+    'emilia pérez': 'אמיליה פרז',
+    'emilia perez': 'אמיליה פרז',
+    'a real pain': 'כאב אמיתי',
+    'september 5': '5 בספטמבר',
+    'one battle after another': 'קרב רודף קרב',
+    'project hail mary': 'פרויקט הייל מרי',
+    'now you see me': 'האשליה',
+    'now you see me 2': 'האשליה 2',
+    'now you see me: now you don\'t': 'האשליה 3',
+    'from the world of john wick: ballerina': 'בלרינה',
+    'mission: impossible - the final reckoning': 'משימה בלתי אפשרית: חשבון אחרון',
+    'thunderbolts*': 'ת׳אנדרבולטס',
+    'thunderbolts': 'ת׳אנדרבולטס',
+    'the fantastic four: first steps': 'ארבעת המופלאים: צעדים ראשונים',
     'dune: part two': 'חולית: חלק שני',
     'dune': 'חולית',
     'oppenheimer': 'אופנהיימר',
@@ -226,7 +286,7 @@
     'x': 'אקס',
     'cuckoo': 'קוקו',
     'oddity': 'חריגות',
-    'heretic': 'פיתוי מסוכן (הכופר)',
+    'heretic': 'פחד אלוהים',
     'breaking bad': 'שובר שורות',
     'game of thrones': 'משחקי הכס',
     'house of the dragon': 'בית הדרקון',
@@ -249,7 +309,7 @@
     'true detective': 'בלש אמיתי',
     'peaky blinders': 'כנופיית ברמינגהם',
     'black mirror': 'מראה שחורה',
-    'dark': 'אפל (דארק)',
+    'dark': 'אפל',
     'squid game': 'משחק הדיונון',
     'the boys': 'הבנים',
     'invincible': 'בלתי מנוצח',
@@ -268,7 +328,7 @@
     'narcos': 'נרקוס',
     'money heist': 'בית הנייר',
     'wednesday': 'וונסדיי',
-    'from': 'אין מוצא (From)',
+    'from': 'אין מוצא',
     'yellowjackets': 'צהובות',
     'the penguin': 'הפינגווין',
     'reacher': 'ריצ׳ר',
@@ -278,6 +338,61 @@
     'andor': 'אנדור',
     'daredevil: born again': 'דרדוויל: נולד מחדש',
     'daredevil': 'דרדוויל',
+    'nobody wants this': 'רק לא זה',
+    'the day of the jackal': 'יום התן',
+    'landman': 'איש האדמה',
+    'the pitt': 'הפיט',
+    'adolescence': 'התבגרות',
+    'the studio': 'האולפן',
+    'paradise': 'גן עדן',
+    'dune: prophecy': 'חולית: הנבואה',
+    'person of interest': 'מבוקש',
+    'the mentalist': 'המנטליסט',
+    'white collar': 'צווארון לבן',
+    'mad men': 'מד מן',
+    'desperate housewives': 'עקרות בית נואשות',
+    'sex and the city': 'סקס והעיר הגדולה',
+    'curb your enthusiasm': 'תרגיע',
+    'arrested development': 'משפחה בהפרעה',
+    'married... with children': 'נשואים פלוס',
+    'buffy the vampire slayer': 'באפי ציידת הערפדים',
+    'twin peaks': 'טווין פיקס',
+    'the x-files': 'תיקים באפלה',
+    'six feet under': 'עמוק באדמה',
+    'oz': 'אוז',
+    'the shield': 'המגן',
+    'boardwalk empire': 'אימפריית הפשע',
+    'entourage': 'הפמליה',
+    'shameless': 'חסרי בושה',
+    'young sheldon': 'שלדון הצעיר',
+    'two and a half men': 'שני גברים וחצי',
+    'the good place': 'המקום הטוב',
+    'parks and recreation': 'מחלקת גנים ונוף',
+    'foundation': 'המוסד',
+    'the morning show': 'תוכנית הבוקר',
+    'presumed innocent': 'בחזקת חף מפשע',
+    'dark matter': 'חומר אפל',
+    'mare of easttown': 'הסודות של איסטאון',
+    'big little lies': 'שקרים קטנים גדולים',
+    'the night of': 'ליל האירוע',
+    'watchmen': 'השומרים',
+    'the leftovers': 'הנותרים',
+    'westworld': 'ווסטוורלד',
+    'euphoria': 'אופוריה',
+    'silicon valley': 'עמק הסיליקון',
+    'the witcher': 'המכשף',
+    'you': 'את',
+    'beef': 'עצבים',
+    'baby reindeer': 'אייל קטן',
+    'the gentlemen': 'הג׳נטלמנים',
+    '3 body problem': 'בעיית שלושת הגופים',
+    'the night agent': 'סוכן הלילה',
+    'the diplomat': 'הדיפלומטית',
+    'the lincoln lawyer': 'סנגור במבחן',
+    'cobra kai': 'קוברה קאי',
+    'outer banks': 'חופים של סודות',
+    'the handmaid\'s tale': 'סיפורה של שפחה',
+    'only murders in the building': 'רק רוצחים בבניין',
     'the fast and the furious': 'מהיר ועצבני',
     '2 fast 2 furious': 'מהיר ועצבני 2',
     'the fast and the furious: tokyo drift': 'מהיר ועצבני 3: טוקיו דריפט',
@@ -301,7 +416,7 @@
     'harry potter and the deathly hallows: part 2': 'הארי פוטר ואוצרות המוות - חלק 2',
     'john wick: chapter 2': 'ג׳ון וויק 2',
     'john wick: chapter 3 - parabellum': 'ג׳ון וויק 3: פרבלום',
-    'ballerina': 'בלרינה (מעולם ג׳ון וויק)',
+    'ballerina': 'בלרינה',
     'the lord of the rings: the fellowship of the ring': 'שר הטבעות: אחוות הטבעת',
     'the lord of the rings: the two towers': 'שר הטבעות: שני הצריחים',
     'the lord of the rings: the return of the king': 'שר הטבעות: שיבת המלך',
@@ -373,7 +488,6 @@
     'heat': 'היט',
     'casino': 'קזינו',
     'taxi driver': 'נהג מונית',
-    'the wolf of wall street': 'הזאב מוול סטריט',
     'titanic': 'טיטאניק',
     'braveheart': 'לב אמיץ',
     'the truman show': 'המופע של טרומן',
@@ -381,7 +495,7 @@
     'the social network': 'הרשת החברתית',
     'la casa de papel': 'בית הנייר',
     'yellowstone': 'ילוסטון',
-    'suits': 'חליפות (Suits)',
+    'suits': 'חליפות',
     'house': 'האוס',
     'grey\'s anatomy': 'האנטומיה של גריי',
     'the walking dead': 'המתים המהלכים',
@@ -413,6 +527,20 @@
 
   // Explicit Hebrew Search Query -> Exact English Movie/Series/Franchise Query Mapping
   const HEBREW_SEARCH_ALIASES_TO_EN = {
+    'שעת הנעלמים': 'Weapons',
+    'עד שיצא עשן לבן': 'Conclave',
+    'רוז הרובוטית': 'The Wild Robot',
+    'טרור באוויר': 'Carry-On',
+    'פחד אלוהים': 'Heretic',
+    'הקרב על אמריקה': 'Civil War',
+    'נפש תאומה': 'Companion',
+    'יופי מסוכן': 'The Substance',
+    'אין מוצא': 'From',
+    'רק לא זה': 'Nobody Wants This',
+    'יום התן': 'The Day of the Jackal',
+    'התבגרות': 'Adolescence',
+    'מבוקש': 'Person of Interest',
+    'האשליה': 'Now You See Me',
     'מהיר ועצבני': 'Fast & Furious',
     'מהיר': 'Fast & Furious',
     'הארי פוטר': 'Harry Potter',
@@ -581,9 +709,11 @@
   function getHebrewCache() {
     if (_hebrewCache) return _hebrewCache;
     try {
-      // Wipe old v5 cache that contained letter-by-letter transliteration gibberish
+      // Wipe old caches that contained literal Google Translate titles (e.g. Weapons -> כלי נשק)
       localStorage.removeItem('streamit_hebrew_titles_cache_v5');
-      _hebrewCache = JSON.parse(localStorage.getItem('streamit_hebrew_titles_cache_v7') || '{}');
+      localStorage.removeItem('streamit_hebrew_titles_cache_v7');
+      localStorage.removeItem('streamit_hebrew_titles_cache_v61');
+      _hebrewCache = JSON.parse(localStorage.getItem('streamit_hebrew_titles_cache_v63') || '{}');
     } catch (_) {
       _hebrewCache = {};
     }
@@ -593,7 +723,7 @@
   function saveHebrewCache() {
     try {
       if (_hebrewCache) {
-        localStorage.setItem('streamit_hebrew_titles_cache_v7', JSON.stringify(_hebrewCache));
+        localStorage.setItem('streamit_hebrew_titles_cache_v63', JSON.stringify(_hebrewCache));
       }
     } catch (_) {}
   }
@@ -632,19 +762,34 @@
     return '';
   }
 
-  function resolveHebrewTitleSync(rawTitle, type = 'movie') {
+  function resolveHebrewTitleSync(rawTitle, type = 'movie', imdbId = '') {
+    const cleanImdb = String(imdbId || '').split(':')[0].trim();
+    if (cleanImdb && ISRAELI_TITLES_BY_IMDB[cleanImdb]) {
+      return ISRAELI_TITLES_BY_IMDB[cleanImdb];
+    }
     const str = String(rawTitle || '').trim();
     if (!str) return type === 'series' ? 'סדרת טלוויזיה' : 'סרט קולנוע';
-    if (hasHebrewChars(str)) return str;
 
     const lower = str.toLowerCase().replace(/\s+/g, ' ');
     if (HEBREW_TITLES_MAP[lower]) return HEBREW_TITLES_MAP[lower];
 
     const cleanKey = lower.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-    for (const [k, v] of Object.entries(HEBREW_TITLES_MAP)) {
-      if (k.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim() === cleanKey) {
-        return v;
+    if (cleanKey) {
+      for (const [k, v] of Object.entries(HEBREW_TITLES_MAP)) {
+        if (k.replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim() === cleanKey) {
+          return v;
+        }
       }
+    }
+
+    if (hasHebrewChars(str)) {
+      // Fix legacy literal translations if they came from an old cached object
+      if (str === 'כלי נשק') return 'שעת הנעלמים';
+      if (str === 'מטען יד') return 'טרור באוויר';
+      if (str === 'רובוט פראי') return 'רוז הרובוטית';
+      if (str === 'פיתוי מסוכן (הכופר)' || str === 'הכופר') return 'פחד אלוהים';
+      if (str === 'שותפה מושלמת') return 'נפש תאומה';
+      return str;
     }
 
     const cache = getHebrewCache();
@@ -665,7 +810,7 @@
       }
     }
 
-    // Never mangle English words into letter-by-letter gibberish! Keep clean original title until async translation resolves.
+    // Never mangle English words into literal word-for-word gibberish! Keep clean original title until official Israeli title is verified.
     return str;
   }
 
@@ -1118,6 +1263,14 @@
       });
     },
 
+    isTvStreamerMode() {
+      return Boolean(
+        window.Capacitor ||
+          location.protocol === 'capacitor:' ||
+          document.body.getAttribute('data-device-mode') === 'tv'
+      );
+    },
+
     getApiBase() {
       if (this.detectedApiBase !== undefined) return this.detectedApiBase;
       const h = window.location.hostname;
@@ -1126,9 +1279,9 @@
       if ((h === 'localhost' || h === '127.0.0.1' || h === '[::1]') && p === '8092') {
         return '';
       }
-      // Capacitor Android TV APK or external origin: try LAN server IP or localhost:8092
+      // Capacitor Android TV APK: StreamItEmbeddedServer runs inside the APK on 127.0.0.1:8092!
       if (window.Capacitor) {
-        return 'http://192.168.1.137:8092';
+        return 'http://127.0.0.1:8092';
       }
       return 'http://localhost:8092';
     },
@@ -1140,7 +1293,7 @@
         this.detectedApiBase = '';
         return;
       }
-      const candidates = ['http://localhost:8092', 'http://192.168.1.137:8092'];
+      const candidates = ['http://127.0.0.1:8092', 'http://localhost:8092', 'http://192.168.1.137:8092'];
       for (const base of candidates) {
         const res = await this.fetchJsonWithTimeout(`${base}/api/health`, 1100);
         if (res && res.ok) {
@@ -1174,8 +1327,8 @@
     },
 
     async init() {
-      this.appVersion = '6.2.0';
-      this.nativeApkVersion = '6.2';
+      this.appVersion = '6.3.0';
+      this.nativeApkVersion = '6.3';
       if (window.Capacitor) {
         document.body.setAttribute('data-device-mode', 'tv');
       }
@@ -1546,12 +1699,15 @@
         headerEmail.textContent = this.currentAccountUsername || 'לא מחובר';
       }
       const accBadge = document.getElementById('currentAccountBadge');
+      const isTvMode = this.isTvStreamerMode();
       if (accBadge) {
-        accBadge.textContent = `📧 ${this.currentAccountUsername || 'משתמש רשום'}${this.isCurrentUserAdmin() ? ' (מנהל 👑)' : ''}`;
+        accBadge.textContent = `📧 ${this.currentAccountUsername || 'משתמש רשום'}${
+          !isTvMode && this.isCurrentUserAdmin() ? ' (מנהל 👑)' : ''
+        }`;
       }
       const adminDropBtn = document.getElementById('openAdminApprovalsBtn');
       const adminPickerBtn = document.getElementById('openAdminFromPickerBtn');
-      const isAdmin = this.isAuthenticated && this.isCurrentUserAdmin();
+      const isAdmin = this.isAuthenticated && this.isCurrentUserAdmin() && !isTvMode;
       if (adminDropBtn) adminDropBtn.classList.toggle('hidden', !isAdmin);
       if (adminPickerBtn) adminPickerBtn.classList.toggle('hidden', !isAdmin);
       const countLbl = document.getElementById('profilesCountLabel');
@@ -2197,13 +2353,18 @@
     },
 
     async refreshAdminAccountsBadge(notifyIfPending = false) {
-      if (!this.isCurrentUserAdmin()) return;
+      const b1 = document.getElementById('adminPendingCountBadge');
+      const b2 = document.getElementById('adminPickerPendingBadge');
+      if (this.isTvStreamerMode() || !this.isCurrentUserAdmin()) {
+        [b1, b2].forEach((b) => {
+          if (b) b.classList.add('hidden');
+        });
+        return;
+      }
       const accounts = await this.fetchAllAccountsForAdmin();
       const pendingList = accounts.filter((a) => a.status === 'pending' && !this.isMasterAdminEmail(a.email));
       const count = pendingList.length;
 
-      const b1 = document.getElementById('adminPendingCountBadge');
-      const b2 = document.getElementById('adminPickerPendingBadge');
       [b1, b2].forEach((b) => {
         if (!b) return;
         b.textContent = String(count);
@@ -2216,6 +2377,7 @@
     },
 
     async openAdminApprovalsModal() {
+      if (this.isTvStreamerMode()) return;
       if (!this.isCurrentUserAdmin()) {
         this.showToast('רק מנהל המערכת (אילן) מורשה לגשת לניהול ואישור הרשמות');
         return;
@@ -2434,6 +2596,19 @@
           }
         } catch (_) {}
       }
+      for (const item of [...this.movies, ...this.series]) {
+        if (!item) continue;
+        const verifiedTitle = resolveHebrewTitleSync(
+          item.title_en || item.title_he,
+          item.type || 'movie',
+          item.imdb_id || item.id
+        );
+        if (verifiedTitle && hasHebrewChars(verifiedTitle)) {
+          item.title_he = verifiedTitle;
+        } else if (item.title_he === 'כלי נשק') {
+          item.title_he = 'שעת הנעלמים';
+        }
+      }
     },
 
     async fetchJsonWithTimeout(url, timeoutMs = 2500) {
@@ -2457,7 +2632,8 @@
       // Instant sessionStorage cache so page refresh takes 0ms and never spins the browser!
       try {
         sessionStorage.removeItem('streamit_live_catalog_v53');
-        const cachedRaw = sessionStorage.getItem('streamit_live_catalog_v61');
+        sessionStorage.removeItem('streamit_live_catalog_v61');
+        const cachedRaw = sessionStorage.getItem('streamit_live_catalog_v63');
         if (cachedRaw) {
           const parsed = JSON.parse(cachedRaw);
           if (parsed && Array.isArray(parsed.movies) && parsed.movies.length) {
@@ -2503,7 +2679,7 @@
         this.globalLiveSeries = liveSeries;
         try {
           sessionStorage.setItem(
-            'streamit_live_catalog_v61',
+            'streamit_live_catalog_v63',
             JSON.stringify({ movies: liveMovies, series: liveSeries })
           );
         } catch (_) {}
@@ -2524,6 +2700,11 @@
       const cache = getHebrewCache();
       const toFetch = [];
       for (const it of missing) {
+        const syncHe = resolveHebrewTitleSync(it.title_en, it.type || 'movie', it.imdb_id || it.id);
+        if (syncHe && hasHebrewChars(syncHe)) {
+          it.title_he = syncHe;
+          continue;
+        }
         const low = String(it.title_en).toLowerCase().trim();
         if (cache[low] && hasHebrewChars(cache[low])) {
           it.title_he = cache[low];
@@ -2534,7 +2715,8 @@
 
       if (toFetch.length) {
         try {
-          const res = await fetch('/api/translate-batch', {
+          const apiBase = this.getApiBase();
+          const res = await fetch(`${apiBase}/api/translate-batch`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ titles: toFetch })
@@ -2555,8 +2737,11 @@
       let updatedCount = 0;
       for (const it of missing) {
         const low = String(it.title_en).toLowerCase().trim();
-        if (cache[low] && hasHebrewChars(cache[low])) {
-          it.title_he = cache[low];
+        const resolved =
+          resolveHebrewTitleSync(it.title_en, it.type || 'movie', it.imdb_id || it.id) ||
+          cache[low];
+        if (resolved && hasHebrewChars(resolved)) {
+          it.title_he = resolved;
           updatedCount++;
           document.querySelectorAll(`[data-item-id="${it.id}"] .card-title-he`).forEach((el) => {
             el.textContent = it.title_he;
@@ -2566,7 +2751,7 @@
       if (updatedCount > 0) {
         try {
           sessionStorage.setItem(
-            'streamit_live_catalog_v61',
+            'streamit_live_catalog_v63',
             JSON.stringify({ movies: this.globalLiveMovies, series: this.globalLiveSeries })
           );
         } catch (_) {}
@@ -2625,7 +2810,7 @@
                 id: imdbId,
                 imdb_id: imdbId,
                 type: 'movie',
-                title_he: resolveHebrewTitleSync(rawEnTitle, 'movie'),
+                title_he: resolveHebrewTitleSync(rawEnTitle, 'movie', imdbId),
                 title_en: rawEnTitle,
                 year: ym.year || 2024,
                 imdb_rating: ym.rating || 8.0,
@@ -2658,12 +2843,14 @@
         (Array.isArray(raw.trailerStreams) && raw.trailerStreams[0] && raw.trailerStreams[0].ytId) ||
         '';
       const rawEnName = raw.name || raw.title_en || '';
-      const resolvedHeTitle =
-        raw.name_he && hasHebrewChars(raw.name_he)
-          ? raw.name_he
-          : raw.title_he && hasHebrewChars(raw.title_he)
-          ? raw.title_he
-          : resolveHebrewTitleSync(rawEnName, type);
+      const officialByImdb = ISRAELI_TITLES_BY_IMDB[String(imdbId).split(':')[0].trim()];
+      const resolvedHeTitle = officialByImdb
+        ? officialByImdb
+        : resolveHebrewTitleSync(
+            rawEnName || raw.name_he || raw.title_he,
+            type,
+            imdbId
+          );
 
       const rawDesc = String(raw.description || '');
       const descHe = hasHebrewChars(rawDesc)
@@ -5731,9 +5918,7 @@
 
         const tryLoadHlsIndex = async (idx) => {
           if (idx >= orderedUrls.length) {
-            if (torrentText) {
-              torrentText.textContent = 'השרתים הישירים עמוסים כרגע — נסה ללחוץ על מקור #2 או #3 למעלה.';
-            }
+            this.playEmbeddedCloudStreamFallback(item, imdbId, preferredServerIdx);
             return;
           }
           const targetStreamUrl = orderedUrls[idx];
@@ -5802,11 +5987,53 @@
         await tryLoadHlsIndex(0);
         return true;
       } catch (_) {
-        if (torrentText) {
-          torrentText.textContent = 'ודא שהשרת המקומי (localhost:8092) פעיל ברקע להזרמה ישירה ללא פרסומות.';
-        }
-        return false;
+        return this.playEmbeddedCloudStreamFallback(item, imdbId, preferredServerIdx);
       }
+    },
+
+    playEmbeddedCloudStreamFallback(item, imdbId, preferredServerIdx = 0) {
+      const iframe = document.getElementById('cloudPlayerIframe');
+      const video = document.getElementById('cinemaVideo');
+      const controls = document.getElementById('nativePlayerControls');
+      const torrentBanner = document.getElementById('torrentStatusOverlay');
+      const relLabel = document.getElementById('playerReleaseTag');
+      if (!iframe) return false;
+
+      if (this.hlsInstance) {
+        this.hlsInstance.destroy();
+        this.hlsInstance = null;
+      }
+      if (video) {
+        video.pause();
+        video.removeAttribute('src');
+        video.classList.add('hidden');
+      }
+      if (controls) controls.classList.add('hidden');
+      if (torrentBanner) torrentBanner.classList.add('hidden');
+
+      const s = this.currentSeason || 1;
+      const e = this.currentEpisode || 1;
+      const isSeries = item && item.type === 'series';
+      const cloudEmbedUrls = isSeries
+        ? [
+            `https://vidsrc.cc/v2/embed/tv/${encodeURIComponent(imdbId)}/${s}/${e}?autoPlay=true`,
+            `https://vidlink.pro/tv/${encodeURIComponent(imdbId)}/${s}/${e}?autoplay=true`,
+            `https://multiembed.mov/directstream.php?video_id=${encodeURIComponent(imdbId)}&s=${s}&e=${e}`
+          ]
+        : [
+            `https://vidsrc.cc/v2/embed/movie/${encodeURIComponent(imdbId)}?autoPlay=true`,
+            `https://vidlink.pro/movie/${encodeURIComponent(imdbId)}?autoplay=true`,
+            `https://multiembed.mov/directstream.php?video_id=${encodeURIComponent(imdbId)}`
+          ];
+
+      const chosenUrl = cloudEmbedUrls[preferredServerIdx % cloudEmbedUrls.length];
+      iframe.removeAttribute('sandbox');
+      iframe.src = chosenUrl;
+      iframe.classList.remove('hidden');
+      if (relLabel) {
+        relLabel.textContent = `נגן ענן ישיר 1080p Full HD (שרת #${(preferredServerIdx % cloudEmbedUrls.length) + 1}) • ${(item && item.title_he) || imdbId}`;
+      }
+      return true;
     },
 
     switchNextFastTorrent() {
@@ -6073,6 +6300,38 @@
           this.parsedCues = this.parseWebVttText(text);
         }
       } catch (_) {}
+
+      // Direct client-side OpenSubtitles v3 Hebrew SRT fallback (zero server dependency on TV Streamer!)
+      if (!this.parsedCues || this.parsedCues.length < 5) {
+        try {
+          const stremType = item.type === 'series' ? 'series' : 'movie';
+          const targetId =
+            stremType === 'series'
+              ? `${imdbId}:${this.currentSeason || 1}:${this.currentEpisode || 1}`
+              : imdbId;
+          const osRes = await fetch(
+            `https://opensubtitles-v3.strem.io/subtitles/${stremType}/${encodeURIComponent(targetId)}.json`
+          );
+          if (osRes.ok) {
+            const osData = await osRes.json();
+            const subs = Array.isArray(osData && osData.subtitles) ? osData.subtitles : [];
+            const hebTracks = subs.filter((s) => {
+              const l = String((s && s.lang) || '').toLowerCase();
+              return (l === 'heb' || l === 'he' || l.includes('heb')) && s.url;
+            });
+            if (hebTracks.length) {
+              const srtRes = await fetch(hebTracks[0].url);
+              if (srtRes.ok) {
+                const srtText = await srtRes.text();
+                const directCues = this.parseWebVttText(srtText);
+                if (directCues && directCues.length >= 5) {
+                  this.parsedCues = directCues;
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
 
       if (!this.parsedCues || !this.parsedCues.length) {
         this.parsedCues = this.buildClientFallbackHebrewCues(item);

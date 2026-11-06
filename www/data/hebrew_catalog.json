@@ -714,6 +714,44 @@
       "fps": 23.976
     },
     {
+      "id": "tt26581740",
+      "imdb_id": "tt26581740",
+      "tmdb_id": 1078605,
+      "type": "movie",
+      "title_he": "שעת הנעלמים",
+      "title_en": "Weapons",
+      "year": 2025,
+      "imdb_rating": 7.6,
+      "age_rating": "16+",
+      "runtime_he": "2 שעות ו-08 דק'",
+      "quality": "1080p Full HD",
+      "audio": "Dolby Atmos",
+      "seeders": 2150,
+      "top10_rank": 3,
+      "featured_hero": true,
+      "trailer_yt_id": "69ffwl-8pCU",
+      "director_he": "זאק קרגר",
+      "cast_he": "ג'וש ברולין, ג'וליה גארנר, אלדן אהרנרייך",
+      "genres": [
+        "horror",
+        "crime",
+        "drama"
+      ],
+      "genres_he": [
+        "אימה",
+        "מסתורין",
+        "מתח"
+      ],
+      "overview_he": "בעיירה שקטה בארצות הברית, כל ילדי כיתה אחת קמים ממיטותיהם באותה שעה בדיוק באמצע הלילה ונעלמים אל תוך החשיכה ללא כל הסבר — מלבד ילד אחד.",
+      "poster": "https://images.metahub.space/poster/medium/tt26581740/img",
+      "backdrop": "https://images.metahub.space/background/medium/tt26581740/img",
+      "gallery": [
+        "https://images.metahub.space/background/medium/tt26581740/img"
+      ],
+      "default_release": "Weapons.2025.1080p.WEBRip.x264.AAC5.1-[YTS.MX].mp4",
+      "fps": 23.976
+    },
+    {
       "id": "tt17526714",
       "imdb_id": "tt17526714",
       "tmdb_id": 933260,

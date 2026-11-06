@@ -97,7 +97,7 @@ button, input, select {
 }
 
 body[data-device-mode="tv"] {
-  font-size: 112%;
+  font-size: 100%;
 }
 
 /* ==========================================================================
@@ -604,6 +604,8 @@ body[data-device-mode="tv"] {
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
+  min-height: 240px;
+  flex-shrink: 0;
   background: #121212;
   overflow: hidden;
 }
@@ -2620,41 +2622,44 @@ body[data-device-mode="tv"] {
 }
 
 @media (max-width: 768px) {
-  .header-inner {
+  body:not([data-device-mode="tv"]) .header-inner {
     padding: 10px 16px;
   }
-  .main-nav, .device-switcher {
+  body:not([data-device-mode="tv"]) .main-nav,
+  body:not([data-device-mode="tv"]) .device-switcher {
     display: none;
   }
-  .search-box {
+  body:not([data-device-mode="tv"]) .search-box {
     min-width: 0;
     flex: 1;
   }
-  .hero-banner {
+  body:not([data-device-mode="tv"]) .hero-banner {
     margin: 12px 16px 0;
     height: 360px;
   }
-  .hero-content {
+  body:not([data-device-mode="tv"]) .hero-content {
     padding: 20px;
   }
-  .filter-bar-section, .catalog-shelf {
+  body:not([data-device-mode="tv"]) .filter-bar-section,
+  body:not([data-device-mode="tv"]) .catalog-shelf {
     padding-inline: 16px;
   }
-  .shelf-track {
+  body:not([data-device-mode="tv"]) .shelf-track {
     grid-auto-columns: 150px;
     gap: 12px;
   }
-  .sheet-info-grid {
+  body:not([data-device-mode="tv"]) .sheet-info-grid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  .sheet-hero {
+  body:not([data-device-mode="tv"]) .sheet-hero {
     height: 300px;
   }
-  .sheet-hero-overlay, .sheet-body {
+  body:not([data-device-mode="tv"]) .sheet-hero-overlay,
+  body:not([data-device-mode="tv"]) .sheet-body {
     padding-inline: 18px;
   }
-  .mobile-bottom-nav {
+  body:not([data-device-mode="tv"]) .mobile-bottom-nav {
     position: fixed;
     bottom: 0;
     inset-inline: 0;
@@ -3445,6 +3450,144 @@ body.device-tv :focus-visible {
     font-size: 0.94rem;
   }
 }
+
+/* =========================================================================
+   TV STREAMER 10-FOOT CINEMA LAYOUT (ZERO ADMIN CLUTTER, ZERO SQUISHING)
+   ========================================================================= */
+body[data-device-mode="tv"] #openAdminApprovalsBtn,
+body[data-device-mode="tv"] #openAdminFromPickerBtn,
+body[data-device-mode="tv"] #adminApprovalsModal,
+body[data-device-mode="tv"] #adminPendingCountBadge,
+body[data-device-mode="tv"] #adminPickerPendingBadge,
+body[data-device-mode="tv"] .dropdown-action-item[data-nav="addons"],
+body[data-device-mode="tv"] .dropdown-action-item[data-nav="telegram"],
+body[data-device-mode="tv"] #openVpnShieldBtn,
+body[data-device-mode="tv"] .dropdown-device-row,
+body[data-device-mode="tv"] a[download="STREAM_IT_TV_Streamer.apk"],
+body[data-device-mode="tv"] .mobile-bottom-nav,
+body[data-device-mode="tv"] .filter-selects {
+  display: none !important;
+}
+
+body[data-device-mode="tv"] .header-inner {
+  padding: 10px 26px;
+  flex-wrap: nowrap;
+  gap: 16px;
+}
+
+body[data-device-mode="tv"] .header-right {
+  flex-wrap: nowrap;
+  gap: 20px;
+}
+
+body[data-device-mode="tv"] .main-nav {
+  display: flex !important;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+body[data-device-mode="tv"] .nav-link {
+  padding: 7px 14px;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+body[data-device-mode="tv"] .search-box {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+body[data-device-mode="tv"] .search-box:focus-within {
+  width: 260px;
+}
+
+body[data-device-mode="tv"] .hero-banner {
+  margin: 10px 26px 0;
+  height: clamp(220px, 38vh, 285px);
+}
+
+body[data-device-mode="tv"] .hero-content {
+  padding: 20px 30px;
+  max-width: 640px;
+  gap: 6px;
+}
+
+body[data-device-mode="tv"] .hero-title {
+  font-size: clamp(1.55rem, 2.8vw, 2.25rem);
+}
+
+body[data-device-mode="tv"] .hero-subtitle-en {
+  font-size: 0.85rem;
+}
+
+body[data-device-mode="tv"] .hero-synopsis {
+  font-size: 0.92rem;
+  -webkit-line-clamp: 2;
+  line-height: 1.45;
+}
+
+body[data-device-mode="tv"] .hero-actions {
+  margin-top: 4px;
+  gap: 10px;
+}
+
+body[data-device-mode="tv"] .hero-dots {
+  margin-top: 6px;
+}
+
+body[data-device-mode="tv"] .filter-bar-section {
+  padding: 12px 26px 4px;
+}
+
+body[data-device-mode="tv"] .filter-bar-inner {
+  padding-bottom: 10px;
+  flex-wrap: nowrap;
+}
+
+body[data-device-mode="tv"] .shelves-container {
+  gap: 22px;
+  padding-top: 10px;
+}
+
+body[data-device-mode="tv"] .catalog-shelf {
+  padding-inline: 26px;
+}
+
+body[data-device-mode="tv"] .shelf-track {
+  grid-auto-columns: 185px;
+  gap: 18px;
+  padding-top: 6px;
+  padding-bottom: 14px;
+}
+
+body[data-device-mode="tv"] .poster-grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 18px;
+}
+
+body[data-device-mode="tv"] .media-card {
+  min-height: 320px;
+}
+
+body[data-device-mode="tv"] .card-poster-wrap {
+  aspect-ratio: 2 / 3;
+  height: 265px;
+  min-height: 265px;
+  flex-shrink: 0;
+}
+
+body[data-device-mode="tv"] .card-footer {
+  padding: 10px 12px;
+  flex-shrink: 0;
+}
+
+body[data-device-mode="tv"] .media-card:focus-visible,
+body[data-device-mode="tv"] .media-card.tv-focused {
+  transform: translateY(-4px);
+  border-color: #ffffff;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.78);
+}
+
 
 
 

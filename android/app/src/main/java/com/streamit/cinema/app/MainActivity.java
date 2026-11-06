@@ -7,12 +7,25 @@ import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private StreamItEmbeddedServer embeddedServer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Prevent Android TV / Streamer screensaver from dimming or turning off the TV during movies
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        // Start built-in standalone 1080p stream & HLS proxy engine on 127.0.0.1:8092 inside the Streamer APK
+        embeddedServer = new StreamItEmbeddedServer();
+        embeddedServer.start();
+    }
+
+    @Override
+    public void onDestroy() {
+        if (embeddedServer != null) {
+            embeddedServer.stop();
+        }
+        super.onDestroy();
     }
 
     @Override

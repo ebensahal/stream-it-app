@@ -925,10 +925,12 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
 
                     out_lines: List[str] = []
 
+                    req_host = self.headers.get("Host") or f"localhost:{server_port}"
+
                     def _proxy_wrap(raw_u: str) -> str:
                         abs_u = urllib.parse.urljoin(final_url, raw_u)
                         return (
-                            f"http://localhost:{server_port}/api/hls-proxy"
+                            f"http://{req_host}/api/hls-proxy"
                             f"?url={urllib.parse.quote(abs_u, safe='')}"
                             f"&origin={urllib.parse.quote(player_origin, safe='')}"
                         )
