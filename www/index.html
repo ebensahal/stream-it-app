@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=6.3" />
+  <link rel="stylesheet" href="styles.css?v=6.4" />
   <script>
-    // Wipe any old Service Worker cache that previously served the old Sandbox player
+    // Wipe old Service Worker caches + apply Cloud OTA CSS override if newer than bundled v6.4.0
     (function () {
       try {
         if ('serviceWorker' in navigator) {
@@ -23,6 +23,14 @@
           caches.keys().then(function (keys) {
             keys.forEach(function (k) { caches.delete(k); });
           });
+        }
+        var otaVer = localStorage.getItem('streamit_ota_version') || '';
+        var otaCss = localStorage.getItem('streamit_ota_css_override') || '';
+        if (otaVer && otaVer > '6.4.0' && otaCss.length > 1000) {
+          var st = document.createElement('style');
+          st.id = 'streamit-ota-live-css';
+          st.textContent = otaCss;
+          document.head.appendChild(st);
         }
       } catch (e) {}
     })();
@@ -634,19 +642,19 @@
 
         <!-- Engine Switcher (Direct 1080p Native Video Servers + Official Trailer) -->
         <div class="player-engine-tabs" role="tablist" aria-label="מנוע ניגון">
-          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="מקור ישיר 1 1080p ללא פרסומות">מקור ישיר #1 (1080p ראשי • 0% פרסומות 🛡️)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="מקור ישיר 2 1080p">מקור ישיר #2 (1080p גיבוי א' 🛡️)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="מקור ישיר 3 1080p">מקור ישיר #3 (1080p גיבוי ב' 🛡️)</button>
-          <button type="button" class="engine-tab tv-focusable" data-engine="trailer" aria-label="נגן טריילר">טריילר רשמי</button>
+          <button type="button" class="engine-tab active tv-focusable" data-engine="cloud1" aria-label="שרת 1 ראשי">שרת 1 (ראשי)</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="torrent" aria-label="שרת 2">שרת 2</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="cloud2" aria-label="שרת 3">שרת 3</button>
+          <button type="button" class="engine-tab tv-focusable" data-engine="trailer" aria-label="נגן טריילר">טריילר</button>
         </div>
 
         <div class="player-topbar-left">
           <button type="button" id="playerBingeToggleBtn" class="autosub-status-btn active tv-focusable" aria-label="הפעל או כבה צפייה ברצף בפרקים ובסרטי המשך">
-            <span id="playerBingePillText">⏭ צפייה ברצף: פעיל</span>
+            <span id="playerBingePillText">⏭ רצף: פעיל</span>
           </button>
           <button type="button" id="toggleAutoSubInspectorBtn" class="autosub-status-btn tv-focusable" aria-label="עיצוב וסנכרון כתוביות בעברית">
             <span class="status-dot"></span>
-            <span id="autoSubPillText">🎨 כתוביות בעברית: מסונכרן (0.0s)</span>
+            <span id="autoSubPillText">כתוביות בעברית</span>
           </button>
         </div>
       </div>
@@ -660,24 +668,24 @@
           referrerpolicy="origin"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowfullscreen
-          title="נגן טריילר רשמי"
+          title="נגן וידאו"
         ></iframe>
 
         <!-- Native HTML5 Video for Direct BitTorrent / Telegram MP4 & Live HLS -->
         <video id="cinemaVideo" class="cinema-video" playsinline crossorigin="anonymous">
-          <track id="nativeHebrewTrack" kind="subtitles" srclang="he" label="עברית (AutoSub AI)" default />
+          <track id="nativeHebrewTrack" kind="subtitles" srclang="he" label="עברית" default />
         </video>
 
         <!-- Torrent Buffering / Swarm Status Banner -->
         <div id="torrentStatusOverlay" class="torrent-status-banner hidden">
           <div class="spinner-ring"></div>
-          <div id="torrentStatusText" class="torrent-status-msg">מתחבר אוטומטית לשרת 1080p פעיל ונקי מפרסומות...</div>
+          <div id="torrentStatusText" class="torrent-status-msg">טוען שידור...</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-            <button type="button" id="switchToInstantCloudBtn" class="btn-primary btn-sm tv-focusable" aria-label="עבור להזרמה מהירה בענן">
-              נגן מיד בשרת מהיר #1 (1080p • חסום פרסומות 🔒)
+            <button type="button" id="switchToInstantCloudBtn" class="btn-primary btn-sm tv-focusable" aria-label="עבור לשרת 1">
+              עבור לשרת 1
             </button>
-            <button type="button" id="switchNextFastTorrentBtn" class="btn-secondary btn-sm tv-focusable" aria-label="עבור למקור טורנט מהיר חלופי">
-              החלף לשרת גיבוי פעיל
+            <button type="button" id="switchNextFastTorrentBtn" class="btn-secondary btn-sm tv-focusable" aria-label="עבור לשרת חלופי">
+              שרת חלופי
             </button>
           </div>
         </div>
@@ -1495,7 +1503,23 @@
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js?v=6.3"></script>
-  <script src="app.js?v=6.3"></script>
+  <script src="tv-navigation.js?v=6.4"></script>
+  <script src="app.js?v=6.4"></script>
+  <script>
+    // Apply Cloud OTA JS overrides if a version newer than 6.4.0 was downloaded from GitHub Cloud
+    (function () {
+      try {
+        var otaVer = localStorage.getItem('streamit_ota_version') || '';
+        if (otaVer && otaVer > '6.4.0') {
+          var navCode = localStorage.getItem('streamit_ota_tv_nav_override') || '';
+          if (navCode.length > 500) {
+            var s1 = document.createElement('script');
+            s1.textContent = navCode;
+            document.body.appendChild(s1);
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
 </body>
 </html>

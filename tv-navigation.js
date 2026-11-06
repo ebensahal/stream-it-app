@@ -1,9 +1,9 @@
 /**
- * STREAM IT (סטרים איט) — Android TV 10-Foot Spatial Navigation & Remote Control Engine
- * ======================================================================================
+ * STREAM IT (סטרים איט) — Android TV 10-Foot Spatial Navigation & Remote Control Engine (v6.4)
+ * ============================================================================================
  * מנוע ניווט מרחבי דו-ממדי (2D D-Pad Spatial Navigation) מותאם מלא לשלטי סטרימרים
  * (Android TV / Google TV / Xiaomi / Nvidia Shield / Yes+ / Partner / Fire TV),
- * כולל תמיכה בכפתורי OK/Enter, חזור (Back), חיפוש קולי/מקלדת עברית על המסך ושליטה בנגן.
+ * כולל תמיכה מלאה בכפתורי חצים, OK/Enter, חזור (Back), ומעבר מיידי לניגון סרטים.
  */
 
 (function () {
@@ -27,13 +27,19 @@
   const TVNavigation = {
     currentDeviceMode: 'auto',
     effectiveDevice: 'pc',
-    lastFocusedByScope: new Map(),
+    lastOkTimestamp: 0,
+    lastDirTimestamp: 0,
 
     init() {
       this.setupDeviceSwitcher();
       this.bindSpatialKeydown();
       this.observeModalTransitions();
       this.applyDeviceMode('auto', false);
+      window.addEventListener('resize', () => {
+        if (this.effectiveDevice === 'tv') {
+          this.calibrateTvViewport();
+        }
+      });
     },
 
     detectHardwareDevice() {
@@ -46,6 +52,22 @@
       return 'pc';
     },
 
+    calibrateTvViewport() {
+      const htmlEl = document.documentElement;
+      if (this.effectiveDevice !== 'tv') {
+        htmlEl.removeAttribute('data-tv-mode');
+        htmlEl.style.removeProperty('font-size');
+        return;
+      }
+      htmlEl.setAttribute('data-tv-mode', 'true');
+      // Scale root font size proportionally to the TV WebView height/width so cards and buttons never look huge
+      const vw = Math.max(window.innerWidth || 960, 480);
+      const vh = Math.max(window.innerHeight || 540, 320);
+      const basePx = Math.min(vw / 82, vh / 45);
+      const clampedPx = Math.max(9.5, Math.min(13.5, basePx));
+      htmlEl.style.fontSize = `${clampedPx.toFixed(2)}px`;
+    },
+
     applyDeviceMode(mode, notifyUser = true) {
       this.currentDeviceMode = mode || 'auto';
       const resolved = mode === 'auto' ? this.detectHardwareDevice() : mode;
@@ -54,6 +76,8 @@
       document.body.setAttribute('data-device-mode', resolved);
       document.body.classList.remove('device-auto', 'device-pc', 'device-mobile', 'device-tv');
       document.body.classList.add(`device-${resolved}`);
+
+      this.calibrateTvViewport();
 
       const pills = document.querySelectorAll('.device-pill, .device-pill-btn');
       pills.forEach((btn) => {
@@ -65,13 +89,13 @@
       if (resolved === 'tv') {
         setTimeout(() => {
           this.ensureValidFocusInActiveScope();
-        }, 80);
+        }, 60);
       }
 
       if (notifyUser && window.StreamItApp && typeof window.StreamItApp.showToast === 'function') {
         const labels = {
           auto: 'מצב תצוגה: זיהוי אוטומטי חכם',
-          tv: '📺 מצב סטרימר TV הופעל — ניווט מלא עם שלט (חצים + OK + חזור)'
+          tv: '📺 מצב סטרימר TV הופעל — ניווט מלא עם שלט'
         };
         window.StreamItApp.showToast(labels[mode] || labels.auto);
       }
@@ -88,7 +112,6 @@
     },
 
     getActiveScopeContainer() {
-      // Ordered from topmost overlay/modal down to main page
       const priorityIds = [
         'pinVerifyModal',
         'virtualKeyboardModal',
@@ -143,7 +166,7 @@
         } catch (__) {}
       }
       try {
-        const inShelf = el.closest('.shelf-track');
+        const inShelf = el.closest('.shelf-track, .category-pills, .season-pills-row');
         if (inShelf) {
           el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         } else {
@@ -152,31 +175,37 @@
       } catch (_) {}
     },
 
-    ensureValidFocusInActiveScope() {
+    ensureValidFocusInActiveScope(forcePreferred = false) {
       const scope = this.getActiveScopeContainer();
       const candidates = this.getFocusableElements(scope);
       if (!candidates.length) return;
       const cur = document.activeElement;
-      if (cur && candidates.includes(cur)) {
+      if (!forcePreferred && cur && candidates.includes(cur)) {
         cur.classList.add('tv-focused');
         return;
       }
 
-      // Pick best default focus element for each screen/modal
       let preferred = null;
       if (scope.id === 'detailsModal') {
-        preferred = document.getElementById('detailsPlayPrimaryBtn');
+        preferred =
+          document.getElementById('detailsPlayBestBtn') ||
+          document.getElementById('detailsTrailerBtn');
       } else if (scope.id === 'playerModal') {
         preferred =
+          (isModalOpen('skipIntroOverlayBtn') && document.getElementById('skipIntroOverlayBtn')) ||
           (isModalOpen('bingeUpNextCard') && document.getElementById('bingePlayNowBtn')) ||
           document.getElementById('playerPlayPauseBtn') ||
-          document.getElementById('closePlayerModalBtn');
+          document.getElementById('closePlayerBtn');
       } else if (scope.id === 'authProfilesModal') {
         preferred = scope.querySelector('.netflix-profile-card');
       } else if (scope.id === 'authGateScreen') {
         preferred = document.getElementById('authEmailInput');
+      } else if (scope.id === 'virtualKeyboardModal') {
+        preferred = scope.querySelector('.vk-key-btn') || document.getElementById('vkSubmitBtn');
       } else if (scope === document.body) {
-        preferred = document.getElementById('heroPlayNowBtn');
+        preferred =
+          document.getElementById('heroPlayNowBtn') ||
+          document.querySelector('.media-card');
       }
 
       this.focusElement(preferred && candidates.includes(preferred) ? preferred : candidates[0]);
@@ -189,14 +218,18 @@
         const scopeId = scope ? scope.id || 'body' : 'body';
         if (scopeId !== lastScopeId) {
           lastScopeId = scopeId;
-          setTimeout(() => this.ensureValidFocusInActiveScope(), 60);
+          setTimeout(() => this.ensureValidFocusInActiveScope(true), 40);
         } else if (isModalOpen('bingeUpNextCard')) {
           const playNowBtn = document.getElementById('bingePlayNowBtn');
-          if (playNowBtn && document.activeElement !== playNowBtn && document.activeElement?.id !== 'bingeDismissBtn') {
+          if (
+            playNowBtn &&
+            document.activeElement !== playNowBtn &&
+            document.activeElement?.id !== 'bingeDismissBtn'
+          ) {
             this.focusElement(playNowBtn);
           }
         }
-      }, 220);
+      }, 180);
     },
 
     findNextSpatialElement(direction) {
@@ -209,13 +242,25 @@
         return candidates[0];
       }
 
+      // Special fast-path inside Details Modal so pressing Down from Close button or Up from body always lands on Play!
+      if (scope.id === 'detailsModal') {
+        const playBtn = document.getElementById('detailsPlayBestBtn');
+        if (playBtn && isVisibleElement(playBtn)) {
+          if (current.id === 'closeDetailsModalBtn' && (direction === 'down' || direction === 'right')) {
+            return playBtn;
+          }
+        }
+      }
+
       const curRect = current.getBoundingClientRect();
       const curCenter = {
         x: curRect.left + curRect.width / 2,
         y: curRect.top + curRect.height / 2
       };
 
-      const curShelf = current.closest('.shelf-track, .category-pills, .netflix-profiles-grid, .player-engine-tabs, .controls-group');
+      const rowSelector =
+        '.shelf-track, .category-pills, .netflix-profiles-grid, .player-engine-tabs, .controls-group, .sheet-action-row, .hero-actions, .main-nav';
+      const curShelf = current.closest(rowSelector);
 
       let bestCandidate = null;
       let bestScore = Infinity;
@@ -235,19 +280,19 @@
         let primaryDist = 0;
         let orthogonalDist = 0;
 
-        if (direction === 'up' && dy < -8) {
+        if (direction === 'up' && dy < -6) {
           isDirectionValid = true;
           primaryDist = Math.abs(dy);
           orthogonalDist = Math.abs(dx);
-        } else if (direction === 'down' && dy > 8) {
+        } else if (direction === 'down' && dy > 6) {
           isDirectionValid = true;
           primaryDist = Math.abs(dy);
           orthogonalDist = Math.abs(dx);
-        } else if (direction === 'left' && dx < -8) {
+        } else if (direction === 'left' && dx < -6) {
           isDirectionValid = true;
           primaryDist = Math.abs(dx);
           orthogonalDist = Math.abs(dy);
-        } else if (direction === 'right' && dx > 8) {
+        } else if (direction === 'right' && dx > 6) {
           isDirectionValid = true;
           primaryDist = Math.abs(dx);
           orthogonalDist = Math.abs(dy);
@@ -255,24 +300,131 @@
 
         if (!isDirectionValid) continue;
 
-        // Strongly prefer staying inside the same horizontal row/shelf when pressing Left/Right
-        let rowBonus = 0;
-        if ((direction === 'left' || direction === 'right') && curShelf && el.closest('.shelf-track, .category-pills, .netflix-profiles-grid, .player-engine-tabs, .controls-group') === curShelf) {
-          rowBonus = -1200;
-        }
+        const elShelf = el.closest(rowSelector);
+        const sameRow = Boolean(curShelf && elShelf === curShelf);
 
-        const score = primaryDist + orthogonalDist * 2.5 + rowBonus;
-        if (score < bestScore) {
-          bestScore = score;
-          bestCandidate = el;
+        if (direction === 'left' || direction === 'right') {
+          // For Left/Right, strongly stay inside the same horizontal row/shelf
+          const rowBonus = sameRow ? -2500 : 0;
+          const score = primaryDist + orthogonalDist * 3.2 + rowBonus;
+          if (score < bestScore) {
+            bestScore = score;
+            bestCandidate = el;
+          }
+        } else {
+          // For Up/Down, move between rows/sections; ignore items in the exact same horizontal shelf
+          if (sameRow && Math.abs(dy) < curRect.height * 0.85) continue;
+          const playBonus =
+            el.id === 'detailsPlayBestBtn' || el.id === 'heroPlayNowBtn' ? -140 : 0;
+          const score = primaryDist * 1.8 + orthogonalDist * 0.32 + playBonus;
+          if (score < bestScore) {
+            bestScore = score;
+            bestCandidate = el;
+          }
         }
       }
 
       return bestCandidate;
     },
 
+    handleRemoteDirection(dir) {
+      const now = Date.now();
+      if (now - this.lastDirTimestamp < 55) return;
+      this.lastDirTimestamp = now;
+
+      if (
+        isModalOpen('playerModal') &&
+        window.StreamItApp &&
+        typeof window.StreamItApp.resetPlayerIdleTimer === 'function'
+      ) {
+        window.StreamItApp.resetPlayerIdleTimer();
+      }
+
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        activeEl.tagName &&
+        activeEl.tagName.toLowerCase() === 'input' &&
+        activeEl.type === 'range' &&
+        (dir === 'left' || dir === 'right')
+      ) {
+        const video = document.getElementById('cinemaVideo');
+        if (video) {
+          const delta = dir === 'right' ? 10 : -10;
+          video.currentTime = Math.max(0, Math.min(video.duration || 9999, video.currentTime + delta));
+          return;
+        }
+      }
+
+      const nextEl = this.findNextSpatialElement(dir);
+      if (nextEl) {
+        this.focusElement(nextEl);
+      } else {
+        this.ensureValidFocusInActiveScope(false);
+      }
+    },
+
+    handleRemoteOk() {
+      const now = Date.now();
+      if (now - this.lastOkTimestamp < 180) return;
+      this.lastOkTimestamp = now;
+
+      if (
+        isModalOpen('playerModal') &&
+        window.StreamItApp &&
+        typeof window.StreamItApp.resetPlayerIdleTimer === 'function'
+      ) {
+        window.StreamItApp.resetPlayerIdleTimer();
+      }
+
+      let activeEl = document.activeElement;
+      const scope = this.getActiveScopeContainer();
+      const candidates = this.getFocusableElements(scope);
+      if (!activeEl || activeEl === document.body || !candidates.includes(activeEl)) {
+        this.ensureValidFocusInActiveScope(true);
+        activeEl = document.activeElement;
+      }
+      if (!activeEl || activeEl === document.body) return;
+
+      const tag = activeEl.tagName ? activeEl.tagName.toLowerCase() : '';
+
+      // 1. Checkbox toggle
+      if (tag === 'input' && activeEl.type === 'checkbox') {
+        activeEl.checked = !activeEl.checked;
+        activeEl.dispatchEvent(new Event('change', { bubbles: true }));
+        return;
+      }
+
+      // 2. Search input on TV -> open on-screen Hebrew Virtual Keyboard for effortless remote typing
+      if (activeEl.id === 'globalSearchInput' && this.effectiveDevice === 'tv') {
+        const vkBtn = document.getElementById('openVirtualKbBtn');
+        if (vkBtn) {
+          vkBtn.click();
+          return;
+        }
+      }
+
+      // 3. Other text/email/password inputs -> focus so system IME pops up
+      if (
+        tag === 'input' &&
+        !['button', 'submit', 'checkbox', 'range'].includes(activeEl.type)
+      ) {
+        activeEl.focus();
+        return;
+      }
+
+      // 4. Select dropdown -> cycle options on OK press
+      if (tag === 'select' && activeEl.options && activeEl.options.length) {
+        activeEl.selectedIndex = (activeEl.selectedIndex + 1) % activeEl.options.length;
+        activeEl.dispatchEvent(new Event('change', { bubbles: true }));
+        return;
+      }
+
+      // 5. Click any Button, Link, Movie Card, Episode Row, or Profile Card!
+      activeEl.click();
+    },
+
     handleAndroidBackButton() {
-      // Returns true if an overlay/modal was closed, false if already on main home view
       if (isModalOpen('pinVerifyModal')) {
         document.getElementById('pinVerifyModal')?.classList.add('hidden');
         return true;
@@ -334,29 +486,35 @@
     bindSpatialKeydown() {
       window.addEventListener('keydown', (e) => {
         const activeEl = document.activeElement;
-        const activeTag = activeEl ? activeEl.tagName.toLowerCase() : '';
+        const activeTag = activeEl && activeEl.tagName ? activeEl.tagName.toLowerCase() : '';
         const isTextInput =
           (activeTag === 'input' &&
             !['range', 'button', 'submit', 'checkbox'].includes(activeEl.type)) ||
           activeTag === 'textarea';
 
-        // Wake up player controls on any remote button press inside the player
-        if (isModalOpen('playerModal') && window.StreamItApp && typeof window.StreamItApp.resetPlayerIdleTimer === 'function') {
+        if (
+          isModalOpen('playerModal') &&
+          window.StreamItApp &&
+          typeof window.StreamItApp.resetPlayerIdleTimer === 'function'
+        ) {
           window.StreamItApp.resetPlayerIdleTimer();
         }
 
-        // 1. Android TV Remote Back / Escape Button
-        if (e.key === 'Escape' || e.key === 'BrowserBack' || e.key === 'GoBack') {
+        // 1. Back / Escape
+        if (e.key === 'Escape' || e.key === 'BrowserBack' || e.key === 'GoBack' || e.keyCode === 4) {
           if (this.handleAndroidBackButton()) {
             e.preventDefault();
           }
           return;
         }
 
-        // 2. Android TV Remote Media Keys (Play/Pause, FastForward, Rewind, Next/Prev)
+        // 2. Media keys inside player
         if (isModalOpen('playerModal') && window.StreamItApp) {
           const video = document.getElementById('cinemaVideo');
-          if (e.key === 'MediaPlayPause' || (e.key === ' ' && !isTextInput && activeTag !== 'button')) {
+          if (
+            e.key === 'MediaPlayPause' ||
+            (e.key === ' ' && !isTextInput && activeTag !== 'button')
+          ) {
             e.preventDefault();
             if (video) {
               if (video.paused) video.play().catch(() => {});
@@ -386,52 +544,62 @@
           }
         }
 
-        // 3. D-Pad Center / OK Button (Enter) on Non-Button Focusable Cards (Movie Cards, Episodes, Profiles, Checkboxes)
-        if ((e.key === 'Enter' || e.key === 'NumpadEnter') && activeEl && !isTextInput) {
-          if (activeTag === 'input' && activeEl.type === 'checkbox') {
-            e.preventDefault();
-            activeEl.checked = !activeEl.checked;
-            activeEl.dispatchEvent(new Event('change', { bubbles: true }));
-            return;
-          }
-          if (activeTag !== 'button' && activeTag !== 'a' && activeTag !== 'select') {
-            e.preventDefault();
-            activeEl.click();
-            return;
-          }
+        // 3. D-Pad Center / OK / Enter
+        const isOkKey =
+          e.key === 'Enter' ||
+          e.key === 'NumpadEnter' ||
+          e.key === 'Select' ||
+          e.key === 'Accept' ||
+          e.keyCode === 23 ||
+          e.keyCode === 66;
+
+        if (isOkKey && (!isTextInput || activeEl?.id === 'globalSearchInput')) {
+          e.preventDefault();
+          this.handleRemoteOk();
+          return;
         }
 
-        // 4. D-Pad Arrow Spatial Navigation (Up / Down / Left / Right)
+        // 4. D-Pad Arrows
         const arrowMap = {
           ArrowUp: 'up',
           ArrowDown: 'down',
           ArrowLeft: 'left',
-          ArrowRight: 'right'
+          ArrowRight: 'right',
+          Up: 'up',
+          Down: 'down',
+          Left: 'left',
+          Right: 'right'
         };
 
-        const dir = arrowMap[e.key];
+        const dir =
+          arrowMap[e.key] ||
+          (e.keyCode === 19
+            ? 'up'
+            : e.keyCode === 20
+            ? 'down'
+            : e.keyCode === 21
+            ? 'left'
+            : e.keyCode === 22
+            ? 'right'
+            : null);
+
         if (!dir) return;
 
-        // If user is on the search input and presses Enter or Down, or if typing text allow Left/Right inside text
         if (isTextInput && (dir === 'left' || dir === 'right') && activeEl.value) {
           return;
         }
-        if (activeTag === 'input' && activeEl.type === 'range' && (dir === 'left' || dir === 'right')) {
-          return;
-        }
 
-        const nextEl = this.findNextSpatialElement(dir);
-        if (nextEl) {
-          e.preventDefault();
-          this.focusElement(nextEl);
-        }
+        e.preventDefault();
+        this.handleRemoteDirection(dir);
       });
     }
   };
 
   window.TVNavigation = TVNavigation;
 
-  document.addEventListener('DOMContentLoaded', () => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => TVNavigation.init());
+  } else {
     TVNavigation.init();
-  });
+  }
 })();

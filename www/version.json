@@ -1,17 +1,15 @@
 {
-  "version": "6.3.0",
-  "native_apk_version": "6.3",
-  "updated_at": "2026-11-06T14:46:00+02:00",
-  "ota_cdn_base": "https://raw.githubusercontent.com/ebensahal/stream-it/main",
-  "apk_download_url": "https://raw.githubusercontent.com/ebensahal/stream-it/main/STREAM_IT_TV_Streamer.apk",
+  "version": "6.4.0",
+  "native_apk_version": "6.4",
+  "updated_at": "2026-11-06T15:55:00+02:00",
+  "ota_cdn_base": "https://raw.githubusercontent.com/ebensahal/stream-it-app/main",
+  "apk_download_url": "https://raw.githubusercontent.com/ebensahal/stream-it-app/main/STREAM_IT_TV_Streamer.apk",
   "features": [
+    "Calibrated 10-Foot TV Streamer Viewport (82% TextZoom + WideViewPort + 7–8 Proportional Posters per Row)",
+    "Direct Android KeyEvent Bridge for Remote D-Pad & OK Button + Instant Focus on Play Button",
+    "Clean Hebrew Video Player UI (Zero Technical Jargon, Zero Fake Placeholder Subtitles)",
+    "Public Cloud OTA Auto-Updater (ebensahal/stream-it-app) for CSS, JS, and Catalog",
     "Embedded Native Android Stream Server (127.0.0.1:8092) + Cloud Fallback — Zero PC Dependency",
-    "Official Israeli Cinema & VOD Marketing Titles (e.g. Weapons = שעת הנעלמים)",
-    "Pure 10-Foot TV Streamer Layout (Zero Admin Clutter, Proportional 2:3 Posters & Compact Hero)",
-    "Categorized Search Hub (Movies, Series, Live TV, Direct Streams)",
-    "Netflix-Style Skip Intro Button for Series Episodes",
-    "Continuous Binge-Watch for Series Episodes & Movie Sequels",
-    "Admin-Only Registration Approval on Desktop/Web (Hidden on TV Streamer)",
-    "Automatic Over-The-Air (OTA) Cloud Sync for Streamer APK"
+    "Official Israeli Cinema & VOD Marketing Titles (e.g. Weapons = שעת הנעלמים)"
   ]
 }

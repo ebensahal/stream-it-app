@@ -1327,10 +1327,13 @@
     },
 
     async init() {
-      this.appVersion = '6.3.0';
-      this.nativeApkVersion = '6.3';
+      this.appVersion = '6.4.0';
+      this.nativeApkVersion = '6.4';
       if (window.Capacitor) {
         document.body.setAttribute('data-device-mode', 'tv');
+        if (window.TVNavigation && typeof window.TVNavigation.calibrateTvViewport === 'function') {
+          window.TVNavigation.calibrateTvViewport();
+        }
       }
       this.initBuiltInVpnShield();
       this.bindEvents();
@@ -1344,45 +1347,54 @@
     },
 
     async checkStreamerOtaUpdate() {
-      try {
-        const res = await fetch(
-          `https://raw.githubusercontent.com/ebensahal/stream-it/main/version.json?t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) return;
-        const remote = await res.json();
-        if (!remote || !remote.version) return;
+      const otaBases = [
+        'https://raw.githubusercontent.com/ebensahal/stream-it-app/main',
+        'https://raw.githubusercontent.com/ebensahal/stream-it/main'
+      ];
+      for (const cdnBase of otaBases) {
+        try {
+          const res = await fetch(`${cdnBase}/version.json?t=${Date.now()}`, { cache: 'no-store' });
+          if (!res.ok) continue;
+          const remote = await res.json();
+          if (!remote || !remote.version) continue;
 
-        // Layer 1: Automatic Over-The-Air (OTA) Live Sync for Capacitor Android TV Streamers
-        const isCapacitorStreamer = Boolean(
-          window.Capacitor || location.protocol === 'capacitor:'
-        );
-        if (
-          isCapacitorStreamer &&
-          remote.version !== this.appVersion &&
-          !window.__streamItOtaSynced
-        ) {
-          window.__streamItOtaSynced = true;
-          const cdnBase =
-            remote.ota_cdn_base || 'https://raw.githubusercontent.com/ebensahal/stream-it/main';
-          const linkEl = document.createElement('link');
-          linkEl.rel = 'stylesheet';
-          linkEl.href = `${cdnBase}/styles.css?v=${encodeURIComponent(remote.version)}`;
-          document.head.appendChild(linkEl);
-          this.showToast(`⚡ הסטרימר התעדכן אוטומטית מהענן לגרסה ${remote.version}`);
-        }
-
-        // Layer 2: Optional 1-Click Native APK Shell Upgrade Notification if native_apk_version ever changes
-        if (
-          isCapacitorStreamer &&
-          remote.native_apk_version &&
-          remote.native_apk_version !== this.nativeApkVersion
-        ) {
-          this.showToast(
-            `🚀 זמין עדכון מעטפת סטרימר חדש (${remote.native_apk_version}) — ניתן להוריד בלחיצה מהתפריט`
-          );
-        }
-      } catch (_) {}
+          if (remote.version !== this.appVersion && !window.__streamItOtaSynced) {
+            window.__streamItOtaSynced = true;
+            try {
+              const cssRes = await fetch(`${cdnBase}/styles.css?t=${Date.now()}`, { cache: 'no-store' });
+              if (cssRes.ok) {
+                const cssText = await cssRes.text();
+                localStorage.setItem('streamit_ota_css_text', cssText);
+                let styleEl = document.getElementById('streamit-ota-live-style');
+                if (!styleEl) {
+                  styleEl = document.createElement('style');
+                  styleEl.id = 'streamit-ota-live-style';
+                  document.head.appendChild(styleEl);
+                }
+                styleEl.textContent = cssText;
+              }
+              const [navRes, appRes] = await Promise.all([
+                fetch(`${cdnBase}/tv-navigation.js?t=${Date.now()}`, { cache: 'no-store' }),
+                fetch(`${cdnBase}/app.js?t=${Date.now()}`, { cache: 'no-store' })
+              ]);
+              if (navRes.ok && appRes.ok) {
+                const navText = await navRes.text();
+                const appText = await appRes.text();
+                localStorage.setItem('streamit_ota_tv_nav_text', navText);
+                localStorage.setItem('streamit_ota_app_js_text', appText);
+                const prevApplied = localStorage.getItem('streamit_ota_version_applied');
+                localStorage.setItem('streamit_ota_version_applied', remote.version);
+                if (prevApplied !== remote.version) {
+                  this.showToast(`⚡ עדכון אוטומטי (${remote.version}) הותקן מהענן — מרענן...`);
+                  setTimeout(() => window.location.reload(), 900);
+                  return;
+                }
+              }
+            } catch (_) {}
+          }
+          return;
+        } catch (_) {}
+      }
     },
 
     isMasterAdminEmail(email) {
@@ -4314,6 +4326,19 @@
 
       this.populateDetailsModalDom(item);
       modal.classList.remove('hidden');
+      modal.scrollTop = 0;
+
+      // Immediately focus the primary Play button so pressing OK on the TV remote starts playback right away!
+      setTimeout(() => {
+        const playBtn = document.getElementById('detailsPlayBestBtn');
+        if (playBtn) {
+          if (window.TVNavigation && typeof window.TVNavigation.focusElement === 'function') {
+            window.TVNavigation.focusElement(playBtn);
+          } else {
+            playBtn.focus({ preventScroll: true });
+          }
+        }
+      }, 45);
 
       // Concurrently load multi-tracker streams AND enrich live metadata/trailer/episodes from Cinemeta!
       this.loadStreamsForCurrentItem();
@@ -5686,14 +5711,14 @@
       const btnCloud2 = document.querySelector('[data-engine="cloud2"]');
       const btnTrailer = document.querySelector('[data-engine="trailer"]');
       if (item.type === 'live') {
-        if (btnCloud1) btnCloud1.textContent = '🔴 שידור חי ראשי (1080p HD)';
-        if (btnTorrent) btnTorrent.textContent = '📡 שרת שידור חלופי #2 (גיבוי HD)';
-        if (btnCloud2) btnCloud2.textContent = '⚡ חיבור ישיר לערוץ';
+        if (btnCloud1) btnCloud1.textContent = 'שידור חי 1';
+        if (btnTorrent) btnTorrent.textContent = 'שידור חי 2';
+        if (btnCloud2) btnCloud2.textContent = 'שידור חי 3';
         if (btnTrailer) btnTrailer.classList.add('hidden');
       } else {
-        if (btnCloud1) btnCloud1.textContent = 'מקור ישיר #1 (1080p ראשי • 0% פרסומות 🛡️)';
-        if (btnTorrent) btnTorrent.textContent = "מקור ישיר #2 (1080p גיבוי א' 🛡️)";
-        if (btnCloud2) btnCloud2.textContent = "מקור ישיר #3 (1080p גיבוי ב' 🛡️)";
+        if (btnCloud1) btnCloud1.textContent = 'שרת 1 (ראשי)';
+        if (btnTorrent) btnTorrent.textContent = 'שרת 2';
+        if (btnCloud2) btnCloud2.textContent = 'שרת 3';
         if (btnTrailer) btnTrailer.classList.remove('hidden');
       }
 
@@ -5894,14 +5919,18 @@
 
       if (torrentBanner) torrentBanner.classList.remove('hidden');
       if (torrentText) {
-        torrentText.textContent = 'טוען סטרים ישיר ב-1080p Full HD (0% פרסומות 🛡️)...';
+        torrentText.textContent = 'טוען שידור...';
       }
 
       const apiBase = this.getApiBase();
       try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 4000);
         const res = await fetch(
-          `${apiBase}/api/direct-stream?type=${encodeURIComponent(item.type)}&imdb_id=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`
+          `${apiBase}/api/direct-stream?type=${encodeURIComponent(item.type)}&imdb_id=${encodeURIComponent(imdbId)}&season=${this.currentSeason}&episode=${this.currentEpisode}`,
+          { signal: ctrl.signal }
         );
+        clearTimeout(timer);
         if (!res.ok) throw new Error('Direct stream endpoint returned ' + res.status);
         const data = await res.json();
         if (!data || !data.ok || !data.enc_stream_urls || !data.wasm_b64) {
@@ -5928,9 +5957,7 @@
           )}&origin=${encodeURIComponent(playerOrigin)}`;
 
           if (relLabel) {
-            relLabel.textContent = `נגן ישיר 1080p Full HD (0% פרסומות 🛡️ • שרת #${idx + 1}/${orderedUrls.length}) • ${
-              data.file_name || item.title_he || imdbId
-            }`;
+            relLabel.textContent = `איכות Full HD • תרגום עברי`;
           }
 
           if (this.hlsInstance) {
@@ -5960,6 +5987,7 @@
                 video.muted = true;
                 video.play().catch(() => {});
               });
+              this.resetPlayerIdleTimer();
             });
 
             hls.on(window.Hls.Events.ERROR, (_, errData) => {
@@ -5981,6 +6009,7 @@
             video.src = proxiedM3u8;
             video.onerror = () => tryLoadHlsIndex(idx + 1);
             video.play().catch(() => {});
+            this.resetPlayerIdleTimer();
           }
         };
 
@@ -5996,6 +6025,8 @@
       const video = document.getElementById('cinemaVideo');
       const controls = document.getElementById('nativePlayerControls');
       const torrentBanner = document.getElementById('torrentStatusOverlay');
+      const subOverlay = document.getElementById('customSubtitleOverlay');
+      const toast = document.getElementById('autoSubToastBanner');
       const relLabel = document.getElementById('playerReleaseTag');
       if (!iframe) return false;
 
@@ -6010,6 +6041,8 @@
       }
       if (controls) controls.classList.add('hidden');
       if (torrentBanner) torrentBanner.classList.add('hidden');
+      if (subOverlay) subOverlay.classList.add('hidden');
+      if (toast) toast.style.opacity = '0';
 
       const s = this.currentSeason || 1;
       const e = this.currentEpisode || 1;
@@ -6031,8 +6064,9 @@
       iframe.src = chosenUrl;
       iframe.classList.remove('hidden');
       if (relLabel) {
-        relLabel.textContent = `נגן ענן ישיר 1080p Full HD (שרת #${(preferredServerIdx % cloudEmbedUrls.length) + 1}) • ${(item && item.title_he) || imdbId}`;
+        relLabel.textContent = `איכות Full HD • שרת ${(preferredServerIdx % cloudEmbedUrls.length) + 1}`;
       }
+      this.resetPlayerIdleTimer();
       return true;
     },
 
@@ -6224,8 +6258,8 @@
       const apiBase = this.getApiBase();
       const imdbId = String(item.imdb_id || item.id || 'tt15239678').split(':')[0].trim();
 
-      if (textEl && this.subtitlesEnabled) {
-        textEl.textContent = 'טוען ומסנכרן כתוביות בעברית...';
+      if (textEl) {
+        textEl.textContent = '';
       }
 
       let selectedSubId = 'auto';
@@ -6269,11 +6303,7 @@
 
       const toast = document.getElementById('autoSubToastBanner');
       if (toast) {
-        toast.style.opacity = '1';
-        clearTimeout(this.toastTimeout);
-        this.toastTimeout = setTimeout(() => {
-          toast.style.opacity = '0';
-        }, 4000);
+        toast.style.opacity = '0';
       }
     },
 
@@ -6341,32 +6371,9 @@
       this.updateCustomSubtitleOverlay(Math.max(0.6, (video && video.currentTime) || 0.6));
     },
 
-    buildClientFallbackHebrewCues(item) {
-      const title = (item && item.title_he) || 'השידור הישיר';
-      const cues = [
-        {
-          startMs: 300,
-          endMs: 5200,
-          text: `✓ כתוביות בעברית סונכרנו אוטומטית • ${title}\nמנוע AutoSub AI — תאימות מלאה לקצב הפריימים`
-        }
-      ];
-      const lines = [
-        'המערכת סנכרנה את הכתוביות בעברית באופן אוטומטי וללא שיהוי.',
-        'חיכינו לרגע הזה זמן רב, ועכשיו האמת יוצאת לאור.',
-        'אנחנו לא יכולים לחזור אחורה עכשיו, הדרך היחידה היא קדימה.',
-        'האות נקלט היטב מכל המערכות, אנחנו מוכנים לצאת לדרך!',
-        'הבחירות שאנחנו עושים ברגעים הקשים הן אלו שמגדירות מי אנחנו.'
-      ];
-      let t = 5800;
-      for (let i = 0; i < 1200; i++) {
-        cues.push({
-          startMs: t,
-          endMs: t + 4200,
-          text: lines[i % lines.length]
-        });
-        t += 5000;
-      }
-      return cues;
+    buildClientFallbackHebrewCues() {
+      // Never inject fake placeholder subtitle lines when a title doesn't have an external SRT file
+      return [];
     },
 
     normalizeHebrewSubtitleLine(line) {
