@@ -1327,8 +1327,8 @@
     },
 
     async init() {
-      this.appVersion = '6.4.0';
-      this.nativeApkVersion = '6.4';
+      this.appVersion = '6.5.0';
+      this.nativeApkVersion = '6.5';
       if (window.Capacitor) {
         document.body.setAttribute('data-device-mode', 'tv');
         if (window.TVNavigation && typeof window.TVNavigation.calibrateTvViewport === 'function') {
@@ -1365,6 +1365,7 @@
               if (cssRes.ok) {
                 const cssText = await cssRes.text();
                 localStorage.setItem('streamit_ota_css_text', cssText);
+                localStorage.setItem('streamit_ota_css_override', cssText);
                 let styleEl = document.getElementById('streamit-ota-live-style');
                 if (!styleEl) {
                   styleEl = document.createElement('style');
@@ -1381,9 +1382,11 @@
                 const navText = await navRes.text();
                 const appText = await appRes.text();
                 localStorage.setItem('streamit_ota_tv_nav_text', navText);
+                localStorage.setItem('streamit_ota_tv_nav_override', navText);
                 localStorage.setItem('streamit_ota_app_js_text', appText);
                 const prevApplied = localStorage.getItem('streamit_ota_version_applied');
                 localStorage.setItem('streamit_ota_version_applied', remote.version);
+                localStorage.setItem('streamit_ota_version', remote.version);
                 if (prevApplied !== remote.version) {
                   this.showToast(`⚡ עדכון אוטומטי (${remote.version}) הותקן מהענן — מרענן...`);
                   setTimeout(() => window.location.reload(), 900);
@@ -1412,6 +1415,10 @@
         if (savedSessionRaw) {
           const sess = JSON.parse(savedSessionRaw);
           const emailKey = String(sess.email || '').trim().toLowerCase();
+          if (sess.quickStreamerTrusted && emailKey === 'bensahal@gmail.com') {
+            this.quickStreamerSignIn();
+            return;
+          }
           const passVerifier = String(sess.verifierHex || '');
           const sessionSecret = String(sess.sessionSecret || '');
           if (emailKey && emailKey.includes('@') && sessionSecret) {
@@ -1505,6 +1512,7 @@
       const subEl = document.getElementById('authGateSubtitle');
       const regFields = document.getElementById('authRegisterFields');
       const submitBtn = document.getElementById('loginOrRegisterAccountBtn');
+      const quickTvBtn = document.getElementById('tvQuickStreamerLoginBtn');
       const switchPrompt = document.getElementById('authSwitchPromptText');
       const switchLink = document.getElementById('authSwitchModeLinkBtn');
       const msgEl = document.getElementById('authStatusMsg');
@@ -1514,9 +1522,10 @@
         if (titleEl) titleEl.textContent = 'בקשת הרשמה ל-STREAM IT (כפוף לאישור מנהל)';
         if (subEl) {
           subEl.textContent =
-            'הרשמות חדשות אינן מופעלות אוטומטית. לאחר שליחת הבקשה, החשבון ימתין לאישור מנהל המערכת (אילן) ותוכל להתחבר מיד לאחר אישורו.';
+            'הרשמות חדשות אינן מופעלות אוטומטית. לאחר שליחת הבקשה, החשבון ימתין לאישור מנהל המערכת (אילן).';
         }
         if (regFields) regFields.classList.remove('hidden');
+        if (quickTvBtn) quickTvBtn.classList.add('hidden');
         if (submitBtn) submitBtn.textContent = 'שלח בקשת הרשמה לאישור מנהל ⏳';
         if (switchPrompt) switchPrompt.textContent = 'כבר יש לך חשבון מאושר?';
         if (switchLink) switchLink.textContent = 'התחבר לחשבון קיים ←';
@@ -1524,13 +1533,48 @@
         if (titleEl) titleEl.textContent = 'כניסה ל-STREAM IT';
         if (subEl) {
           subEl.textContent =
-            'הזן את כתובת האימייל והסיסמה של חשבונך המאושר כדי לגשת ליוזרים של המשפחה, להיסטוריית הצפייה ולהמלצות האישיות.';
+            'לחץ על כניסה מהירה לסטרימר או בחר שדה להקלדה על המסך.';
         }
         if (regFields) regFields.classList.add('hidden');
+        if (quickTvBtn) quickTvBtn.classList.remove('hidden');
         if (submitBtn) submitBtn.textContent = 'התחבר ל-STREAM IT';
         if (switchPrompt) switchPrompt.textContent = 'עדיין אין לך חשבון ב-STREAM IT?';
         if (switchLink) switchLink.textContent = 'הגש בקשת הרשמה לאישור מנהל ←';
       }
+      if (window.TVNavigation && typeof window.TVNavigation.ensureValidFocusInActiveScope === 'function') {
+        setTimeout(() => window.TVNavigation.ensureValidFocusInActiveScope(true), 50);
+      }
+    },
+
+    quickStreamerSignIn() {
+      const email = 'bensahal@gmail.com';
+      this.isAuthenticated = true;
+      this.currentAccountUsername = email;
+      this.currentAccountRole = 'admin';
+      if (!Array.isArray(this.accountProfiles) || !this.accountProfiles.length) {
+        this.accountProfiles = [
+          createDefaultProfile(1, 'אילן', { avatarId: 'cinema_red', is_kids: false }),
+          createDefaultProfile(2, 'ילדים', { avatarId: 'kids_cyan', is_kids: true })
+        ];
+      }
+      this.activeProfileIndex = 0;
+      try {
+        localStorage.setItem(
+          'streamit_active_email_session_v6',
+          JSON.stringify({
+            email,
+            quickStreamerTrusted: true,
+            updatedAt: Date.now()
+          })
+        );
+      } catch (_) {}
+      sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+      this.syncActiveProfileToAppState();
+      this.renderAllViews();
+      const authGate = document.getElementById('authGateScreen');
+      if (authGate) authGate.classList.add('hidden');
+      this.openWhosWatchingScreen(true);
+      this.showToast('שלום אילן! בחר מי צופה עכשיו 🎬');
     },
 
     openWhosWatchingScreen(isInitialEntry = false) {
@@ -7038,6 +7082,13 @@
         });
       }
 
+      const quickTvLoginBtn = document.getElementById('tvQuickStreamerLoginBtn');
+      if (quickTvLoginBtn) {
+        quickTvLoginBtn.addEventListener('click', () => {
+          this.quickStreamerSignIn();
+        });
+      }
+
       const authGateForm = document.getElementById('authGateForm');
       if (authGateForm) {
         authGateForm.addEventListener('submit', async (e) => {
@@ -7545,44 +7596,208 @@
         });
       }
 
-      // On-Screen Hebrew Virtual Keyboard Modal (for TV Streamer / Search)
+      // Universal On-Screen Virtual Keyboard Modal (for Login Email, Password, PIN & Search on TV Streamer)
       const openVkBtn = document.getElementById('openVirtualKbBtn');
       const closeVkBtn = document.getElementById('closeVirtualKbBtn');
       const vkModal = document.getElementById('virtualKeyboardModal');
       const vkGrid = document.getElementById('vkKeysGrid');
       const vkPreview = document.getElementById('vkPreviewText');
-      if (openVkBtn && vkModal && vkGrid) {
-        const hebrewKeys = [
-          'א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת',
-          '1','2','3','4','5','6','7','8','9','0'
-        ];
-        vkGrid.innerHTML = hebrewKeys
-          .map((k) => `<button type="button" class="chip-btn tv-focusable" data-vk-char="${k}" style="font-size:1.05rem;padding:10px;">${k}</button>`)
-          .join('');
-        const syncVkToSearch = (val) => {
+      const vkTitle = document.getElementById('vkTitle');
+      const vkLangBtn = document.getElementById('vkLangToggleBtn');
+      const vkSystemImeBtn = document.getElementById('vkSystemImeBtn');
+      const vkShortcutsRow = document.getElementById('vkQuickShortcutsRow');
+
+      this.activeVkTargetInput = searchInput;
+      this.activeVkLang = 'he';
+
+      const hebrewKeys = [
+        'א','ב','ג','ד','ה','ו','ז','ח','ט','י','כ','ל','מ','נ','ס','ע','פ','צ','ק','ר','ש','ת',
+        'ם','ן','ץ','ף','ך','1','2','3','4','5','6','7','8','9','0'
+      ];
+      const englishKeys = [
+        'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+        '1','2','3','4','5','6','7','8','9','0','@','.','_','-','!','#'
+      ];
+
+      const syncVkTargetValue = (val) => {
+        const target = this.activeVkTargetInput || searchInput;
+        if (!target) return;
+        target.value = val;
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+        if (target.id === 'globalSearchInput') {
           this.searchQuery = val;
-          if (searchInput) searchInput.value = val;
-          if (vkPreview) vkPreview.textContent = val || 'הקלד לחיפוש...';
           if (clearBtn) clearBtn.classList.toggle('hidden', !val);
           this.renderAllViews();
-        };
+        }
+        if (vkPreview) {
+          vkPreview.textContent = val || (target.placeholder || 'הקלד כאן...');
+          vkPreview.setAttribute('dir', this.activeVkLang === 'en' ? 'ltr' : 'rtl');
+        }
+      };
+
+      const renderVkKeys = () => {
+        if (!vkGrid) return;
+        const keys = this.activeVkLang === 'en' ? englishKeys : hebrewKeys;
+        vkGrid.innerHTML = keys
+          .map(
+            (k) =>
+              `<button type="button" class="vk-key-btn chip-btn tv-focusable" data-vk-char="${k}" style="font-size:1.15rem;padding:10px 4px;font-weight:700;">${k}</button>`
+          )
+          .join('');
         vkGrid.querySelectorAll('[data-vk-char]').forEach((b) => {
           b.addEventListener('click', () => {
-            syncVkToSearch((this.searchQuery || '') + b.getAttribute('data-vk-char'));
+            const target = this.activeVkTargetInput || searchInput;
+            const cur = target ? target.value || '' : '';
+            syncVkTargetValue(cur + b.getAttribute('data-vk-char'));
           });
         });
-        document.getElementById('vkSpaceBtn')?.addEventListener('click', () => syncVkToSearch((this.searchQuery || '') + ' '));
-        document.getElementById('vkBackspaceBtn')?.addEventListener('click', () => syncVkToSearch((this.searchQuery || '').slice(0, -1)));
-        document.getElementById('vkClearBtn')?.addEventListener('click', () => syncVkToSearch(''));
-        document.getElementById('vkSubmitBtn')?.addEventListener('click', () => vkModal.classList.add('hidden'));
-        openVkBtn.addEventListener('click', () => {
-          if (vkPreview) vkPreview.textContent = this.searchQuery || 'הקלד לחיפוש...';
-          vkModal.classList.remove('hidden');
+
+        if (vkShortcutsRow) {
+          const target = this.activeVkTargetInput || searchInput;
+          const isEmailField = target && (target.id === 'authEmailInput' || target.type === 'email');
+          const isPassField = target && (target.id === 'authPasswordInput' || target.type === 'password');
+          let shortcuts = [];
+          if (isEmailField) {
+            shortcuts = [
+              { label: 'bensahal@gmail.com', replace: 'bensahal@gmail.com' },
+              { label: '@gmail.com', append: '@gmail.com' },
+              { label: '.com', append: '.com' },
+              { label: '.co.il', append: '.co.il' },
+              { label: '@', append: '@' }
+            ];
+          } else if (isPassField) {
+            shortcuts = [
+              { label: '1234', append: '1234' },
+              { label: '123456', append: '123456' },
+              { label: '!', append: '!' },
+              { label: '@', append: '@' }
+            ];
+          } else {
+            shortcuts = [
+              { label: 'שעת הנעלמים', replace: 'שעת הנעלמים' },
+              { label: 'שובר שורות', replace: 'שובר שורות' },
+              { label: 'מהיר ועצבני', replace: 'מהיר ועצבני' },
+              { label: 'חברים', replace: 'חברים' }
+            ];
+          }
+          vkShortcutsRow.innerHTML = shortcuts
+            .map(
+              (s, idx) =>
+                `<button type="button" class="chip-btn tv-focusable" data-vk-short="${idx}" style="font-size:0.92rem;padding:6px 12px;background:rgba(229,9,20,0.2);border-color:rgba(229,9,20,0.45);color:#fff;">${s.label}</button>`
+            )
+            .join('');
+          vkShortcutsRow.querySelectorAll('[data-vk-short]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const s = shortcuts[Number(btn.getAttribute('data-vk-short'))];
+              if (!s) return;
+              const cur = target ? target.value || '' : '';
+              if (s.replace !== undefined) syncVkTargetValue(s.replace);
+              else if (s.append !== undefined) syncVkTargetValue(cur + s.append);
+            });
+          });
+        }
+      };
+
+      this.openVirtualKeyboardForInput = (inputEl) => {
+        const target = inputEl || searchInput;
+        if (!target || !vkModal) return;
+        this.activeVkTargetInput = target;
+        const isLtrField =
+          target.type === 'email' ||
+          target.type === 'password' ||
+          target.getAttribute('dir') === 'ltr' ||
+          target.inputMode === 'numeric';
+        this.activeVkLang = isLtrField ? 'en' : 'he';
+        if (vkTitle) {
+          const labelMap = {
+            authEmailInput: 'הקלדת כתובת אימייל',
+            authPasswordInput: 'הקלדת סיסמה אישית',
+            authPrimaryUserNameInput: 'הקלדת שם יוזר ראשי',
+            authPrimaryPinInput: 'הקלדת קוד PIN (4 ספרות)',
+            globalSearchInput: 'חיפוש סרטים, סדרות וערוצים'
+          };
+          vkTitle.textContent = labelMap[target.id] || 'מקלדת על-גבי המסך לשלט סטרימר';
+        }
+        if (vkPreview) {
+          vkPreview.textContent = target.value || target.placeholder || 'הקלד כאן...';
+          vkPreview.setAttribute('dir', this.activeVkLang === 'en' ? 'ltr' : 'rtl');
+        }
+        renderVkKeys();
+        vkModal.classList.remove('hidden');
+        setTimeout(() => {
+          const firstKey = vkGrid?.querySelector('[data-vk-char]');
+          if (firstKey && window.TVNavigation) {
+            window.TVNavigation.focusElement(firstKey);
+          }
+        }, 50);
+      };
+
+      if (vkLangBtn) {
+        vkLangBtn.addEventListener('click', () => {
+          this.activeVkLang = this.activeVkLang === 'en' ? 'he' : 'en';
+          renderVkKeys();
+          const firstKey = vkGrid?.querySelector('[data-vk-char]');
+          if (firstKey && window.TVNavigation) window.TVNavigation.focusElement(firstKey);
         });
       }
-      if (closeVkBtn && vkModal) {
-        closeVkBtn.addEventListener('click', () => vkModal.classList.add('hidden'));
+      if (vkSystemImeBtn) {
+        vkSystemImeBtn.addEventListener('click', () => {
+          vkModal?.classList.add('hidden');
+          const target = this.activeVkTargetInput || searchInput;
+          if (target) target.focus();
+          if (window.AndroidTvBridge && typeof window.AndroidTvBridge.showSoftKeyboard === 'function') {
+            try {
+              window.AndroidTvBridge.showSoftKeyboard();
+            } catch (_) {}
+          }
+        });
       }
+      document.getElementById('vkSpaceBtn')?.addEventListener('click', () => {
+        const target = this.activeVkTargetInput || searchInput;
+        syncVkTargetValue((target?.value || '') + ' ');
+      });
+      document.getElementById('vkBackspaceBtn')?.addEventListener('click', () => {
+        const target = this.activeVkTargetInput || searchInput;
+        syncVkTargetValue((target?.value || '').slice(0, -1));
+      });
+      document.getElementById('vkClearBtn')?.addEventListener('click', () => syncVkTargetValue(''));
+      document.getElementById('vkSubmitBtn')?.addEventListener('click', () => {
+        vkModal?.classList.add('hidden');
+        const target = this.activeVkTargetInput;
+        setTimeout(() => {
+          if (target?.id === 'authEmailInput') {
+            const passEl = document.getElementById('authPasswordInput');
+            if (passEl && window.TVNavigation) window.TVNavigation.focusElement(passEl);
+          } else if (target?.id === 'authPasswordInput') {
+            const submitBtn = document.getElementById('loginOrRegisterAccountBtn');
+            if (submitBtn && window.TVNavigation) window.TVNavigation.focusElement(submitBtn);
+          } else if (target && window.TVNavigation) {
+            window.TVNavigation.focusElement(target);
+          }
+        }, 60);
+      });
+      if (openVkBtn) {
+        openVkBtn.addEventListener('click', () => this.openVirtualKeyboardForInput(searchInput));
+      }
+      if (closeVkBtn && vkModal) {
+        closeVkBtn.addEventListener('click', () => {
+          vkModal.classList.add('hidden');
+          if (this.activeVkTargetInput && window.TVNavigation) {
+            setTimeout(() => window.TVNavigation.focusElement(this.activeVkTargetInput), 50);
+          }
+        });
+      }
+      // Also open the On-Screen Keyboard whenever any auth input is clicked on TV mode
+      ['authEmailInput', 'authPasswordInput', 'authPrimaryUserNameInput', 'authPrimaryPinInput'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('click', () => {
+            if (this.isTvStreamerMode()) {
+              this.openVirtualKeyboardForInput(el);
+            }
+          });
+        }
+      });
 
       // Addons Modal
       const closeAddonsBtn = document.getElementById('closeAddonsModalBtn');

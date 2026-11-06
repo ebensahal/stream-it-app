@@ -3452,14 +3452,24 @@ body.device-tv :focus-visible {
 }
 
 /* =========================================================================
-   TV STREAMER 10-FOOT CINEMA LAYOUT (PROPORTIONAL, OVERSCAN-SAFE, ZERO CLUTTER)
+   TV STREAMER 10-FOOT CINEMA LAYOUT (READABLE FONTS, PROPORTIONAL CARDS, ZERO CLUTTER)
    ========================================================================= */
+html[data-tv-mode="true"] {
+  font-size: 17px !important;
+}
+
 html[data-tv-mode="true"],
 body[data-device-mode="tv"] {
   width: 100vw;
   max-width: 100vw;
   overflow-x: hidden;
   box-sizing: border-box;
+}
+
+/* Ensure Universal On-Screen TV Keyboard is ALWAYS above Auth Gate (9500) & Player */
+#virtualKeyboardModal {
+  z-index: 12000 !important;
+  align-items: center !important;
 }
 
 body[data-device-mode="tv"] .main-content {
@@ -3489,40 +3499,83 @@ body[data-device-mode="tv"] #torrentStatusOverlay button {
   display: none !important;
 }
 
-/* Compact 1-Row TV Header */
+/* Auth Gate (Login Screen) on TV Streamer — Clear Readable Fonts & Compact Fit */
+body[data-device-mode="tv"] .auth-gate-screen {
+  padding: 12px 3vw;
+}
+
+body[data-device-mode="tv"] .auth-gate-header {
+  padding: 12px 3vw;
+}
+
+body[data-device-mode="tv"] .auth-gate-card {
+  max-width: 500px;
+  padding: 20px 24px;
+  margin-top: 24px;
+}
+
+body[data-device-mode="tv"] .auth-gate-title {
+  font-size: 1.45rem;
+  margin-bottom: 4px;
+}
+
+body[data-device-mode="tv"] .auth-gate-sub {
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+}
+
+body[data-device-mode="tv"] .auth-field-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+body[data-device-mode="tv"] .auth-input {
+  font-size: 1.05rem;
+  padding: 10px 14px;
+}
+
+body[data-device-mode="tv"] .auth-submit-btn {
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 11px 18px;
+}
+
+/* Compact 1-Row TV Header with Crisp Readable Fonts */
 body[data-device-mode="tv"] .header-inner {
   max-width: 100vw;
-  padding: 5px 2.5vw;
+  padding: 6px 2.5vw;
   flex-wrap: nowrap;
-  gap: 10px;
-  min-height: 40px;
+  gap: 12px;
+  min-height: 46px;
 }
 
 body[data-device-mode="tv"] .header-right {
   flex-wrap: nowrap;
-  gap: 12px;
+  gap: 14px;
 }
 
 body[data-device-mode="tv"] .brand-mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
 }
 
 body[data-device-mode="tv"] .brand-text {
-  font-size: 0.95rem;
+  font-size: 1.15rem;
+  font-weight: 800;
 }
 
 body[data-device-mode="tv"] .main-nav {
   display: flex !important;
   flex-wrap: nowrap;
-  gap: 3px;
+  gap: 5px;
 }
 
 body[data-device-mode="tv"] .nav-link {
-  padding: 4px 9px;
-  font-size: 0.76rem;
-  border-radius: 5px;
+  padding: 6px 12px;
+  font-size: 0.96rem;
+  font-weight: 700;
+  border-radius: 6px;
   white-space: nowrap;
 }
 
@@ -3532,58 +3585,58 @@ body[data-device-mode="tv"] .header-left {
 }
 
 body[data-device-mode="tv"] .search-box {
-  width: 145px;
-  padding: 3px 9px;
-  height: 26px;
+  width: 175px;
+  padding: 4px 10px;
+  height: 34px;
   flex-shrink: 0;
 }
 
 body[data-device-mode="tv"] .search-box:focus-within {
-  width: 175px;
+  width: 210px;
 }
 
 body[data-device-mode="tv"] .search-input {
-  font-size: 0.72rem;
+  font-size: 0.92rem;
 }
 
 body[data-device-mode="tv"] .header-user-pill {
-  padding: 3px 8px;
-  height: 26px;
-  font-size: 0.72rem;
-  gap: 5px;
+  padding: 4px 10px;
+  height: 34px;
+  font-size: 0.9rem;
+  gap: 6px;
 }
 
 body[data-device-mode="tv"] .header-user-avatar {
-  width: 18px;
-  height: 18px;
-  font-size: 0.65rem;
+  width: 22px;
+  height: 22px;
+  font-size: 0.8rem;
 }
 
-/* Compact Proportional Hero Banner on TV */
+/* Compact Proportional Hero Banner on TV with Clear Readable Text */
 body[data-device-mode="tv"] .hero-banner {
-  margin: 5px 2.5vw 0;
-  height: clamp(125px, 26vh, 175px);
+  margin: 6px 2.5vw 0;
+  height: clamp(145px, 28vh, 195px);
   border-radius: 10px;
 }
 
 body[data-device-mode="tv"] .hero-content {
-  padding: 10px 18px;
-  max-width: 60%;
-  gap: 3px;
+  padding: 12px 20px;
+  max-width: 64%;
+  gap: 4px;
 }
 
 body[data-device-mode="tv"] .hero-rank-tag {
-  font-size: 0.62rem;
-  padding: 2px 6px;
+  font-size: 0.82rem;
+  padding: 2px 8px;
 }
 
 body[data-device-mode="tv"] .hero-meta-line {
-  font-size: 0.68rem;
+  font-size: 0.88rem;
 }
 
 body[data-device-mode="tv"] .hero-title {
-  font-size: clamp(1.05rem, 2.7vh, 1.45rem);
-  line-height: 1.1;
+  font-size: clamp(1.35rem, 3.2vh, 1.85rem);
+  line-height: 1.15;
 }
 
 body[data-device-mode="tv"] .hero-subtitle-en,
@@ -3592,26 +3645,27 @@ body[data-device-mode="tv"] .hero-dots {
 }
 
 body[data-device-mode="tv"] .hero-synopsis {
-  font-size: 0.72rem;
+  font-size: 0.92rem;
   -webkit-line-clamp: 2;
-  line-height: 1.35;
+  line-height: 1.38;
 }
 
 body[data-device-mode="tv"] .hero-actions {
-  margin-top: 3px;
-  gap: 7px;
+  margin-top: 4px;
+  gap: 8px;
 }
 
 body[data-device-mode="tv"] .hero-actions .btn-primary,
 body[data-device-mode="tv"] .hero-actions .btn-secondary {
-  padding: 5px 11px;
-  font-size: 0.74rem;
-  border-radius: 6px;
+  padding: 7px 15px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 7px;
 }
 
-/* Compact Filter Pills Row */
+/* Compact Filter Pills Row with Readable Font */
 body[data-device-mode="tv"] .filter-bar-section {
-  padding: 6px 2.5vw 2px;
+  padding: 8px 2.5vw 2px;
 }
 
 body[data-device-mode="tv"] .filter-bar-inner {
@@ -3620,13 +3674,14 @@ body[data-device-mode="tv"] .filter-bar-inner {
 }
 
 body[data-device-mode="tv"] .cat-pill {
-  padding: 3px 9px;
-  font-size: 0.7rem;
+  padding: 5px 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
-/* Proportional Movie & Series Poster Cards (7-8 per row on TV) */
+/* Proportional Movie & Series Poster Cards (6-7 per row on TV with Readable Titles) */
 body[data-device-mode="tv"] .shelves-container {
-  gap: 12px;
+  gap: 14px;
   padding-top: 4px;
 }
 
@@ -3635,60 +3690,62 @@ body[data-device-mode="tv"] .catalog-shelf {
 }
 
 body[data-device-mode="tv"] .shelf-header {
-  margin-bottom: 5px;
+  margin-bottom: 6px;
 }
 
 body[data-device-mode="tv"] .shelf-title {
-  font-size: 0.9rem;
+  font-size: 1.12rem;
+  font-weight: 800;
 }
 
 body[data-device-mode="tv"] .shelf-track {
-  grid-auto-columns: clamp(88px, 11vw, 124px);
-  gap: 10px;
+  grid-auto-columns: clamp(104px, 12.2vw, 138px);
+  gap: 11px;
   padding-top: 4px;
   padding-bottom: 8px;
 }
 
 body[data-device-mode="tv"] .poster-grid {
-  grid-template-columns: repeat(auto-fill, minmax(clamp(88px, 11vw, 124px), 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(104px, 12.2vw, 138px), 1fr));
+  gap: 11px;
 }
 
 body[data-device-mode="tv"] .media-card {
   min-height: 0;
-  border-radius: 7px;
+  border-radius: 8px;
 }
 
 body[data-device-mode="tv"] .card-poster-wrap {
   aspect-ratio: 2 / 3;
-  height: clamp(126px, 15.8vw, 178px);
-  min-height: clamp(126px, 15.8vw, 178px);
+  height: clamp(144px, 17vw, 194px);
+  min-height: clamp(144px, 17vw, 194px);
   flex-shrink: 0;
 }
 
 body[data-device-mode="tv"] .card-rating-badge {
-  font-size: 0.6rem;
-  padding: 1px 5px;
+  font-size: 0.76rem;
+  padding: 2px 6px;
   top: 5px;
   inset-inline-start: 5px;
 }
 
 body[data-device-mode="tv"] .card-rank-badge {
-  font-size: 0.58rem;
-  padding: 1px 5px;
+  font-size: 0.74rem;
+  padding: 2px 6px;
   top: 5px;
   inset-inline-end: 5px;
 }
 
 body[data-device-mode="tv"] .card-footer {
-  padding: 4px 6px;
-  gap: 1px;
+  padding: 6px 7px;
+  gap: 2px;
   flex-shrink: 0;
 }
 
 body[data-device-mode="tv"] .card-title-he {
-  font-size: 0.7rem;
+  font-size: 0.9rem;
   font-weight: 700;
+  line-height: 1.25;
 }
 
 body[data-device-mode="tv"] .card-title-en-sub {
@@ -3696,7 +3753,7 @@ body[data-device-mode="tv"] .card-title-en-sub {
 }
 
 body[data-device-mode="tv"] .card-sub-meta {
-  font-size: 0.58rem;
+  font-size: 0.76rem;
 }
 
 body[data-device-mode="tv"] .media-card:focus-visible,
@@ -3707,7 +3764,7 @@ body[data-device-mode="tv"] .media-card.tv-focused {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.8);
 }
 
-/* Compact Details Modal on TV Streamer (Instant Access to Play Button) */
+/* Details Modal on TV Streamer (Instant Access to Play Button + Readable Synopsis) */
 body[data-device-mode="tv"] .modal-backdrop {
   padding: 10px 3vw;
   align-items: center;
@@ -3721,80 +3778,83 @@ body[data-device-mode="tv"] .details-sheet {
 }
 
 body[data-device-mode="tv"] .sheet-hero {
-  height: clamp(140px, 32vh, 200px);
+  height: clamp(150px, 34vh, 210px);
 }
 
 body[data-device-mode="tv"] .sheet-hero-overlay {
-  padding: 12px 18px;
-  gap: 4px;
+  padding: 14px 20px;
+  gap: 5px;
 }
 
 body[data-device-mode="tv"] .sheet-title {
-  font-size: clamp(1.1rem, 2.8vh, 1.5rem);
+  font-size: clamp(1.35rem, 3.2vh, 1.8rem);
 }
 
 body[data-device-mode="tv"] .sheet-title-en {
-  font-size: 0.72rem;
+  font-size: 0.9rem;
 }
 
 body[data-device-mode="tv"] .sheet-meta-row {
-  font-size: 0.7rem;
-  gap: 6px;
+  font-size: 0.88rem;
+  gap: 8px;
 }
 
 body[data-device-mode="tv"] .sheet-action-row {
-  margin-top: 4px;
-  gap: 8px;
+  margin-top: 6px;
+  gap: 10px;
 }
 
 body[data-device-mode="tv"] .sheet-action-row .btn-primary,
 body[data-device-mode="tv"] .sheet-action-row .btn-secondary {
-  padding: 6px 14px;
-  font-size: 0.78rem;
-  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  border-radius: 7px;
 }
 
 body[data-device-mode="tv"] .sheet-body {
-  padding: 10px 18px 18px;
-  gap: 12px;
+  padding: 12px 20px 20px;
+  gap: 14px;
 }
 
 body[data-device-mode="tv"] .sheet-info-grid {
   grid-template-columns: 1.6fr 1fr;
-  gap: 14px;
+  gap: 16px;
   padding-bottom: 10px;
 }
 
 body[data-device-mode="tv"] .sheet-synopsis-text {
-  font-size: 0.78rem;
-  line-height: 1.45;
+  font-size: 0.96rem;
+  line-height: 1.5;
 }
 
 body[data-device-mode="tv"] .sheet-credits-col {
-  font-size: 0.72rem;
-  gap: 4px;
+  font-size: 0.88rem;
+  gap: 5px;
 }
 
 /* Clean Player Overlay on TV Streamer */
 body[data-device-mode="tv"] .player-topbar {
-  padding: 10px 2.5vw 16px;
+  padding: 12px 2.5vw 18px;
   gap: 10px;
 }
 
 body[data-device-mode="tv"] .player-back-btn,
 body[data-device-mode="tv"] .autosub-status-btn,
 body[data-device-mode="tv"] .engine-tab {
-  padding: 4px 10px;
-  font-size: 0.74rem;
+  padding: 6px 12px;
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 body[data-device-mode="tv"] .player-title-text {
-  font-size: 0.88rem;
+  font-size: 1.1rem;
 }
 
 body[data-device-mode="tv"] .player-sub-text {
-  font-size: 0.68rem;
+  font-size: 0.86rem;
 }
+
 
 
 

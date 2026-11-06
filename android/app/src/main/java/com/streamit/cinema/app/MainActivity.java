@@ -1,8 +1,11 @@
 package com.streamit.cinema.app;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
@@ -10,23 +13,57 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     private StreamItEmbeddedServer embeddedServer;
 
+    public class AndroidTvBridge {
+        @JavascriptInterface
+        public void showSoftKeyboard() {
+            runOnUiThread(() -> {
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    WebView wv = getBridge().getWebView();
+                    wv.setFocusable(true);
+                    wv.setFocusableInTouchMode(true);
+                    wv.requestFocus();
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.showSoftInput(wv, InputMethodManager.SHOW_FORCED);
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void hideSoftKeyboard() {
+            runOnUiThread(() -> {
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    WebView wv = getBridge().getWebView();
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm != null) {
+                        imm.hideSoftInputFromWindow(wv.getWindowToken(), 0);
+                    }
+                }
+            });
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // Prevent Android TV / Streamer screensaver from dimming or turning off the TV during movies
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        // Configure WebView for 1080p Smart TV viewport, zero mixed-content blocks, and instant autoplay
+        // Configure WebView for 1080p Smart TV viewport, 100% readable fonts, and native keyboard bridge
         if (getBridge() != null && getBridge().getWebView() != null) {
             WebView webView = getBridge().getWebView();
+            webView.setFocusable(true);
+            webView.setFocusableInTouchMode(true);
             WebSettings ws = webView.getSettings();
             ws.setUseWideViewPort(true);
             ws.setLoadWithOverviewMode(true);
-            ws.setTextZoom(82);
+            ws.setTextZoom(100);
             ws.setMediaPlaybackRequiresUserGesture(false);
             ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             ws.setDomStorageEnabled(true);
             ws.setJavaScriptEnabled(true);
+            webView.addJavascriptInterface(new AndroidTvBridge(), "AndroidTvBridge");
         }
 
         // Start built-in standalone 1080p stream & HLS proxy engine on 127.0.0.1:8092 inside the Streamer APK

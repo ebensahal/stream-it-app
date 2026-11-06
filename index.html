@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=6.4" />
+  <link rel="stylesheet" href="styles.css?v=6.5" />
   <script>
-    // Wipe old Service Worker caches + apply Cloud OTA CSS override if newer than bundled v6.4.0
+    // Wipe old Service Worker caches + apply Cloud OTA CSS override if newer than bundled v6.5.0
     (function () {
       try {
         if ('serviceWorker' in navigator) {
@@ -24,11 +24,11 @@
             keys.forEach(function (k) { caches.delete(k); });
           });
         }
-        var otaVer = localStorage.getItem('streamit_ota_version') || '';
-        var otaCss = localStorage.getItem('streamit_ota_css_override') || '';
-        if (otaVer && otaVer > '6.4.0' && otaCss.length > 1000) {
+        var otaVer = localStorage.getItem('streamit_ota_version_applied') || localStorage.getItem('streamit_ota_version') || '';
+        var otaCss = localStorage.getItem('streamit_ota_css_text') || localStorage.getItem('streamit_ota_css_override') || '';
+        if (otaVer && otaVer > '6.5.0' && otaCss.length > 1000) {
           var st = document.createElement('style');
-          st.id = 'streamit-ota-live-css';
+          st.id = 'streamit-ota-live-style';
           st.textContent = otaCss;
           document.head.appendChild(st);
         }
@@ -906,23 +906,32 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 4: ON-SCREEN HEBREW VIRTUAL KEYBOARD FOR TV STREAMERS           -->
+  <!-- MODAL 4: UNIVERSAL ON-SCREEN VIRTUAL KEYBOARD FOR TV STREAMERS        -->
   <!-- ===================================================================== -->
   <div id="virtualKeyboardModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="vkTitle">
     <div class="vk-sheet">
       <div class="sheet-section-header">
-        <h3 id="vkTitle" class="sheet-section-title">מקלדת עברית לשלט סטרימר</h3>
-        <button type="button" id="closeVirtualKbBtn" class="icon-btn tv-focusable" aria-label="סגור מקלדת וירטואלית">
-          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
+        <h3 id="vkTitle" class="sheet-section-title">מקלדת על-גבי המסך לשלט סטרימר</h3>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button type="button" id="vkLangToggleBtn" class="btn-secondary btn-sm tv-focusable" aria-label="החלף שפת מקלדת אנגלית או עברית">
+            🌐 החלף שפה (EN / עב)
+          </button>
+          <button type="button" id="vkSystemImeBtn" class="btn-secondary btn-sm tv-focusable" aria-label="פתח מקלדת מערכת אנדרואיד">
+            ⌨️ מקלדת מערכת
+          </button>
+          <button type="button" id="closeVirtualKbBtn" class="icon-btn tv-focusable" aria-label="סגור מקלדת וירטואלית">
+            <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
       </div>
-      <div id="vkPreviewText" class="vk-preview">הקלד לחיפוש...</div>
+      <div id="vkPreviewText" class="vk-preview" dir="auto">הקלד כאן...</div>
+      <div id="vkQuickShortcutsRow" class="vk-shortcuts-row" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
       <div id="vkKeysGrid" class="vk-keys-grid"></div>
       <div class="vk-bottom-actions">
         <button type="button" id="vkSpaceBtn" class="btn-secondary tv-focusable" aria-label="רווח">רווח</button>
-        <button type="button" id="vkBackspaceBtn" class="btn-secondary tv-focusable" aria-label="מחק אות אחרונה">מחיקה</button>
+        <button type="button" id="vkBackspaceBtn" class="btn-secondary tv-focusable" aria-label="מחק אות אחרונה">⌫ מחיקה</button>
         <button type="button" id="vkClearBtn" class="btn-secondary tv-focusable" aria-label="נקה הכל">נקה</button>
-        <button type="button" id="vkSubmitBtn" class="btn-primary tv-focusable" aria-label="חפש עכשיו">חפש</button>
+        <button type="button" id="vkSubmitBtn" class="btn-primary tv-focusable" aria-label="אישור וסיום הקלדה">אישור ✓</button>
       </div>
     </div>
   </div>
@@ -1020,25 +1029,36 @@
 
       <h1 id="authGateTitle" class="auth-gate-title">כניסה ל-STREAM IT</h1>
       <p id="authGateSubtitle" class="auth-gate-sub">
-        הזן את כתובת האימייל והסיסמה של חשבונך כדי לגשת ליוזרים של המשפחה, להיסטוריית הצפייה ולהמלצות האישיות.
+        לחץ על כניסה מהירה לסטרימר או בחר שדה להקלדה עם השלט.
       </p>
+
+      <button
+        type="button"
+        id="tvQuickStreamerLoginBtn"
+        class="auth-submit-btn tv-focusable"
+        style="background:linear-gradient(135deg,#16a34a,#15803d);margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 24px rgba(22,163,74,0.38);"
+        aria-label="כניסה מהירה לסטרימר עבור אילן בלחיצה אחת"
+      >
+        📺 כניסה מהירה לסטרימר — אילן (לחיצה אחת)
+      </button>
 
       <form id="authGateForm" class="auth-gate-form" novalidate>
         <div class="auth-field-group">
-          <label for="authEmailInput" id="authEmailLabel" class="auth-field-label">כתובת האימייל שלך</label>
+          <label for="authEmailInput" id="authEmailLabel" class="auth-field-label">כתובת האימייל שלך (לחץ OK לפתיחת מקלדת)</label>
           <input
             type="email"
             id="authEmailInput"
             class="auth-input tv-focusable"
             dir="ltr"
             autocomplete="email"
+            value="bensahal@gmail.com"
             placeholder="name@example.com"
             required
           />
         </div>
 
         <div class="auth-field-group">
-          <label for="authPasswordInput" id="authPasswordLabel" class="auth-field-label">בחר סיסמה אישית (לפחות 4 תווים)</label>
+          <label for="authPasswordInput" id="authPasswordLabel" class="auth-field-label">סיסמה אישית (לחץ OK לפתיחת מקלדת)</label>
           <div class="auth-password-wrap">
             <input
               type="password"
@@ -1503,15 +1523,15 @@
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js?v=6.4"></script>
-  <script src="app.js?v=6.4"></script>
+  <script src="tv-navigation.js?v=6.5"></script>
+  <script src="app.js?v=6.5"></script>
   <script>
-    // Apply Cloud OTA JS overrides if a version newer than 6.4.0 was downloaded from GitHub Cloud
+    // Apply Cloud OTA JS overrides if a version newer than 6.5.0 was downloaded from GitHub Cloud
     (function () {
       try {
-        var otaVer = localStorage.getItem('streamit_ota_version') || '';
-        if (otaVer && otaVer > '6.4.0') {
-          var navCode = localStorage.getItem('streamit_ota_tv_nav_override') || '';
+        var otaVer = localStorage.getItem('streamit_ota_version_applied') || localStorage.getItem('streamit_ota_version') || '';
+        if (otaVer && otaVer > '6.5.0') {
+          var navCode = localStorage.getItem('streamit_ota_tv_nav_text') || localStorage.getItem('streamit_ota_tv_nav_override') || '';
           if (navCode.length > 500) {
             var s1 = document.createElement('script');
             s1.textContent = navCode;

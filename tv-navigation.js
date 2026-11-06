@@ -60,12 +60,10 @@
         return;
       }
       htmlEl.setAttribute('data-tv-mode', 'true');
-      // Scale root font size proportionally to the TV WebView height/width so cards and buttons never look huge
-      const vw = Math.max(window.innerWidth || 960, 480);
-      const vh = Math.max(window.innerHeight || 540, 320);
-      const basePx = Math.min(vw / 82, vh / 45);
-      const clampedPx = Math.max(9.5, Math.min(13.5, basePx));
-      htmlEl.style.fontSize = `${clampedPx.toFixed(2)}px`;
+      // Readable 10-foot Smart TV base font size (16px–17.5px) while keeping card & container sizes compact via CSS
+      const vw = Math.max(window.innerWidth || 960, 640);
+      const basePx = Math.max(16, Math.min(17.5, (vw / 960) * 16.5));
+      htmlEl.style.fontSize = `${basePx.toFixed(2)}px`;
     },
 
     applyDeviceMode(mode, notifyUser = true) {
@@ -199,9 +197,14 @@
       } else if (scope.id === 'authProfilesModal') {
         preferred = scope.querySelector('.netflix-profile-card');
       } else if (scope.id === 'authGateScreen') {
-        preferred = document.getElementById('authEmailInput');
+        preferred =
+          document.getElementById('tvQuickStreamerLoginBtn') ||
+          document.getElementById('authEmailInput');
       } else if (scope.id === 'virtualKeyboardModal') {
-        preferred = scope.querySelector('.vk-key-btn') || document.getElementById('vkSubmitBtn');
+        preferred =
+          scope.querySelector('[data-vk-char]') ||
+          scope.querySelector('.vk-key-btn') ||
+          document.getElementById('vkSubmitBtn');
       } else if (scope === document.body) {
         preferred =
           document.getElementById('heroPlayNowBtn') ||
@@ -314,9 +317,12 @@
         } else {
           // For Up/Down, move between rows/sections; ignore items in the exact same horizontal shelf
           if (sameRow && Math.abs(dy) < curRect.height * 0.85) continue;
+          const isVk = scope.id === 'virtualKeyboardModal';
           const playBonus =
             el.id === 'detailsPlayBestBtn' || el.id === 'heroPlayNowBtn' ? -140 : 0;
-          const score = primaryDist * 1.8 + orthogonalDist * 0.32 + playBonus;
+          const score = isVk
+            ? primaryDist * 1.5 + orthogonalDist * 2.4
+            : primaryDist * 1.8 + orthogonalDist * 0.32 + playBonus;
           if (score < bestScore) {
             bestScore = score;
             bestCandidate = el;
@@ -395,21 +401,24 @@
         return;
       }
 
-      // 2. Search input on TV -> open on-screen Hebrew Virtual Keyboard for effortless remote typing
-      if (activeEl.id === 'globalSearchInput' && this.effectiveDevice === 'tv') {
-        const vkBtn = document.getElementById('openVirtualKbBtn');
-        if (vkBtn) {
-          vkBtn.click();
-          return;
-        }
-      }
-
-      // 3. Other text/email/password inputs -> focus so system IME pops up
+      // 2. Any text/email/password/search input -> open Universal On-Screen TV Keyboard + request Android IME
       if (
         tag === 'input' &&
         !['button', 'submit', 'checkbox', 'range'].includes(activeEl.type)
       ) {
         activeEl.focus();
+        if (
+          window.StreamItApp &&
+          typeof window.StreamItApp.openVirtualKeyboardForInput === 'function'
+        ) {
+          window.StreamItApp.openVirtualKeyboardForInput(activeEl);
+          return;
+        }
+        if (window.AndroidTvBridge && typeof window.AndroidTvBridge.showSoftKeyboard === 'function') {
+          try {
+            window.AndroidTvBridge.showSoftKeyboard();
+          } catch (_) {}
+        }
         return;
       }
 
@@ -553,7 +562,10 @@
           e.keyCode === 23 ||
           e.keyCode === 66;
 
-        if (isOkKey && (!isTextInput || activeEl?.id === 'globalSearchInput')) {
+        if (
+          isOkKey &&
+          (!isTextInput || this.effectiveDevice === 'tv' || activeEl?.id === 'globalSearchInput')
+        ) {
           e.preventDefault();
           this.handleRemoteOk();
           return;
