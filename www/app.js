@@ -648,9 +648,11 @@
 
     activeTab: 'home',
     activeCategory: 'all',
+    activeYearFilter: 'all',
     activeSort: 'popularity',
     activeQualityFilter: 'all',
     searchQuery: '',
+    _loadedYears: new Set(),
 
     heroItems: [],
     heroIndex: 0,
@@ -676,6 +678,14 @@
     toastTimeout: null,
     torrentPollTimer: null,
     serverFailoverTimer: null,
+
+    // Continuous Binge-Watch State (Series Episodes & Movie Sequels)
+    bingeModeEnabled: localStorage.getItem('streamit_binge_mode_v6') !== '0',
+    bingeCountdownTimer: null,
+    bingeCountdownSecLeft: 10,
+    bingeDismissedForKey: '',
+    currentNextBingeTarget: null,
+    currentPrevBingeTarget: null,
 
     loadSubtitleAppearancePrefs() {
       try {
@@ -797,8 +807,8 @@
       const nodeLabel = nodeNames[this.vpnState.activeNode] || 'Cloudflare 1.1.1.1';
       if (badgeText) {
         badgeText.textContent = this.vpnState.enabled
-          ? `🛡️ VPN מוצפן: ${nodeLabel}`
-          : '🛡️ VPN מובנה: כבוי';
+          ? `חיבור VPN מוצפן: ${nodeLabel}`
+          : 'חיבור VPN מובנה: כבוי';
       }
       if (toggleBtn) {
         toggleBtn.textContent = this.vpnState.enabled ? 'VPN מובנה: פעיל ✓' : 'VPN מובנה: כבוי (לחץ להפעלה)';
@@ -812,19 +822,80 @@
     },
 
     getApiBase() {
+      if (this.detectedApiBase !== undefined) return this.detectedApiBase;
       const h = window.location.hostname;
-      if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]') return '';
+      const p = window.location.port;
+      // Direct local server on port 8092
+      if ((h === 'localhost' || h === '127.0.0.1' || h === '[::1]') && p === '8092') {
+        return '';
+      }
+      // Capacitor Android TV APK or external origin: try LAN server IP or localhost:8092
+      if (window.Capacitor) {
+        return 'http://192.168.1.137:8092';
+      }
       return 'http://localhost:8092';
     },
 
+    async detectBestServerBase() {
+      const h = window.location.hostname;
+      const p = window.location.port;
+      if ((h === 'localhost' || h === '127.0.0.1' || h === '[::1]') && p === '8092') {
+        this.detectedApiBase = '';
+        return;
+      }
+      const candidates = ['http://localhost:8092', 'http://192.168.1.137:8092'];
+      for (const base of candidates) {
+        const res = await this.fetchJsonWithTimeout(`${base}/api/health`, 1100);
+        if (res && res.ok) {
+          this.detectedApiBase = base;
+          return;
+        }
+      }
+    },
+
+    async preseedStaticAccountsVault() {
+      try {
+        const staticRes = await fetch('./data/accounts_vault.json');
+        if (staticRes.ok) {
+          const staticVault = await staticRes.json();
+          if (staticVault && typeof staticVault === 'object') {
+            const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
+            let changed = false;
+            Object.entries(staticVault).forEach(([em, rec]) => {
+              const cleanEm = String(em).trim().toLowerCase();
+              if (rec && rec.saltHex && !allAccounts[cleanEm]) {
+                allAccounts[cleanEm] = rec;
+                changed = true;
+              }
+            });
+            if (changed) {
+              localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
+            }
+          }
+        }
+      } catch (_) {}
+    },
+
     async init() {
+      if (window.Capacitor) {
+        document.body.setAttribute('data-device-mode', 'tv');
+      }
       this.initBuiltInVpnShield();
       this.bindEvents();
+      await Promise.all([this.detectBestServerBase(), this.preseedStaticAccountsVault()]);
       await this.loadCatalog();
       await this.initAuthAndSession();
       this.setupHero();
       this.renderAllViews();
       this.loadLiveGlobalLibraries();
+    },
+
+    isMasterAdminEmail(email) {
+      return String(email || '').trim().toLowerCase() === 'bensahal@gmail.com';
+    },
+
+    isCurrentUserAdmin() {
+      return this.isMasterAdminEmail(this.currentAccountUsername) || this.currentAccountRole === 'admin';
     },
 
     async initAuthAndSession() {
@@ -839,65 +910,72 @@
           if (emailKey && emailKey.includes('@') && sessionSecret) {
             const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
             let rec = allAccounts[emailKey];
-            if (!rec) {
-              try {
-                const apiBase = this.getApiBase();
-                const res = await fetch(`${apiBase}/api/accounts/get?email=${encodeURIComponent(emailKey)}`);
-                if (res.ok) {
-                  const data = await res.json();
-                  if (data && data.ok && data.record) {
-                    rec = data.record;
-                    allAccounts[emailKey] = rec;
-                    localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
-                  }
+            try {
+              const apiBase = this.getApiBase();
+              const res = await fetch(`${apiBase}/api/accounts/get?email=${encodeURIComponent(emailKey)}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data && data.ok && data.record) {
+                  rec = data.record;
+                  allAccounts[emailKey] = rec;
+                  localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
                 }
-              } catch (_) {}
-            }
+              }
+            } catch (_) {}
 
             if (rec && rec.saltHex && rec.cipherHex) {
-              const derived = await CryptoVaultEngine.deriveKeyAndVerifier(sessionSecret, rec.saltHex);
-              if (!passVerifier || derived.verifierHex === rec.verifierHex) {
-                const vault = await CryptoVaultEngine.decryptVaultObj(rec.cipherHex, rec.ivHex, derived.aesKey);
-                if (vault && Array.isArray(vault.profiles) && vault.profiles.length) {
-                  this.isAuthenticated = true;
-                  this.currentAccountUsername = emailKey;
-                  this.currentAccountKey = derived.aesKey;
-                  this.currentAccountSaltHex = rec.saltHex;
-                  this.currentAccountVerifierHex = derived.verifierHex;
-                  this.accountProfiles = vault.profiles.slice(0, 6);
-                  this.activeProfileIndex = Math.min(vault.activeProfileIndex || 0, this.accountProfiles.length - 1);
-                  this.syncActiveProfileToAppState();
+              const isMaster = this.isMasterAdminEmail(emailKey);
+              const accountStatus = isMaster ? 'approved' : String(rec.status || 'pending');
+              const accountRole = isMaster ? 'admin' : String(rec.role || 'user');
 
-                  // Hide Auth Gate
-                  const authGate = document.getElementById('authGateScreen');
-                  if (authGate) authGate.classList.add('hidden');
-
-                  // If sub-user was not yet picked in this browser session, show Netflix "Who's Watching?" screen
-                  const unlockedId = sessionStorage.getItem('streamit_unlocked_subuser_v6');
-                  const matchedIdx = this.accountProfiles.findIndex((p) => p.id === unlockedId);
-                  if (matchedIdx >= 0) {
-                    this.activeProfileIndex = matchedIdx;
+              if (accountStatus === 'approved') {
+                const derived = await CryptoVaultEngine.deriveKeyAndVerifier(sessionSecret, rec.saltHex);
+                if (!passVerifier || derived.verifierHex === rec.verifierHex) {
+                  const vault = await CryptoVaultEngine.decryptVaultObj(rec.cipherHex, rec.ivHex, derived.aesKey);
+                  if (vault && Array.isArray(vault.profiles) && vault.profiles.length) {
+                    this.isAuthenticated = true;
+                    this.currentAccountUsername = emailKey;
+                    this.currentAccountRole = accountRole;
+                    this.currentAccountKey = derived.aesKey;
+                    this.currentAccountSaltHex = rec.saltHex;
+                    this.currentAccountVerifierHex = derived.verifierHex;
+                    this.accountProfiles = vault.profiles.slice(0, 6);
+                    this.activeProfileIndex = Math.min(vault.activeProfileIndex || 0, this.accountProfiles.length - 1);
                     this.syncActiveProfileToAppState();
-                  } else {
-                    this.openWhosWatchingScreen(true);
+
+                    // Hide Auth Gate
+                    const authGate = document.getElementById('authGateScreen');
+                    if (authGate) authGate.classList.add('hidden');
+
+                    // If logged in as Admin (אילן), check for pending user registration approvals!
+                    if (this.isCurrentUserAdmin()) {
+                      this.refreshAdminAccountsBadge(true);
+                    }
+
+                    // If sub-user was not yet picked in this browser session, show Netflix "Who's Watching?" screen
+                    const unlockedId = sessionStorage.getItem('streamit_unlocked_subuser_v6');
+                    const matchedIdx = this.accountProfiles.findIndex((p) => p.id === unlockedId);
+                    if (matchedIdx >= 0) {
+                      this.activeProfileIndex = matchedIdx;
+                      this.syncActiveProfileToAppState();
+                    } else {
+                      this.openWhosWatchingScreen(true);
+                    }
+                    return;
                   }
-                  return;
                 }
+              } else {
+                // Account is pending or rejected — clear active session!
+                localStorage.removeItem('streamit_active_email_session_v6');
               }
             }
           }
         }
       } catch (_) {}
 
-      // No authenticated email account -> Enforce Mandatory Auth Gate
-      // If no accounts exist yet on this device, open directly on 'register' tab so first-time signup is 1-click!
+      // No authenticated email account -> Enforce Mandatory Auth Gate (Default to Login)
       this.isAuthenticated = false;
-      let hasAnySavedAccount = false;
-      try {
-        const allAcc = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
-        hasAnySavedAccount = Object.keys(allAcc).length > 0;
-      } catch (_) {}
-      this.showAuthGateScreen(hasAnySavedAccount ? 'login' : 'register');
+      this.showAuthGateScreen('login');
     },
 
     showAuthGateScreen(defaultMode = 'login') {
@@ -926,25 +1004,25 @@
       if (msgEl) msgEl.textContent = '';
 
       if (this.authMode === 'register') {
-        if (titleEl) titleEl.textContent = 'הרשמה ל-STREAM IT (משתמש חדש)';
+        if (titleEl) titleEl.textContent = 'בקשת הרשמה ל-STREAM IT (כפוף לאישור מנהל)';
         if (subEl) {
           subEl.textContent =
-            'צור חשבון משפחתי רשום עם כתובת האימייל שלך — ותחתיו תוכל לנהל יוזרים נפרדים לבני המשפחה עם היסטוריית צפייה והמלצות אישיות.';
+            'הרשמות חדשות אינן מופעלות אוטומטית. לאחר שליחת הבקשה, החשבון ימתין לאישור מנהל המערכת (אילן) ותוכל להתחבר מיד לאחר אישורו.';
         }
         if (regFields) regFields.classList.remove('hidden');
-        if (submitBtn) submitBtn.textContent = 'צור חשבון והמשך לבחירת יוזר';
-        if (switchPrompt) switchPrompt.textContent = 'כבר רשום למערכת?';
+        if (submitBtn) submitBtn.textContent = 'שלח בקשת הרשמה לאישור מנהל ⏳';
+        if (switchPrompt) switchPrompt.textContent = 'כבר יש לך חשבון מאושר?';
         if (switchLink) switchLink.textContent = 'התחבר לחשבון קיים ←';
       } else {
         if (titleEl) titleEl.textContent = 'כניסה ל-STREAM IT';
         if (subEl) {
           subEl.textContent =
-            'הזן את כתובת האימייל והסיסמה של חשבונך כדי לגשת ליוזרים של המשפחה, להיסטוריית הצפייה ולהמלצות האישיות.';
+            'הזן את כתובת האימייל והסיסמה של חשבונך המאושר כדי לגשת ליוזרים של המשפחה, להיסטוריית הצפייה ולהמלצות האישיות.';
         }
         if (regFields) regFields.classList.add('hidden');
         if (submitBtn) submitBtn.textContent = 'התחבר ל-STREAM IT';
         if (switchPrompt) switchPrompt.textContent = 'עדיין אין לך חשבון ב-STREAM IT?';
-        if (switchLink) switchLink.textContent = 'פתח חשבון חדש עם אימייל עכשיו ←';
+        if (switchLink) switchLink.textContent = 'הגש בקשת הרשמה לאישור מנהל ←';
       }
     },
 
@@ -1078,15 +1156,21 @@
           updatedAt: Date.now()
         };
         const encrypted = await CryptoVaultEngine.encryptVaultObj(vaultPayload, this.currentAccountKey);
+        const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
+        const prevRec = allAccounts[this.currentAccountUsername] || {};
+        const isMaster = this.isMasterAdminEmail(this.currentAccountUsername);
         const record = {
           email: this.currentAccountUsername,
+          display_name: prevRec.display_name || (prof ? prof.name : 'ראשי'),
+          status: isMaster ? 'approved' : prevRec.status || 'approved',
+          role: isMaster ? 'admin' : prevRec.role || this.currentAccountRole || 'user',
+          requested_at: prevRec.requested_at || new Date().toISOString(),
           saltHex: this.currentAccountSaltHex,
           verifierHex: this.currentAccountVerifierHex,
           ivHex: encrypted.ivHex,
           cipherHex: encrypted.cipherHex,
           updatedAt: Date.now()
         };
-        const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
         allAccounts[this.currentAccountUsername] = record;
         localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
 
@@ -1109,7 +1193,7 @@
       const headerAvatar = document.getElementById('headerActiveAvatar');
       if (headerAvatar) {
         headerAvatar.style.background = prof.color || '#E50914';
-        headerAvatar.textContent = prof.emoji || String(prof.name || 'א').trim().charAt(0);
+        headerAvatar.textContent = String(prof.name || 'א').trim().charAt(0).toUpperCase();
       }
       const headerKids = document.getElementById('headerKidsBadge');
       if (headerKids) {
@@ -1121,8 +1205,13 @@
       }
       const accBadge = document.getElementById('currentAccountBadge');
       if (accBadge) {
-        accBadge.textContent = `📧 ${this.currentAccountUsername || 'משתמש רשום'}`;
+        accBadge.textContent = `📧 ${this.currentAccountUsername || 'משתמש רשום'}${this.isCurrentUserAdmin() ? ' (מנהל 👑)' : ''}`;
       }
+      const adminDropBtn = document.getElementById('openAdminApprovalsBtn');
+      const adminPickerBtn = document.getElementById('openAdminFromPickerBtn');
+      const isAdmin = this.isAuthenticated && this.isCurrentUserAdmin();
+      if (adminDropBtn) adminDropBtn.classList.toggle('hidden', !isAdmin);
+      if (adminPickerBtn) adminPickerBtn.classList.toggle('hidden', !isAdmin);
       const countLbl = document.getElementById('profilesCountLabel');
       if (countLbl) {
         countLbl.textContent = `${this.accountProfiles.length}/6`;
@@ -1504,84 +1593,119 @@
       const allAccounts = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
       let existing = allAccounts[email];
 
-      // Check backend server if account exists there
-      if (!existing) {
-        try {
-          const apiBase = this.getApiBase();
-          const res = await fetch(`${apiBase}/api/accounts/get?email=${encodeURIComponent(email)}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.ok && data.record) {
-              existing = data.record;
-              allAccounts[email] = existing;
-              localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
-            }
+      // Always fetch latest account status from backend server if reachable
+      try {
+        const apiBase = this.getApiBase();
+        const res = await fetch(`${apiBase}/api/accounts/get?email=${encodeURIComponent(email)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.ok && data.record) {
+            existing = data.record;
+            allAccounts[email] = existing;
+            localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
           }
-        } catch (_) {}
-      }
+        }
+      } catch (_) {}
+
+      const isMasterAdmin = this.isMasterAdminEmail(email);
 
       if (this.authMode === 'login') {
         if (!existing || !existing.verifierHex) {
-          // Seamless 1-click auto-registration if user typed a new email + password on the Login tab!
-          this.authMode = 'register';
-        } else {
-          try {
-            const derived = await CryptoVaultEngine.deriveKeyAndVerifier(password, existing.saltHex);
-            if (derived.verifierHex !== existing.verifierHex) {
-              if (msgEl) {
-                msgEl.style.color = '#fca5a5';
-                msgEl.textContent = 'הסיסמה שהוזנה שגויה עבור כתובת האימייל הזו';
-              }
-              return;
-            }
-            const vault = await CryptoVaultEngine.decryptVaultObj(existing.cipherHex, existing.ivHex, derived.aesKey);
-            this.isAuthenticated = true;
-            this.currentAccountUsername = email;
-            this.currentAccountKey = derived.aesKey;
-            this.currentAccountSaltHex = existing.saltHex;
-            this.currentAccountVerifierHex = derived.verifierHex;
-            this.accountProfiles =
-              vault && Array.isArray(vault.profiles) && vault.profiles.length
-                ? vault.profiles.slice(0, 6)
-                : [createDefaultProfile(1, email.split('@')[0])];
-            this.activeProfileIndex = 0;
+          // NEVER auto-register on Login! Strictly require registration + admin approval!
+          if (msgEl) {
+            msgEl.style.color = '#fca5a5';
+            msgEl.textContent =
+              'כתובת האימייל אינה רשומה במערכת. להצטרפות יש לעבור ללשונית "הרשמה" ולהגיש בקשה לאישור מנהל המערכת.';
+          }
+          return;
+        }
 
-            localStorage.setItem(
-              'streamit_active_email_session_v6',
-              JSON.stringify({
-                email,
-                verifierHex: derived.verifierHex,
-                sessionSecret: password
-              })
-            );
-            sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+        const accountStatus = isMasterAdmin ? 'approved' : String(existing.status || 'pending');
+        const accountRole = isMasterAdmin ? 'admin' : String(existing.role || 'user');
 
-            this.syncActiveProfileToAppState();
-            this.renderAllViews();
+        if (accountStatus === 'pending') {
+          if (msgEl) {
+            msgEl.style.color = '#fde047';
+            msgEl.textContent = `⏳ בקשת ההרשמה של ${email} ממתינה לאישור מנהל המערכת (אילן). לא ניתן להתחבר עד שהמנהל יאשר את החשבון.`;
+          }
+          return;
+        }
+        if (accountStatus === 'rejected') {
+          if (msgEl) {
+            msgEl.style.color = '#fca5a5';
+            msgEl.textContent = `⛔ בקשת ההרשמה עבור ${email} נדחתה או נחסמה על ידי מנהל המערכת.`;
+          }
+          return;
+        }
 
-            const authGate = document.getElementById('authGateScreen');
-            if (authGate) authGate.classList.add('hidden');
-            this.openWhosWatchingScreen(true);
-            this.showToast(`ברוך הבא! התחברת עם ${email} — בחר מי צופה עכשיו`);
-            return;
-          } catch (_) {
+        try {
+          const derived = await CryptoVaultEngine.deriveKeyAndVerifier(password, existing.saltHex);
+          if (derived.verifierHex !== existing.verifierHex) {
             if (msgEl) {
               msgEl.style.color = '#fca5a5';
-              msgEl.textContent = 'שגיאה בפענוח החשבון — בדוק את הסיסמה';
+              msgEl.textContent = 'הסיסמה שהוזנה שגויה עבור כתובת האימייל הזו';
             }
             return;
           }
+          const vault = await CryptoVaultEngine.decryptVaultObj(existing.cipherHex, existing.ivHex, derived.aesKey);
+          this.isAuthenticated = true;
+          this.currentAccountUsername = email;
+          this.currentAccountRole = accountRole;
+          this.currentAccountKey = derived.aesKey;
+          this.currentAccountSaltHex = existing.saltHex;
+          this.currentAccountVerifierHex = derived.verifierHex;
+          this.accountProfiles =
+            vault && Array.isArray(vault.profiles) && vault.profiles.length
+              ? vault.profiles.slice(0, 6)
+              : [createDefaultProfile(1, email.split('@')[0])];
+          this.activeProfileIndex = 0;
+
+          localStorage.setItem(
+            'streamit_active_email_session_v6',
+            JSON.stringify({
+              email,
+              verifierHex: derived.verifierHex,
+              sessionSecret: password
+            })
+          );
+          sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+
+          this.syncActiveProfileToAppState();
+          this.renderAllViews();
+
+          const authGate = document.getElementById('authGateScreen');
+          if (authGate) authGate.classList.add('hidden');
+
+          if (this.isCurrentUserAdmin()) {
+            this.refreshAdminAccountsBadge(true);
+          }
+
+          this.openWhosWatchingScreen(true);
+          this.showToast(`ברוך הבא! התחברת עם ${email} — בחר מי צופה עכשיו`);
+          return;
+        } catch (_) {
+          if (msgEl) {
+            msgEl.style.color = '#fca5a5';
+            msgEl.textContent = 'שגיאה בפענוח החשבון — בדוק את הסיסמה';
+          }
+          return;
         }
       }
 
       if (this.authMode === 'register') {
-        // REGISTER NEW EMAIL ACCOUNT
+        // REGISTER NEW EMAIL ACCOUNT (Strictly Pending Admin Approval unless Master Admin)
         if (existing && existing.verifierHex) {
-          if (msgEl) {
-            msgEl.style.color = '#fde047';
-            msgEl.textContent = 'כתובת אימייל זו כבר רשומה במערכת — העברנו אותך לכניסה לחשבון קיים.';
-          }
+          const curSt = isMasterAdmin ? 'approved' : String(existing.status || 'pending');
           this.setAuthGateMode('login');
+          if (msgEl) {
+            if (curSt === 'pending') {
+              msgEl.style.color = '#fde047';
+              msgEl.textContent = `⏳ כבר קיימת בקשת הרשמה עבור ${email} הממתינה לאישור מנהל המערכת (אילן).`;
+            } else {
+              msgEl.style.color = '#fde047';
+              msgEl.textContent = 'כתובת אימייל זו כבר רשומה במערכת — העברנו אותך לכניסה לחשבון קיים.';
+            }
+          }
           return;
         }
 
@@ -1620,33 +1744,286 @@
           );
         }
 
-        this.isAuthenticated = true;
-        this.currentAccountUsername = email;
-        this.currentAccountKey = derived.aesKey;
-        this.currentAccountSaltHex = saltHex;
-        this.currentAccountVerifierHex = derived.verifierHex;
-        this.accountProfiles = initialProfiles;
-        this.activeProfileIndex = 0;
+        const vaultPayload = {
+          profiles: initialProfiles,
+          activeProfileIndex: 0,
+          updatedAt: Date.now()
+        };
+        const encrypted = await CryptoVaultEngine.encryptVaultObj(vaultPayload, derived.aesKey);
+        const newRecord = {
+          email,
+          display_name: primaryName,
+          status: isMasterAdmin ? 'approved' : 'pending',
+          role: isMasterAdmin ? 'admin' : 'user',
+          requested_at: new Date().toISOString(),
+          saltHex,
+          verifierHex: derived.verifierHex,
+          ivHex: encrypted.ivHex,
+          cipherHex: encrypted.cipherHex,
+          updatedAt: Date.now()
+        };
 
-        localStorage.setItem(
-          'streamit_active_email_session_v6',
-          JSON.stringify({
-            email,
-            verifierHex: derived.verifierHex,
-            sessionSecret: password
-          })
-        );
-        sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+        allAccounts[email] = newRecord;
+        localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(allAccounts));
 
-        this.syncActiveProfileToAppState();
-        await this.persistEncryptedAccountVault();
-        this.renderAllViews();
+        try {
+          const apiBase = this.getApiBase();
+          await fetch(`${apiBase}/api/accounts/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, record: newRecord })
+          });
+        } catch (_) {}
 
-        const authGate = document.getElementById('authGateScreen');
-        if (authGate) authGate.classList.add('hidden');
-        this.openWhosWatchingScreen(true);
-        this.showToast(`החשבון ${email} נרשם בהצלחה! בחר מי צופה עכשיו 🎬`);
+        if (isMasterAdmin) {
+          // Master Admin (אילן) is automatically approved
+          this.isAuthenticated = true;
+          this.currentAccountUsername = email;
+          this.currentAccountRole = 'admin';
+          this.currentAccountKey = derived.aesKey;
+          this.currentAccountSaltHex = saltHex;
+          this.currentAccountVerifierHex = derived.verifierHex;
+          this.accountProfiles = initialProfiles;
+          this.activeProfileIndex = 0;
+
+          localStorage.setItem(
+            'streamit_active_email_session_v6',
+            JSON.stringify({
+              email,
+              verifierHex: derived.verifierHex,
+              sessionSecret: password
+            })
+          );
+          sessionStorage.removeItem('streamit_unlocked_subuser_v6');
+          this.syncActiveProfileToAppState();
+          this.renderAllViews();
+          const authGate = document.getElementById('authGateScreen');
+          if (authGate) authGate.classList.add('hidden');
+          this.openWhosWatchingScreen(true);
+          this.showToast(`חשבון מנהל ראשי (${email}) הופעל בהצלחה! 👑`);
+          return;
+        }
+
+        // Non-admin registration: DO NOT log in automatically! Queue for Admin Approval!
+        this.isAuthenticated = false;
+        this.setAuthGateMode('login');
+        if (msgEl) {
+          msgEl.style.color = '#86efac';
+          msgEl.textContent = `✅ בקשת ההרשמה עבור ${email} נשלחה בהצלחה וממתינה לאישור מנהל המערכת (אילן). תוכל להתחבר מיד לאחר שהמנהל יאשר את חשבונך.`;
+        }
+        this.showToast('בקשת ההרשמה נשלחה וממתינה לאישור מנהל המערכת ⏳');
       }
+    },
+
+    async fetchAllAccountsForAdmin() {
+      const mergedMap = new Map();
+      const localMap = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
+      Object.entries(localMap).forEach(([em, rec]) => {
+        if (!rec || typeof rec !== 'object') return;
+        const cleanEm = String(em).trim().toLowerCase();
+        const isMaster = this.isMasterAdminEmail(cleanEm);
+        mergedMap.set(cleanEm, {
+          email: cleanEm,
+          display_name: rec.display_name || (isMaster ? 'אילן בן סהל (מנהל)' : cleanEm.split('@')[0]),
+          status: isMaster ? 'approved' : String(rec.status || 'pending'),
+          role: isMaster ? 'admin' : String(rec.role || 'user'),
+          requested_at: rec.requested_at || '',
+          record: rec
+        });
+      });
+
+      try {
+        const apiBase = this.getApiBase();
+        const res = await fetch(`${apiBase}/api/accounts/list`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.accounts)) {
+            for (const item of data.accounts) {
+              if (!item || !item.email) continue;
+              const cleanEm = String(item.email).trim().toLowerCase();
+              mergedMap.set(cleanEm, item);
+              if (item.record) {
+                localMap[cleanEm] = item.record;
+              }
+            }
+            localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(localMap));
+          }
+        }
+      } catch (_) {}
+
+      return Array.from(mergedMap.values());
+    },
+
+    async refreshAdminAccountsBadge(notifyIfPending = false) {
+      if (!this.isCurrentUserAdmin()) return;
+      const accounts = await this.fetchAllAccountsForAdmin();
+      const pendingList = accounts.filter((a) => a.status === 'pending' && !this.isMasterAdminEmail(a.email));
+      const count = pendingList.length;
+
+      const b1 = document.getElementById('adminPendingCountBadge');
+      const b2 = document.getElementById('adminPickerPendingBadge');
+      [b1, b2].forEach((b) => {
+        if (!b) return;
+        b.textContent = String(count);
+        b.classList.toggle('hidden', count === 0);
+      });
+
+      if (notifyIfPending && count > 0) {
+        this.showToast(`🔔 מנהל: ישנן ${count} בקשות הרשמה חדשות הממתינות לאישורך!`);
+      }
+    },
+
+    async openAdminApprovalsModal() {
+      if (!this.isCurrentUserAdmin()) {
+        this.showToast('רק מנהל המערכת (אילן) מורשה לגשת לניהול ואישור הרשמות');
+        return;
+      }
+      const dropdown = document.getElementById('headerUserDropdown');
+      if (dropdown) dropdown.classList.add('hidden');
+      const modal = document.getElementById('adminApprovalsModal');
+      if (modal) modal.classList.remove('hidden');
+      await this.renderAdminApprovalsModal();
+    },
+
+    async renderAdminApprovalsModal() {
+      const pendingBox = document.getElementById('adminPendingListContainer');
+      const approvedBox = document.getElementById('adminApprovedListContainer');
+      if (!pendingBox || !approvedBox) return;
+
+      const accounts = await this.fetchAllAccountsForAdmin();
+      await this.refreshAdminAccountsBadge(false);
+
+      const pendingList = accounts.filter((a) => a.status === 'pending' && !this.isMasterAdminEmail(a.email));
+      const othersList = accounts;
+
+      if (!pendingList.length) {
+        pendingBox.innerHTML = `<div style="padding:14px;color:#d4d4d8;font-size:0.9rem;">✓ אין כרגע בקשות הרשמה הממתינות לאישור.</div>`;
+      } else {
+        pendingBox.innerHTML = pendingList
+          .map(
+            (acc) => `
+            <div class="source-item" style="border-color:rgba(245,158,11,0.45);">
+              <div class="source-main">
+                <div class="source-title-row">
+                  <span class="source-provider" dir="ltr">${acc.email}</span>
+                  <span class="source-quality-tag" style="background:rgba(245,158,11,0.2);color:#fde68a;">⏳ ממתין לאישור מנהל</span>
+                </div>
+                <div class="source-meta-row">
+                  <span>👤 שם יוזר מבוקש: <strong>${acc.display_name || acc.email.split('@')[0]}</strong></span>
+                  ${acc.requested_at ? `<span>•</span><span>🕒 נשלח: ${String(acc.requested_at).slice(0, 16).replace('T', ' ')}</span>` : ''}
+                </div>
+              </div>
+              <div class="source-actions">
+                <button type="button" class="btn-primary btn-sm tv-focusable" data-admin-action="approve" data-admin-target="${acc.email}">
+                  ✓ אשר הרשמה
+                </button>
+                <button type="button" class="btn-secondary btn-sm tv-focusable" style="color:#fca5a5;border-color:rgba(239,68,68,0.45);" data-admin-action="reject" data-admin-target="${acc.email}">
+                  ✕ דחה בקשה
+                </button>
+                <button type="button" class="btn-secondary btn-sm tv-focusable" data-admin-action="delete" data-admin-target="${acc.email}">
+                  🗑️ מחק
+                </button>
+              </div>
+            </div>
+          `
+          )
+          .join('');
+      }
+
+      approvedBox.innerHTML = othersList
+        .map((acc) => {
+          const isMaster = this.isMasterAdminEmail(acc.email);
+          const statusTag = isMaster
+            ? `<span class="source-quality-tag" style="background:rgba(245,158,11,0.25);color:#fde68a;">👑 מנהל מערכת ראשי (אילן)</span>`
+            : acc.status === 'approved'
+            ? `<span class="source-quality-tag" style="background:rgba(16,185,129,0.2);color:#6ee7b7;">✓ מאושר ופעיל</span>`
+            : acc.status === 'rejected'
+            ? `<span class="source-quality-tag" style="background:rgba(239,68,68,0.22);color:#fca5a5;">⛔ נדחה / חסום</span>`
+            : `<span class="source-quality-tag" style="background:rgba(245,158,11,0.2);color:#fde68a;">⏳ ממתין לאישור</span>`;
+
+          return `
+            <div class="source-item">
+              <div class="source-main">
+                <div class="source-title-row">
+                  <span class="source-provider" dir="ltr">${acc.email}</span>
+                  ${statusTag}
+                </div>
+                <div class="source-meta-row">
+                  <span>👤 שם ראשי: ${acc.display_name || acc.email.split('@')[0]}</span>
+                </div>
+              </div>
+              <div class="source-actions">
+                ${
+                  isMaster
+                    ? `<span style="font-size:0.8rem;color:#a1a1aa;font-weight:700;">חשבון מנהל מוגן 🔒</span>`
+                    : `
+                      ${
+                        acc.status !== 'approved'
+                          ? `<button type="button" class="btn-primary btn-sm tv-focusable" data-admin-action="approve" data-admin-target="${acc.email}">✓ אשר גישה</button>`
+                          : `<button type="button" class="btn-secondary btn-sm tv-focusable" data-admin-action="pending" data-admin-target="${acc.email}">⏸ השהה גישה</button>`
+                      }
+                      ${
+                        acc.status !== 'rejected'
+                          ? `<button type="button" class="btn-secondary btn-sm tv-focusable" style="color:#fca5a5;" data-admin-action="reject" data-admin-target="${acc.email}">⛔ חסום</button>`
+                          : ''
+                      }
+                      <button type="button" class="btn-secondary btn-sm tv-focusable" data-admin-action="delete" data-admin-target="${acc.email}">🗑️ מחק</button>
+                    `
+                }
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+
+      [pendingBox, approvedBox].forEach((box) => {
+        box.querySelectorAll('[data-admin-action]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const action = btn.getAttribute('data-admin-action');
+            const targetEmail = btn.getAttribute('data-admin-target');
+            if (action && targetEmail) {
+              this.executeAdminAccountAction(targetEmail, action);
+            }
+          });
+        });
+      });
+    },
+
+    async executeAdminAccountAction(targetEmail, action) {
+      if (!this.isCurrentUserAdmin()) return;
+      const cleanTarget = String(targetEmail || '').trim().toLowerCase();
+      if (!cleanTarget) return;
+
+      const localMap = JSON.parse(localStorage.getItem('streamit_encrypted_accounts_v6') || '{}');
+      if (action === 'delete') {
+        delete localMap[cleanTarget];
+      } else if (localMap[cleanTarget]) {
+        localMap[cleanTarget].status =
+          action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'pending';
+      }
+      localStorage.setItem('streamit_encrypted_accounts_v6', JSON.stringify(localMap));
+
+      try {
+        const apiBase = this.getApiBase();
+        await fetch(`${apiBase}/api/accounts/admin-action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            admin_email: this.currentAccountUsername || 'bensahal@gmail.com',
+            target_email: cleanTarget,
+            action
+          })
+        });
+      } catch (_) {}
+
+      const msgMap = {
+        approve: `✓ ההרשמה של ${cleanTarget} אושרה! כעת המשתמש יכול להתחבר.`,
+        reject: `⛔ הבקשה/הגישה של ${cleanTarget} נדחתה ונחסמה.`,
+        pending: `⏸ החשבון ${cleanTarget} הועבר למצב המתנה לאישור.`,
+        delete: `🗑️ החשבון ${cleanTarget} נמחק מהמערכת.`
+      };
+      this.showToast(msgMap[action] || 'פעולת מנהל בוצעה');
+      await this.renderAdminApprovalsModal();
     },
 
     async logoutCurrentEmailAccount() {
@@ -2202,6 +2579,7 @@
       const isFiltered =
         this.activeTab !== 'home' ||
         this.activeCategory !== 'all' ||
+        this.activeYearFilter !== 'all' ||
         this.activeQualityFilter !== 'all' ||
         this.searchQuery.trim() !== '';
 
@@ -2601,11 +2979,13 @@
           const tEn = String(i.title_en || '').toLowerCase();
           const ovHe = String(i.overview_he || '').toLowerCase();
           const gHe = Array.isArray(i.genres_he) ? i.genres_he.join(' ').toLowerCase() : '';
+          const yStr = String(i.year || '');
           const isMatch =
             tHe.includes(qLow) ||
             tEn.includes(qLow) ||
             ovHe.includes(qLow) ||
             gHe.includes(qLow) ||
+            yStr === qLow ||
             matchedEnKeys.some((ek) => tEn.includes(ek));
           if (isMatch) {
             seenIds.add(i.id);
@@ -2614,6 +2994,10 @@
         }
 
         pool = localMatches;
+        // If user typed a 4-digit year in search (e.g. "2023" or "1999"), fetch that year's catalog too!
+        if (/^(19[7-9]\d|20[0-2]\d)$/.test(qLow)) {
+          this.fetchCatalogByYear(qLow);
+        }
         // Schedule live Cinemeta search in the background (with automatic Hebrew->English query translation)
         this.scheduleLiveGlobalSearch(qClean);
       } else if (this.activeCategory !== 'all') {
@@ -2637,6 +3021,27 @@
       }
 
       if (!qClean) {
+        if (this.activeYearFilter && this.activeYearFilter !== 'all') {
+          this.fetchCatalogByYear(this.activeYearFilter);
+          const yf = this.activeYearFilter;
+          pool = pool.filter((i) => {
+            if (i.type === 'live') return false;
+            const y = Number(i.year) || 2024;
+            if (yf === 'classic') return y < 2000;
+            if (yf.includes('-')) {
+              const [yMin, yMax] = yf.split('-').map(Number);
+              return y >= yMin && y <= yMax;
+            }
+            return y === Number(yf);
+          });
+          if (titleEl && this.activeTab === 'home' && this.activeCategory === 'all') {
+            titleEl.textContent =
+              yf === 'classic'
+                ? 'סרטים וסדרות — שנות ה-90 וקלאסיקות'
+                : `סרטים וסדרות משנת ${yf.replace('-', '–')}`;
+          }
+        }
+
         if (this.activeQualityFilter === '1080p') {
           pool = pool.filter((i) => String(i.quality || '1080p').includes('1080'));
         } else if (this.activeQualityFilter === '4k') {
@@ -2678,6 +3083,58 @@
         .join('');
 
       this.bindCardClicks(grid);
+    },
+
+    async fetchCatalogByYear(yearSpec) {
+      if (!yearSpec || yearSpec === 'all' || this._loadedYears.has(yearSpec)) return;
+      this._loadedYears.add(yearSpec);
+
+      let yearsToFetch = [];
+      if (yearSpec === 'classic') {
+        yearsToFetch = ['1999', '1997', '1995', '1994', '1990'];
+      } else if (yearSpec.includes('-')) {
+        const [yStart, yEnd] = yearSpec.split('-').map(Number);
+        for (let y = yEnd; y >= yStart && yearsToFetch.length < 4; y -= 2) {
+          yearsToFetch.push(String(y));
+        }
+      } else {
+        yearsToFetch = [String(yearSpec)];
+      }
+
+      try {
+        const requests = [];
+        for (const yr of yearsToFetch) {
+          requests.push(
+            this.fetchJsonWithTimeout(`https://v3-cinemeta.strem.io/catalog/movie/year/year=${yr}.json`, 3500)
+          );
+          requests.push(
+            this.fetchJsonWithTimeout(`https://v3-cinemeta.strem.io/catalog/series/year/year=${yr}.json`, 3500)
+          );
+        }
+        const results = await Promise.all(requests);
+        const existingIds = new Set(
+          [...this.movies, ...this.series, ...this.globalLiveMovies, ...this.globalLiveSeries].map((x) => x.id)
+        );
+        let added = 0;
+
+        results.forEach((res, idx) => {
+          const isSeries = idx % 2 === 1;
+          const metas = res && Array.isArray(res.metas) ? res.metas : [];
+          for (const raw of metas.slice(0, 35)) {
+            if (!raw || !raw.id || existingIds.has(raw.id)) continue;
+            existingIds.add(raw.id);
+            const norm = this.normalizeCinemetaItem(raw, isSeries ? 'series' : 'movie');
+            if (isSeries) this.globalLiveSeries.push(norm);
+            else this.globalLiveMovies.push(norm);
+            added++;
+          }
+        });
+
+        if (added > 0) {
+          this.renderFilteredGrid();
+          this.translateDynamicCatalogTitlesInBackground();
+        }
+      } catch (_) {}
     },
 
     scheduleLiveGlobalSearch(qClean) {
@@ -2869,13 +3326,332 @@
 
       // Series Seasons & Episodes
       const seriesBlock = document.getElementById('seriesEpisodesBlock');
+      const movieFranchiseBlock = document.getElementById('movieFranchiseBlock');
       if (item.type === 'series' && Array.isArray(item.seasons) && item.seasons.length) {
-        seriesBlock.classList.remove('hidden');
+        if (seriesBlock) seriesBlock.classList.remove('hidden');
+        if (movieFranchiseBlock) movieFranchiseBlock.classList.add('hidden');
         this.renderSeasonTabs(item);
         this.renderEpisodeList(item, this.currentSeason);
-      } else if (seriesBlock) {
-        seriesBlock.classList.add('hidden');
+      } else if (item.type === 'movie') {
+        if (seriesBlock) seriesBlock.classList.add('hidden');
+        this.renderMovieFranchiseSection(item);
+      } else {
+        if (seriesBlock) seriesBlock.classList.add('hidden');
+        if (movieFranchiseBlock) movieFranchiseBlock.classList.add('hidden');
       }
+    },
+
+    getMovieFranchiseCatalogChains() {
+      const mk = (id, title_he, title_en, year, imdb_rating, overview_he, genres = ['action', 'scifi'], genres_he = ['פעולה', 'מדע בדיוני']) => ({
+        id,
+        imdb_id: id,
+        type: 'movie',
+        title_he,
+        title_en,
+        year,
+        imdb_rating,
+        runtime_he: "שעתיים ו-18 דק'",
+        age_rating: '14+',
+        genres,
+        genres_he,
+        overview_he,
+        poster: `https://images.metahub.space/poster/medium/${id}/img`,
+        backdrop: `https://images.metahub.space/background/medium/${id}/img`
+      });
+
+      return [
+        {
+          franchise_title_he: '🎬 סדרת חולית (Dune Saga) — צפייה ברצף',
+          items: [
+            mk('tt1160419', 'חולית: חלק ראשון', 'Dune: Part One', 2021, 8.0, 'פול אטריידיס, צעיר מבריק ומוכשר שנולד לגדולות, חייב לנסוע לכוכב הלכת המסוכן ביותר ביקום כדי להבטיח את עתיד משפחתו ועמו.'),
+            mk('tt15239678', 'חולית: חלק שני', 'Dune: Part Two', 2024, 8.5, 'פול אטריידיס מתאחד עם צ׳אני והדררים במסע נקמה נגד הקושרים שהחריבו את משפחתו, ונאלץ לבחור בין אהבת חייו לגורל היקום.')
+          ]
+        },
+        {
+          franchise_title_he: '🎬 טרילוגיית האביר האפל (The Dark Knight Trilogy) — צפייה ברצף',
+          items: [
+            mk('tt0372784', 'באטמן מתחיל', 'Batman Begins', 2005, 8.2, 'לאחר רצח הוריו, ברוס ויין מתאמן עם ליגת הצללים וחוזר לגות׳האם כבאטמן כדי להילחם בפשע ובשחיתות.'),
+            mk('tt0468569', 'האביר האפל', 'The Dark Knight', 2008, 9.0, 'כאשר האיום המכונה הג׳וקר זורע כאוס והרס בגות׳האם, באטמן ניצב בפני אחד המבחנים הפסיכולוגיים והפיזיים הגדולים ביותר שלו.'),
+            mk('tt1345836', 'עלייתו של האביר האפל', 'The Dark Knight Rises', 2012, 8.4, 'שמונה שנים לאחר שהאביר האפל נטל על עצמו את האשמה, מנהיג הטרור האכזרי ביין מאלץ את ברוס ויין לצאת מהגלות ולהציל את גות׳האם.')
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת ספיידרמן: ממד העכביש (Spider-Verse) — צפייה ברצף',
+          items: [
+            mk('tt4633694', 'ספיידרמן: ממד העכביש', 'Spider-Man: Into the Spider-Verse', 2018, 8.4, 'הנער מיילס מוראלס הופך לספיידרמן של היקום שלו וחובר לחמישה אנשי עכביש מממדים מקבילים כדי לעצור איום על המולטיוורס.', ['animation', 'action', 'scifi'], ['אנימציה', 'פעולה', 'מדע בדיוני']),
+            mk('tt9362722', 'ספיידרמן: ברחבי ממד העכביש', 'Spider-Man: Across the Spider-Verse', 2023, 8.6, 'מיילס מוראלס וגוון סטייסי יוצאים להרפתקה מסחררת ברחבי המולטיוורס ופוגשים את אגודת העכבישים שנועדה להגן על עצם קיומם של העולמות.', ['animation', 'action', 'scifi'], ['אנימציה', 'פעולה', 'מדע בדיוני'])
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת הקול בראש (Inside Out) — צפייה ברצף',
+          items: [
+            mk('tt2096673', 'הקול בראש', 'Inside Out', 2015, 8.1, 'כשריילי הצעירה עוברת עם משפחתה לעיר חדשה, חמשת הרגשות שבראשה — שמחה, פחד, כעס, גועל ועצב — מנסים לנווט אותה במשבר.', ['animation', 'family', 'comedy'], ['אנימציה', 'משפחה', 'קומדיה']),
+            mk('tt22022452', 'הקול בראש 2', 'Inside Out 2', 2024, 7.7, 'מטה הרגשות בראשה של ריילי עובר טלטלה פתאומית עם כניסתה לגיל ההתבגרות והגעתם של רגשות חדשים ובראשם חרדה.', ['animation', 'family', 'comedy'], ['אנימציה', 'משפחה', 'קומדיה'])
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת גלדיאטור (Gladiator Saga) — צפייה ברצף',
+          items: [
+            mk('tt0172495', 'גלדיאטור', 'Gladiator', 2000, 8.5, 'גנרל רומאי נבגד שמשפחתו נרצחה על ידי בנו המושחת של הקיסר חוזר לרומא כגלדיאטור כדי לנקום את דמם.', ['action', 'drama'], ['פעולה', 'דרמה']),
+            mk('tt9218128', 'גלדיאטור 2', 'Gladiator II', 2024, 6.8, 'שנים לאחר מותו של מקסימוס, לוציוס נאלץ להיכנס לקולוסיאום לאחר שביתו נכבש בידי קיסרים רודנים, ונלחם להשיב את כבודה של רומא.', ['action', 'drama'], ['פעולה', 'דרמה'])
+          ]
+        },
+        {
+          franchise_title_he: '🎬 טרילוגיית דדפול (Deadpool Trilogy) — צפייה ברצף',
+          items: [
+            mk('tt1431045', 'דדפול', 'Deadpool', 2016, 8.0, 'שכיר חרב חד-לשון עובר ניסוי אכזרי שמעניק לו כוחות ריפוי מואצים ויוצא למסע נקמה פרוע וחסר מעצורים.', ['action', 'comedy'], ['פעולה', 'קומדיה']),
+            mk('tt5463162', 'דדפול 2', 'Deadpool 2', 2018, 7.6, 'דדפול מקים צוות מוטנטים בשם אקס-פורס כדי להגן על נער צעיר מפני קייבל, חייל סייבורג קטלני שהגיע מהעתיד.', ['action', 'comedy'], ['פעולה', 'קומדיה']),
+            mk('tt6263850', 'דדפול ווולברין', 'Deadpool & Wolverine', 2024, 7.8, 'ווייד ווילסון מצטרף לוולברין חסר הסבלנות במשימה שתשנה את ההיסטוריה של היקום הקולנועי של מארוול.', ['action', 'comedy', 'scifi'], ['פעולה', 'קומדיה', 'מדע בדיוני'])
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת אהבה בשחקים (Top Gun Saga) — צפייה ברצף',
+          items: [
+            mk('tt0092099', 'אהבה בשחקים', 'Top Gun', 1986, 6.9, 'טייס הקרב הנועז פיט "מאווריק" מיטשל נשלח לבית הספר העילית לטייסי קרב של הצי האמריקאי ומתחרה על תואר הטייס הטוב ביותר.', ['action', 'drama'], ['פעולה', 'דרמה']),
+            mk('tt1745960', 'אהבה בשחקים: מאווריק', 'Top Gun: Maverick', 2022, 8.2, 'לאחר יותר משלושים שנות שירות, מאווריק חוזר לאמן קבוצת בוגרים של טופ גאן למשימה מסוכנת מאין כמותה.', ['action', 'drama'], ['פעולה', 'דרמה'])
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת ג׳ון וויק (John Wick Saga) — צפייה ברצף',
+          items: [
+            mk('tt2911666', 'ג׳ון וויק', 'John Wick', 2014, 7.4, 'מתנקש אגדי שפרש לגמלאות חוזר לעולם התחתון כדי לנקום בגנגסטרים שגנבו את מכוניתו והרגו את הכלב שהשאירה לו אשתו המנוחה.', ['action', 'thriller'], ['פעולה', 'מתח']),
+            mk('tt4425200', 'ג׳ון וויק 2', 'John Wick: Chapter 2', 2017, 7.4, 'ג׳ון וויק נאלץ לחזור מפרישתו בשל שבועת דם ישנה ויוצא לרומא להתמודד מול המתנקשים הקטלניים ביותר בעולם.', ['action', 'thriller'], ['פעולה', 'מתח']),
+            mk('tt6146586', 'ג׳ון וויק 3: פרבלום', 'John Wick: Chapter 3 - Parabellum', 2019, 7.4, 'ג׳ון וויק נמצא במנוסה עם פרס של 14 מיליון דולר על ראשו לאחר שהפר את חוקי מלון הקונטיננטל.', ['action', 'thriller'], ['פעולה', 'מתח']),
+            mk('tt10366206', 'ג׳ון וויק 4', 'John Wick: Chapter 4', 2023, 7.7, 'ג׳ון וויק מגלה דרך לנצח את השולחן הגבוה, אך לפני שיוכל לזכות בחירותו עליו להתמודד מול אויב חדש עם בריתות חובקות עולם.', ['action', 'thriller'], ['פעולה', 'מתח'])
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת הנוקמים (The Avengers Saga) — צפייה ברצף',
+          items: [
+            mk('tt0848228', 'הנוקמים', 'The Avengers', 2012, 8.0, 'גיבורי העל האדירים ביותר של כדור הארץ מתאחדים לראשונה תחת ניק פיורי כדי לעצור את לוקי וצבא החייזרים שלו.'),
+            mk('tt2395427', 'הנוקמים: עידן אולטרון', 'Avengers: Age of Ultron', 2015, 7.3, 'כשטוני סטארק וברוס באנר מנסים להפעיל תוכנית לשמירת שלום בשם אולטרון, הדברים משתבשים והנוקמים חייבים לעצור אותו.'),
+            mk('tt4154756', 'הנוקמים: מלחמת האינסוף', 'Avengers: Infinity War', 2018, 8.4, 'הנוקמים ובעלי בריתם מוכנים להקריב הכל בניסיון להביס את תאנוס האדיר לפני שישיג את כל אבני האינסוף.'),
+            mk('tt4154796', 'הנוקמים: סוף המשחק', 'Avengers: Endgame', 2019, 8.4, 'לאחר האירועים ההרסניים של מלחמת האינסוף, הנוקמים שנותרו מתאספים פעם נוספת כדי להשיב את הסדר ליקום.')
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת אווטאר (Avatar Saga) — צפייה ברצף',
+          items: [
+            mk('tt0499549', 'אווטאר', 'Avatar', 2009, 7.9, 'חייל מארינס משותק נשלח לירח פנדורה במשימה ייחודית ונקרע בין מילוי פקודות לבין הגנה על העולם שהפך לביתו.'),
+            mk('tt1630029', 'אווטאר: דרכם של המים', 'Avatar: The Way of Water', 2022, 7.5, 'ג׳ייק סאלי ונייטירי הקימו משפחה בפנדורה, אך כשאיום מוכר חוזר עליהם לעזוב את ביתם ולמצוא מקלט אצל שבטי המים.')
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת מטריקס (The Matrix Saga) — צפייה ברצף',
+          items: [
+            mk('tt0133093', 'מטריקס', 'The Matrix', 1999, 8.7, 'האקר מחשבים מגלה ממורדים מסתוריים את האמת המזעזעת על המציאות שלו ועל תפקידו במלחמה נגד המכונות השולטות בה.'),
+            mk('tt0234215', 'מטריקס רילודד', 'The Matrix Reloaded', 2003, 7.2, 'ניאו, טריניטי ומורפיוס ממשיכים להוביל את המרד האנושי נגד צבא המכונות המתקרב לעיר התת-קרקעית ציון.'),
+            mk('tt0242653', 'מטריקס רבולושנס', 'The Matrix Revolutions', 2003, 6.7, 'הקרב האחרון והמכריע על העיר ציון מתנהל במקביל לעימות הסופי של ניאו מול הסוכן סמית׳ בתוך המטריקס.'),
+            mk('tt10838180', 'מטריקס: התחייה', 'The Matrix Resurrections', 2021, 5.7, 'כדי לגלות אם המציאות שלו היא הבניה פיזית או מנטלית, תומאס אנדרסון נאלץ לעקוב שוב אחרי הארנב הלבן.')
+          ]
+        },
+        {
+          franchise_title_he: '🎬 טרילוגיית שר הטבעות (The Lord of the Rings) — צפייה ברצף',
+          items: [
+            mk('tt0120737', 'שר הטבעות: אחוות הטבעת', 'The Lord of the Rings: The Fellowship of the Ring', 2001, 8.9, 'הוביט צעיר מהפלך ושמונה מלווים יוצאים למסע בארץ התיכונה להשמיד את הטבעת האחת בהר האבדון.'),
+            mk('tt0167261', 'שר הטבעות: שני הצריחים', 'The Lord of the Rings: The Two Towers', 2002, 8.8, 'פרודו וסאם מתקרבים למורדור בעזרתו של גולום הבוגדני, בעוד חבריהם המאוחדים נלחמים בצבאותיו של סארומן.'),
+            mk('tt0167260', 'שר הטבעות: שיבת המלך', 'The Lord of the Rings: The Return of the King', 2003, 9.0, 'גנדלף ואראגורן מובילים את עולם האדם לקרב האחרון מול צבא סאורון כדי לאפשר לפרודו להשמיד את הטבעת.')
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סאגת מקס הזועם (Mad Max Saga) — צפייה ברצף',
+          items: [
+            mk('tt1392190', 'מקס הזועם: כביש הזעם', 'Mad Max: Fury Road', 2015, 8.1, 'בשממה פוסט-אפוקליפטית, מקס חובר לקיסרית פיוריוסה כדי להימלט משליט עריץ וצבאו במרדף משוריין חסר רחמים.'),
+            mk('tt12037194', 'פיוריוסה: סאגת מקס הזועם', 'Furiosa: A Mad Max Saga', 2024, 7.6, 'סיפור המוצא של הלוחמת פיוריוסה לפני איחודה עם מקס הזועם, ממחוז השפע הירוק ועד מלחמות השממה.')
+          ]
+        },
+        {
+          franchise_title_he: '🎬 סדרת הנוסע השמיני (Alien Saga) — צפייה ברצף',
+          items: [
+            mk('tt0078748', 'הנוסע השמיני', 'Alien', 1979, 8.5, 'צוות ספינת משא בחלל העמוק נענה לאות מצוקה מכוכב לא מוכר ומגלה צורת חיים קטלנית המסתננת לספינה.', ['horror', 'scifi'], ['אימה', 'מדע בדיוני']),
+            mk('tt0090605', 'שובו של הנוסע השמיני', 'Aliens', 1986, 8.4, 'אלן ריפלי חוזרת עם יחידת נחתים חמושים לירח שבו התגלה החייזר לראשונה ונכנסת למלחמת הישרדות.', ['action', 'horror', 'scifi'], ['פעולה', 'אימה', 'מדע בדיוני']),
+            mk('tt18412256', 'הנוסע השמיני: רומולוס', 'Alien: Romulus', 2024, 7.3, 'בזמן חיטוט במעמקי תחנת חלל נטושה, קבוצת מתיישבים צעירים פוגשת פנים אל פנים את צורת החיים המפחידה ביותר ביקום.', ['horror', 'scifi'], ['אימה', 'מדע בדיוני'])
+          ]
+        },
+        {
+          franchise_title_he: '🎬 אוסף כריסטופר נולאן (Christopher Nolan Collection) — צפייה ברצף',
+          items: [
+            mk('tt1375666', 'התחלה', 'Inception', 2010, 8.8, 'גנב שגונב סודות תאגידיים באמצעות טכנולוגיית שיתוף חלומות מקבל משימה הפוכה: לשתול רעיון במוחו של יורש אימפריה.', ['action', 'scifi', 'thriller'], ['פעולה', 'מדע בדיוני', 'מתח']),
+            mk('tt0816692', 'בין כוכבים', 'Interstellar', 2014, 8.7, 'צוות חוקרים וטייסים יוצא דרך חור תולעת בחלל במטרה למצוא בית חדש לאנושות ההולכת ודועכת על פני כדור הארץ.', ['scifi', 'drama'], ['מדע בדיוני', 'דרמה']),
+            mk('tt15398776', 'אופנהיימר', 'Oppenheimer', 2023, 8.3, 'סיפורו של המדען האמריקאי ג׳יי. רוברט אופנהיימר ותפקידו המכריע בפיתוח פצצת האטום במהלך מלחמת העולם השנייה.', ['drama', 'thriller'], ['דרמה', 'מתח'])
+          ]
+        }
+      ];
+    },
+
+    resolveCatalogOrFranchiseMovie(rawMovie) {
+      if (!rawMovie) return null;
+      const allMovies = [...(this.movies || []), ...(this.globalLiveMovies || [])];
+      const found = allMovies.find((m) => m.id === rawMovie.id || m.imdb_id === rawMovie.id);
+      if (found) return found;
+      return rawMovie;
+    },
+
+    resolveMovieFranchiseData(item) {
+      if (!item || item.type !== 'movie') return null;
+      const imdbId = String(item.imdb_id || item.id || '').split(':')[0].trim();
+
+      // 1. Check Curated Franchise Chains first
+      const chains = this.getMovieFranchiseCatalogChains();
+      for (const group of chains) {
+        const idx = group.items.findIndex((m) => m.id === imdbId);
+        if (idx >= 0) {
+          const resolvedItems = group.items.map((m) => this.resolveCatalogOrFranchiseMovie(m));
+          return {
+            title_he: group.franchise_title_he,
+            is_direct_franchise: true,
+            chain: resolvedItems,
+            currentIndex: idx
+          };
+        }
+      }
+
+      // 2. Check Live Discovered Sequels/Prequels from Cinemeta (e.g., Harry Potter, Fast & Furious, Toy Story, Scream, etc.)
+      if (Array.isArray(item.liveFranchiseChain) && item.liveFranchiseChain.length > 1) {
+        const idx = item.liveFranchiseChain.findIndex((m) => m.id === imdbId);
+        if (idx >= 0) {
+          return {
+            title_he: `🎬 סדרת "${item.title_he}" וסרטי המשך — צפייה ברצף`,
+            is_direct_franchise: true,
+            chain: item.liveFranchiseChain,
+            currentIndex: idx
+          };
+        }
+      }
+
+      // 3. Fallback: Smart Genre / Cinema Marathon Chain so every movie supports continuous binge-watch!
+      const allMovies = [...(this.movies || []), ...(this.globalLiveMovies || [])].filter((m) =>
+        this.isItemAllowedForActiveUser(m)
+      );
+      const itemGenres = new Set(item.genres || []);
+      const related = allMovies
+        .filter((m) => m.id !== imdbId && (m.genres || []).some((g) => itemGenres.has(g)))
+        .slice(0, 4);
+      const marathonChain = [item, ...related];
+      return {
+        title_he: '🎬 צפייה ברצף: סרטי המשך מומלצים באותו ז׳אנר',
+        is_direct_franchise: false,
+        chain: marathonChain,
+        currentIndex: 0
+      };
+    },
+
+    renderMovieFranchiseSection(item) {
+      const block = document.getElementById('movieFranchiseBlock');
+      const titleEl = document.getElementById('movieFranchiseTitle');
+      const container = document.getElementById('movieFranchiseListContainer');
+      if (!block || !container || !item || item.type !== 'movie') return;
+
+      const fData = this.resolveMovieFranchiseData(item);
+      if (!fData || !Array.isArray(fData.chain) || fData.chain.length <= 1) {
+        block.classList.add('hidden');
+        return;
+      }
+
+      block.classList.remove('hidden');
+      if (titleEl) titleEl.textContent = fData.title_he;
+
+      container.innerHTML = fData.chain
+        .map((mv, idx) => {
+          const isCurrent = idx === fData.currentIndex;
+          const isNextSequel = idx === fData.currentIndex + 1;
+          const orderBadge = fData.is_direct_franchise
+            ? `חלק ${idx + 1} מתוך ${fData.chain.length}`
+            : idx === 0
+            ? 'הסרט הנוכחי'
+            : `סרט #${idx + 1} ברצף`;
+          const statusTag = isCurrent
+            ? `<span class="source-quality-tag" style="background:rgba(229,9,20,0.22);color:#fca5a5;border:1px solid rgba(229,9,20,0.5);">נבחר כעת</span>`
+            : isNextSequel
+            ? `<span class="source-quality-tag" style="background:rgba(16,185,129,0.2);color:#6ee7b7;border:1px solid rgba(16,185,129,0.5);">הבא ברצף ⏭</span>`
+            : '';
+
+          return `
+            <div class="episode-row-card tv-focusable ${isCurrent ? 'active current-binge-playing' : ''}" tabindex="0" data-franchise-idx="${idx}" aria-label="${mv.title_he} (${mv.year || 2024})">
+              <div class="ep-info">
+                <div class="ep-title-line" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="color:#f87171;font-weight:800;font-size:0.8rem;">[${orderBadge}]</span>
+                  <span>${mv.title_he}</span>
+                  <span style="color:#a1a1aa;font-weight:400;font-size:0.82rem;">(${mv.year || 2024} • ★ ${mv.imdb_rating || '8.0'})</span>
+                  ${statusTag}
+                </div>
+                <div class="ep-desc-line">${mv.overview_he || ''}</div>
+              </div>
+              <button type="button" class="btn-primary btn-sm tv-focusable" data-play-franchise="${idx}" aria-label="נגן את ${mv.title_he}">
+                ${SVG_ICONS.play}
+                <span>${isCurrent ? 'נגן עכשיו' : isNextSequel ? 'נגן סרט המשך ⏭' : 'נגן ברצף'}</span>
+              </button>
+            </div>
+          `;
+        })
+        .join('');
+
+      container.querySelectorAll('[data-franchise-idx]').forEach((row) => {
+        row.addEventListener('click', () => {
+          const idx = Number(row.getAttribute('data-franchise-idx')) || 0;
+          const targetMovie = fData.chain[idx];
+          if (targetMovie && targetMovie.id !== item.id) {
+            this.openDetailsModal(targetMovie);
+          }
+        });
+      });
+
+      container.querySelectorAll('[data-play-franchise]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = Number(btn.getAttribute('data-play-franchise')) || 0;
+          const targetMovie = fData.chain[idx];
+          if (targetMovie) {
+            this.resolveClientAndServerStreams(targetMovie, 1, 1).then((streams) => {
+              this.currentStreams = streams;
+              this.launchPlayer(targetMovie, streams[0] || null, 1, 1);
+            });
+          }
+        });
+      });
+    },
+
+    async discoverLiveMovieSequels(item) {
+      if (!item || item.type !== 'movie') return;
+      // Skip if already in our curated chains or already discovered
+      const chains = this.getMovieFranchiseCatalogChains();
+      const imdbId = String(item.imdb_id || item.id || '').split(':')[0].trim();
+      if (chains.some((g) => g.items.some((m) => m.id === imdbId))) return;
+      if (Array.isArray(item.liveFranchiseChain) && item.liveFranchiseChain.length > 1) return;
+
+      const rawEn = String(item.title_en || item.title_he || '').trim();
+      if (!rawEn || rawEn.length < 3) return;
+      const basePrefix = rawEn
+        .replace(/\s*[:\-–]\s*(Part|Chapter|Volume|Book|Episode|The).*$/i, '')
+        .replace(/\s+(II|III|IV|V|VI|VII|VIII|2|3|4|5|6|7|8)$/i, '')
+        .trim();
+      if (!basePrefix || basePrefix.length < 3) return;
+
+      try {
+        const data = await this.fetchJsonWithTimeout(
+          `https://v3-cinemeta.strem.io/catalog/movie/top/search=${encodeURIComponent(basePrefix)}.json`,
+          2500
+        );
+        if (!data || !Array.isArray(data.metas)) return;
+        const prefixLower = basePrefix.toLowerCase();
+        const matches = data.metas
+          .filter((m) => {
+            if (!m || !m.id || !m.name) return false;
+            const n = String(m.name).toLowerCase();
+            return n === prefixLower || n.startsWith(prefixLower + ' ') || n.startsWith(prefixLower + ':');
+          })
+          .slice(0, 8)
+          .map((m) => this.resolveCatalogOrFranchiseMovie(this.normalizeCinemetaItem(m, 'movie')));
+
+        if (matches.length > 1) {
+          matches.sort((a, b) => (Number(a.year) || 2000) - (Number(b.year) || 2000));
+          // Attach to all movies in the discovered franchise chain!
+          matches.forEach((mv) => {
+            mv.liveFranchiseChain = matches;
+          });
+          item.liveFranchiseChain = matches;
+        }
+      } catch (_) {}
     },
 
     async enrichItemFromCinemetaLive(item) {
@@ -2948,8 +3724,16 @@
           item.seasons = Array.from(seasonsMap.values()).sort((a, b) => a.season - b.season);
         }
 
+        // 6. Real Movie Sequels / Franchise Discovery for any Movie
+        if (item.type === 'movie') {
+          await this.discoverLiveMovieSequels(item);
+        }
+
         if (this.currentDetailsItem && this.currentDetailsItem.id === item.id) {
           this.populateDetailsModalDom(item);
+        }
+        if (this.activePlayerItem && this.activePlayerItem.id === item.id) {
+          this.updatePlayerBingeControls();
         }
       } catch (_) {}
     },
@@ -3426,17 +4210,287 @@
     },
 
     /* ======================================================================
-       4. AD-SHIELDED SANDBOXED CINEMA PLAYER (0% POPUPS + 2s FAST START)
+       4. AD-SHIELDED SANDBOXED CINEMA PLAYER + BINGE-WATCH ENGINE
        ====================================================================== */
+    resolveNextBingeTarget(item = this.activePlayerItem, season = this.currentSeason, episode = this.currentEpisode) {
+      if (!item || item.type === 'live') return null;
+
+      if (item.type === 'series') {
+        const seasons =
+          Array.isArray(item.seasons) && item.seasons.length
+            ? item.seasons
+            : [
+                {
+                  season: Number(season) || 1,
+                  episodes: Array.from({ length: 10 }, (_, i) => ({
+                    episode: i + 1,
+                    title_he: `פרק ${i + 1}`
+                  }))
+                }
+              ];
+
+        const curSeasonObj =
+          seasons.find((s) => Number(s.season) === Number(season)) || seasons[0];
+        if (curSeasonObj && Array.isArray(curSeasonObj.episodes)) {
+          const sortedEps = [...curSeasonObj.episodes].sort((a, b) => Number(a.episode) - Number(b.episode));
+          const nextEp = sortedEps.find((e) => Number(e.episode) > Number(episode));
+          if (nextEp) {
+            return {
+              kind: 'series_episode',
+              item,
+              season: Number(curSeasonObj.season),
+              episode: Number(nextEp.episode),
+              badge_he: 'הפרק הבא ברצף ⏭',
+              title_he: `עונה ${curSeasonObj.season} פרק ${nextEp.episode}: ${nextEp.title_he || 'פרק ' + nextEp.episode}`,
+              short_label_he: `הפרק הבא (ע'${curSeasonObj.season}:פ'${nextEp.episode})`,
+              thumb: nextEp.thumbnail || item.backdrop || item.poster
+            };
+          }
+        }
+
+        // Check if there is a next season!
+        const sortedSeasons = [...seasons].sort((a, b) => Number(a.season) - Number(b.season));
+        const nextSeasonObj = sortedSeasons.find((s) => Number(s.season) > Number(season));
+        if (nextSeasonObj && Array.isArray(nextSeasonObj.episodes) && nextSeasonObj.episodes.length) {
+          const firstEp = [...nextSeasonObj.episodes].sort((a, b) => Number(a.episode) - Number(b.episode))[0];
+          return {
+            kind: 'series_episode',
+            item,
+            season: Number(nextSeasonObj.season),
+            episode: Number(firstEp.episode || 1),
+            badge_he: 'עונה חדשה ברצף 🎬',
+            title_he: `עונה ${nextSeasonObj.season} פרק ${firstEp.episode || 1}: ${firstEp.title_he || 'פרק 1'}`,
+            short_label_he: `עונה ${nextSeasonObj.season} פרק ${firstEp.episode || 1}`,
+            thumb: firstEp.thumbnail || item.backdrop || item.poster
+          };
+        }
+        return null;
+      }
+
+      if (item.type === 'movie') {
+        const fData = this.resolveMovieFranchiseData(item);
+        if (fData && Array.isArray(fData.chain) && fData.currentIndex + 1 < fData.chain.length) {
+          const nextMovie = fData.chain[fData.currentIndex + 1];
+          return {
+            kind: 'movie_sequel',
+            item: nextMovie,
+            season: 1,
+            episode: 1,
+            is_direct_franchise: fData.is_direct_franchise,
+            badge_he: fData.is_direct_franchise ? 'סרט ההמשך הבא ברצף 🎬' : 'הסרט הבא במרתון 🎬',
+            title_he: `${nextMovie.title_he} (${nextMovie.year || 2024})`,
+            short_label_he: fData.is_direct_franchise
+              ? `סרט המשך: ${nextMovie.title_he}`
+              : `הסרט הבא: ${nextMovie.title_he}`,
+            thumb: nextMovie.backdrop || nextMovie.poster || item.backdrop
+          };
+        }
+      }
+      return null;
+    },
+
+    resolvePrevBingeTarget(item = this.activePlayerItem, season = this.currentSeason, episode = this.currentEpisode) {
+      if (!item || item.type === 'live') return null;
+
+      if (item.type === 'series') {
+        const seasons = Array.isArray(item.seasons) ? item.seasons : [];
+        if (Number(episode) > 1) {
+          const prevEpNum = Number(episode) - 1;
+          return {
+            kind: 'series_episode',
+            item,
+            season: Number(season),
+            episode: prevEpNum,
+            short_label_he: `פרק קודם (ע'${season}:פ'${prevEpNum})`
+          };
+        }
+        if (Number(season) > 1) {
+          const prevSeasonObj = seasons.find((s) => Number(s.season) === Number(season) - 1);
+          const lastEpNum =
+            prevSeasonObj && Array.isArray(prevSeasonObj.episodes) && prevSeasonObj.episodes.length
+              ? Math.max(...prevSeasonObj.episodes.map((e) => Number(e.episode) || 1))
+              : 1;
+          return {
+            kind: 'series_episode',
+            item,
+            season: Number(season) - 1,
+            episode: lastEpNum,
+            short_label_he: `פרק קודם (ע'${Number(season) - 1}:פ'${lastEpNum})`
+          };
+        }
+        return null;
+      }
+
+      if (item.type === 'movie') {
+        const fData = this.resolveMovieFranchiseData(item);
+        if (fData && fData.is_direct_franchise && fData.currentIndex > 0) {
+          const prevMovie = fData.chain[fData.currentIndex - 1];
+          return {
+            kind: 'movie_sequel',
+            item: prevMovie,
+            season: 1,
+            episode: 1,
+            short_label_he: `סרט קודם: ${prevMovie.title_he}`
+          };
+        }
+      }
+      return null;
+    },
+
+    updatePlayerBingeControls() {
+      const item = this.activePlayerItem;
+      const topToggleBtn = document.getElementById('playerBingeToggleBtn');
+      const topPillText = document.getElementById('playerBingePillText');
+      const prevBtn = document.getElementById('playerPrevBingeBtn');
+      const prevLabel = document.getElementById('playerPrevBingeLabel');
+      const nextBtn = document.getElementById('playerNextBingeBtn');
+      const nextLabel = document.getElementById('playerNextBingeLabel');
+
+      if (!item || item.type === 'live') {
+        if (topToggleBtn) topToggleBtn.classList.add('hidden');
+        if (prevBtn) prevBtn.classList.add('hidden');
+        if (nextBtn) nextBtn.classList.add('hidden');
+        this.cancelBingeCountdown(false);
+        return;
+      }
+
+      if (topToggleBtn) {
+        topToggleBtn.classList.remove('hidden');
+        topToggleBtn.classList.toggle('active', Boolean(this.bingeModeEnabled));
+      }
+      if (topPillText) {
+        topPillText.textContent = this.bingeModeEnabled ? '⏭ צפייה ברצף: פעיל' : '⏸ צפייה ברצף: כבוי';
+      }
+
+      this.currentNextBingeTarget = this.resolveNextBingeTarget(item, this.currentSeason, this.currentEpisode);
+      this.currentPrevBingeTarget = this.resolvePrevBingeTarget(item, this.currentSeason, this.currentEpisode);
+
+      if (prevBtn && prevLabel) {
+        if (this.currentPrevBingeTarget) {
+          prevBtn.classList.remove('hidden');
+          prevLabel.textContent = this.currentPrevBingeTarget.short_label_he;
+        } else {
+          prevBtn.classList.add('hidden');
+        }
+      }
+
+      if (nextBtn && nextLabel) {
+        if (this.currentNextBingeTarget) {
+          nextBtn.classList.remove('hidden');
+          nextLabel.textContent = this.currentNextBingeTarget.short_label_he;
+        } else {
+          nextBtn.classList.add('hidden');
+        }
+      }
+    },
+
+    toggleBingeMode() {
+      this.bingeModeEnabled = !this.bingeModeEnabled;
+      try {
+        localStorage.setItem('streamit_binge_mode_v6', this.bingeModeEnabled ? '1' : '0');
+      } catch (_) {}
+      if (!this.bingeModeEnabled) {
+        this.cancelBingeCountdown(false);
+      }
+      this.updatePlayerBingeControls();
+      this.showToast(
+        this.bingeModeEnabled
+          ? '⏭ מצב צפייה ברצף הופעל (מעבר אוטומטי לפרק הבא ולסרטי המשך)'
+          : '⏸ מצב צפייה ברצף כובה'
+      );
+    },
+
+    triggerBingeUpNextCountdown(target) {
+      if (!target || !this.bingeModeEnabled) return;
+      if (this.bingeCountdownTimer) return; // Already counting down!
+
+      const card = document.getElementById('bingeUpNextCard');
+      const badgeEl = document.getElementById('bingeUpNextBadge');
+      const titleEl = document.getElementById('bingeUpNextTitle');
+      const thumbEl = document.getElementById('bingeUpNextThumb');
+      const secEl = document.getElementById('bingeCountdownSec');
+      const barEl = document.getElementById('bingeProgressBar');
+      const playNowBtn = document.getElementById('bingePlayNowBtn');
+
+      if (!card) return;
+      if (badgeEl) badgeEl.textContent = target.badge_he || 'הבא ברצף ⏭';
+      if (titleEl) titleEl.textContent = target.title_he || '';
+      if (thumbEl) {
+        thumbEl.src = target.thumb || target.item?.backdrop || target.item?.poster || '';
+      }
+      if (playNowBtn) {
+        playNowBtn.textContent =
+          target.kind === 'series_episode' ? `▶ נגן עכשיו (${target.short_label_he})` : `▶ נגן עכשיו (${target.short_label_he})`;
+      }
+
+      this.bingeCountdownSecLeft = 10;
+      if (secEl) secEl.textContent = String(this.bingeCountdownSecLeft);
+      if (barEl) barEl.style.width = '100%';
+      card.classList.remove('hidden');
+
+      this.bingeCountdownTimer = setInterval(() => {
+        this.bingeCountdownSecLeft -= 1;
+        if (secEl) secEl.textContent = String(Math.max(0, this.bingeCountdownSecLeft));
+        if (barEl) {
+          barEl.style.width = `${Math.max(0, (this.bingeCountdownSecLeft / 10) * 100)}%`;
+        }
+        if (this.bingeCountdownSecLeft <= 0) {
+          this.playNextBingeTarget();
+        }
+      }, 1000);
+    },
+
+    cancelBingeCountdown(markDismissed = false) {
+      if (this.bingeCountdownTimer) {
+        clearInterval(this.bingeCountdownTimer);
+        this.bingeCountdownTimer = null;
+      }
+      const card = document.getElementById('bingeUpNextCard');
+      if (card) card.classList.add('hidden');
+      if (markDismissed && this.activePlayerItem) {
+        this.bingeDismissedForKey = `${this.activePlayerItem.id}_${this.currentSeason}_${this.currentEpisode}`;
+      }
+    },
+
+    async playNextBingeTarget() {
+      const target = this.currentNextBingeTarget || this.resolveNextBingeTarget();
+      this.cancelBingeCountdown(false);
+      if (!target || !target.item) {
+        this.showToast('הגעת לפרק או לסרט האחרון ברצף');
+        return;
+      }
+      this.showToast(`⏭ עובר ברצף אל: ${target.title_he}`);
+      const streams = await this.resolveClientAndServerStreams(target.item, target.season, target.episode);
+      this.currentStreams = streams;
+      await this.launchPlayer(target.item, streams[0] || null, target.season, target.episode);
+    },
+
+    async playPrevBingeTarget() {
+      const target = this.currentPrevBingeTarget || this.resolvePrevBingeTarget();
+      this.cancelBingeCountdown(false);
+      if (!target || !target.item) return;
+      this.showToast(`⏮ חוזר אל: ${target.short_label_he}`);
+      const streams = await this.resolveClientAndServerStreams(target.item, target.season, target.episode);
+      this.currentStreams = streams;
+      await this.launchPlayer(target.item, streams[0] || null, target.season, target.episode);
+    },
+
     async launchPlayer(item, streamObj = null, season = 1, episode = 1) {
       if (!item) return;
       this.closeDetailsModal();
       const tgModal = document.getElementById('telegramModal');
       if (tgModal) tgModal.classList.add('hidden');
 
+      this.cancelBingeCountdown(false);
+      this.bingeDismissedForKey = '';
+
       this.activePlayerItem = item;
-      this.currentSeason = season || 1;
-      this.currentEpisode = episode || 1;
+      this.currentSeason = Number(season) || 1;
+      this.currentEpisode = Number(episode) || 1;
+      this.updatePlayerBingeControls();
+
+      // Ensure live series episodes or movie sequels are enriched in the background even if launched directly from card!
+      this.enrichItemFromCinemetaLive(item);
 
       const modal = document.getElementById('playerModal');
       if (modal) modal.classList.remove('hidden');
@@ -3463,11 +4517,28 @@
       }
       this.activePlayerStream = streamObj || {};
 
+      // Configure player top bar tabs for Live TV vs Movie/Series
+      const btnCloud1 = document.querySelector('[data-engine="cloud1"]');
+      const btnTorrent = document.querySelector('[data-engine="torrent"]');
+      const btnCloud2 = document.querySelector('[data-engine="cloud2"]');
+      const btnTrailer = document.querySelector('[data-engine="trailer"]');
+      if (item.type === 'live') {
+        if (btnCloud1) btnCloud1.textContent = '🔴 שידור חי ראשי (1080p HD)';
+        if (btnTorrent) btnTorrent.textContent = '📡 שרת שידור חלופי #2 (גיבוי HD)';
+        if (btnCloud2) btnCloud2.textContent = '⚡ חיבור ישיר לערוץ';
+        if (btnTrailer) btnTrailer.classList.add('hidden');
+      } else {
+        if (btnCloud1) btnCloud1.textContent = 'מקור ישיר #1 (1080p ראשי • 0% פרסומות 🛡️)';
+        if (btnTorrent) btnTorrent.textContent = "מקור ישיר #2 (1080p גיבוי א' 🛡️)";
+        if (btnCloud2) btnCloud2.textContent = "מקור ישיר #3 (1080p גיבוי ב' 🛡️)";
+        if (btnTrailer) btnTrailer.classList.remove('hidden');
+      }
+
       // Run AutoSub Sync AI verification & load verified Hebrew VTT cues
       this.verifyAndLoadHebrewSubtitles(item, this.activePlayerStream);
 
       if (item.type === 'live') {
-        this.switchPlayerEngine('hls');
+        this.switchPlayerEngine('cloud1');
       } else if (streamObj && streamObj.stream_mode === 'torrent' && streamObj.infoHash) {
         // User explicitly clicked a specific BitTorrent swarm row — check if they want instant cloud or P2P
         this.switchPlayerEngine('cloud1');
@@ -3518,7 +4589,7 @@
       }
 
       // MODE 4: Official YouTube Trailer Only (Strict Sandbox — Never loads ad-supported embeds!)
-      if (engineMode === 'trailer') {
+      if (engineMode === 'trailer' && item.type !== 'live') {
         if (video) video.classList.add('hidden');
         if (controls) controls.classList.add('hidden');
         if (torrentBanner) torrentBanner.classList.add('hidden');
@@ -3550,16 +4621,23 @@
         }
 
         const apiBase = this.getApiBase();
-        const primaryHls = item.hls_url || 'http://stream.mcquack.net/293/index.m3u8';
-        const backupHls = item.backup_hls_url || 'https://i24newshebrew-cdn.encoders.immergo.tv/master.m3u8';
-        const candidateSources = [
-          `${apiBase}/api/hls-proxy?url=${encodeURIComponent(primaryHls)}&origin=live`,
-          `${apiBase}/api/hls-proxy?url=${encodeURIComponent(backupHls)}&origin=live`,
-          primaryHls,
-          backupHls
-        ];
+        const primaryHls =
+          item.hls_url || 'https://r.il.cdn-redge.media/livehls/oil/kancdn-live/live/kan11/live.livx/playlist.m3u8';
+        const backupHls = item.backup_hls_url || 'http://stream.mcquack.net/293/index.m3u8';
+        const proxiedPrimary = `${apiBase}/api/hls-proxy?url=${encodeURIComponent(primaryHls)}&origin=live`;
+        const proxiedBackup = `${apiBase}/api/hls-proxy?url=${encodeURIComponent(backupHls)}&origin=live`;
 
-        if (relLabel) relLabel.textContent = `${item.title_he} • שידור חי ישיר (1080p HD)`;
+        let candidateSources = [proxiedPrimary, proxiedBackup, primaryHls, backupHls];
+        if (engineMode === 'torrent') {
+          candidateSources = [proxiedBackup, proxiedPrimary, backupHls, primaryHls];
+        } else if (engineMode === 'cloud2') {
+          candidateSources = [primaryHls, backupHls, proxiedPrimary, proxiedBackup];
+        }
+
+        if (relLabel) {
+          const srvLabel = engineMode === 'torrent' ? 'שרת גיבוי #2' : engineMode === 'cloud2' ? 'חיבור ישיר' : 'שידור חי ראשי';
+          relLabel.textContent = `🔴 ${item.title_he} • ${srvLabel} (${item.quality || '1080p HD'})`;
+        }
 
         const tryLiveSource = (sIdx) => {
           if (sIdx >= candidateSources.length) {
@@ -3928,13 +5006,21 @@
        6. AUTOSUB SYNC AI HEBREW SUBTITLES (REAL OPENSUBTITLES + INSTANT SYNC)
        ====================================================================== */
     async verifyAndLoadHebrewSubtitles(item, streamObj) {
-      if (!item || item.type === 'live') return;
+      const textEl = document.getElementById('customSubtitleText');
+      if (!item || item.type === 'live') {
+        this.parsedCues = [];
+        if (textEl) textEl.textContent = '';
+        const toast = document.getElementById('autoSubToastBanner');
+        if (toast) toast.style.opacity = '0';
+        const pill = document.getElementById('autoSubPillText');
+        if (pill) pill.textContent = 'שידור חי ישיר 🔴';
+        return;
+      }
       const release = (streamObj && streamObj.release_name) || item.default_release || '';
       const fps = (streamObj && streamObj.fps) || item.fps || 23.976;
       const apiBase = this.getApiBase();
       const imdbId = String(item.imdb_id || item.id || 'tt15239678').split(':')[0].trim();
 
-      const textEl = document.getElementById('customSubtitleText');
       if (textEl && this.subtitlesEnabled) {
         textEl.textContent = 'טוען ומסנכרן כתוביות בעברית...';
       }
@@ -4197,6 +5283,7 @@
     },
 
     closePlayer() {
+      this.cancelBingeCountdown(false);
       const modal = document.getElementById('playerModal');
       const wrap = document.querySelector('.player-wrapper');
       const iframe = document.getElementById('cloudPlayerIframe');
@@ -4305,6 +5392,8 @@
       document.querySelectorAll('[data-nav]').forEach((btn) => {
         btn.addEventListener('click', () => {
           const nav = btn.getAttribute('data-nav');
+          const hdrDrop = document.getElementById('headerUserDropdown');
+          if (hdrDrop) hdrDrop.classList.add('hidden');
           if (nav === 'addons') {
             this.openAddonsModal();
             return;
@@ -4314,7 +5403,7 @@
             return;
           }
           this.activeTab = nav;
-          document.querySelectorAll('[data-nav]').forEach((b) => {
+          document.querySelectorAll('.main-nav [data-nav]').forEach((b) => {
             b.classList.toggle('active', b.getAttribute('data-nav') === nav);
           });
           this.renderAllViews();
@@ -4328,9 +5417,12 @@
           e.preventDefault();
           this.activeTab = 'home';
           this.activeCategory = 'all';
+          this.activeYearFilter = 'all';
           this.searchQuery = '';
           const sInput = document.getElementById('globalSearchInput');
           if (sInput) sInput.value = '';
+          const ySel = document.getElementById('yearFilterSelect');
+          if (ySel) ySel.value = 'all';
           this.renderAllViews();
         });
       }
@@ -4365,7 +5457,14 @@
         });
       });
 
-      // Sort & Quality
+      // Year Filter, Sort & Quality
+      const yearSel = document.getElementById('yearFilterSelect');
+      if (yearSel) {
+        yearSel.addEventListener('change', () => {
+          this.activeYearFilter = yearSel.value || 'all';
+          this.renderAllViews();
+        });
+      }
       const sortSel = document.getElementById('sortSelect');
       if (sortSel) {
         sortSel.addEventListener('change', () => {
@@ -4386,9 +5485,18 @@
         resetBtn.addEventListener('click', () => {
           this.activeTab = 'home';
           this.activeCategory = 'all';
+          this.activeYearFilter = 'all';
           this.activeQualityFilter = 'all';
           this.searchQuery = '';
           if (searchInput) searchInput.value = '';
+          if (yearSel) yearSel.value = 'all';
+          if (qualSel) qualSel.value = 'all';
+          document.querySelectorAll('[data-cat]').forEach((p) => {
+            p.classList.toggle('active', p.getAttribute('data-cat') === 'all');
+          });
+          document.querySelectorAll('.main-nav [data-nav]').forEach((b) => {
+            b.classList.toggle('active', b.getAttribute('data-nav') === 'home');
+          });
           this.renderAllViews();
         });
       }
@@ -4611,6 +5719,7 @@
       const toggleVpnBtn = document.getElementById('toggleBuiltInVpnBtn');
       if (openVpnBtn && vpnModal) {
         openVpnBtn.addEventListener('click', () => {
+          document.getElementById('headerUserDropdown')?.classList.add('hidden');
           this.updateVpnShieldUi();
           vpnModal.classList.remove('hidden');
         });
@@ -4807,6 +5916,33 @@
         });
       }
 
+      // Admin Registration Approvals Modal Events (Elan Admin Only)
+      const openAdminBtn = document.getElementById('openAdminApprovalsBtn');
+      const openAdminPickerBtn = document.getElementById('openAdminFromPickerBtn');
+      const closeAdminModalBtn = document.getElementById('closeAdminApprovalsModalBtn');
+      const adminModal = document.getElementById('adminApprovalsModal');
+      const refreshAdminBtn = document.getElementById('refreshAdminAccountsBtn');
+      if (openAdminBtn) {
+        openAdminBtn.addEventListener('click', () => this.openAdminApprovalsModal());
+      }
+      if (openAdminPickerBtn) {
+        openAdminPickerBtn.addEventListener('click', () => this.openAdminApprovalsModal());
+      }
+      if (closeAdminModalBtn && adminModal) {
+        closeAdminModalBtn.addEventListener('click', () => adminModal.classList.add('hidden'));
+      }
+      if (adminModal) {
+        adminModal.addEventListener('click', (e) => {
+          if (e.target === adminModal) adminModal.classList.add('hidden');
+        });
+      }
+      if (refreshAdminBtn) {
+        refreshAdminBtn.addEventListener('click', async () => {
+          await this.renderAdminApprovalsModal();
+          this.showToast('רשימת בקשות ההרשמה והחשבונות רועננה');
+        });
+      }
+
       const toggleInspectorBtn = document.getElementById('toggleAutoSubInspectorBtn');
       const closeInspectorBtn = document.getElementById('closeAutoSubInspectorBtn');
       const inspectorPanel = document.getElementById('autoSubInspectorPanel');
@@ -4853,6 +5989,7 @@
       const subPrefsModal = document.getElementById('subtitlePrefsModal');
       if (openSubPrefsBtn && subPrefsModal) {
         openSubPrefsBtn.addEventListener('click', () => {
+          document.getElementById('headerUserDropdown')?.classList.add('hidden');
           this.applySubtitleAppearancePrefs();
           subPrefsModal.classList.remove('hidden');
         });
@@ -4937,6 +6074,35 @@
               video.currentTime,
               video.duration || 7200
             );
+          }
+
+          // Continuous Binge-Watch Trigger (Last 35 seconds of Series Episode or Movie)
+          if (
+            this.bingeModeEnabled &&
+            this.activePlayerItem &&
+            this.activePlayerItem.type !== 'live' &&
+            video.duration > 60
+          ) {
+            const remSec = video.duration - video.currentTime;
+            const curKey = `${this.activePlayerItem.id}_${this.currentSeason}_${this.currentEpisode}`;
+            if (remSec <= 35 && remSec > 0.4 && this.bingeDismissedForKey !== curKey) {
+              const target = this.currentNextBingeTarget || this.resolveNextBingeTarget();
+              if (target) {
+                this.triggerBingeUpNextCountdown(target);
+              }
+            }
+          }
+        });
+        video.addEventListener('ended', () => {
+          if (
+            this.bingeModeEnabled &&
+            this.activePlayerItem &&
+            this.activePlayerItem.type !== 'live'
+          ) {
+            const target = this.currentNextBingeTarget || this.resolveNextBingeTarget();
+            if (target) {
+              this.playNextBingeTarget();
+            }
           }
         });
         video.addEventListener('play', () => {
@@ -5035,6 +6201,39 @@
       if (fsBtn) {
         fsBtn.addEventListener('click', () => {
           this.togglePlayerFullscreen();
+        });
+      }
+
+      // Binge-Watch Continuous Playback Controls (Series Episodes & Movie Sequels)
+      const bingeToggleBtn = document.getElementById('playerBingeToggleBtn');
+      if (bingeToggleBtn) {
+        bingeToggleBtn.addEventListener('click', () => {
+          this.toggleBingeMode();
+        });
+      }
+      const nextBingeBtn = document.getElementById('playerNextBingeBtn');
+      if (nextBingeBtn) {
+        nextBingeBtn.addEventListener('click', () => {
+          this.playNextBingeTarget();
+        });
+      }
+      const prevBingeBtn = document.getElementById('playerPrevBingeBtn');
+      if (prevBingeBtn) {
+        prevBingeBtn.addEventListener('click', () => {
+          this.playPrevBingeTarget();
+        });
+      }
+      const bingePlayNowBtn = document.getElementById('bingePlayNowBtn');
+      if (bingePlayNowBtn) {
+        bingePlayNowBtn.addEventListener('click', () => {
+          this.playNextBingeTarget();
+        });
+      }
+      const bingeDismissBtn = document.getElementById('bingeDismissBtn');
+      if (bingeDismissBtn) {
+        bingeDismissBtn.addEventListener('click', () => {
+          this.cancelBingeCountdown(true);
+          this.showToast('המעבר האוטומטי לפרק/סרט הבא הושהה לסוף הצפייה הנוכחית');
         });
       }
 

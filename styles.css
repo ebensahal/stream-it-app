@@ -123,11 +123,17 @@ body[data-device-mode="tv"] {
   flex-wrap: wrap;
 }
 
-.header-right, .header-left {
+.header-right {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 28px;
   flex-wrap: wrap;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .brand-logo {
@@ -160,13 +166,13 @@ body[data-device-mode="tv"] {
 .main-nav {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .nav-link {
   background: transparent;
   border: none;
-  padding: 7px 13px;
+  padding: 7px 14px;
   border-radius: var(--radius-sm);
   font-size: 0.94rem;
   font-weight: 500;
@@ -183,23 +189,25 @@ body[data-device-mode="tv"] {
 .nav-link.active {
   color: #ffffff;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 .search-box {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #1a1a1a;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 6px 12px;
-  min-width: 260px;
-  transition: border-color 0.15s ease;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 999px;
+  padding: 6px 14px;
+  width: 280px;
+  transition: border-color 0.18s ease, background-color 0.18s ease, width 0.22s ease;
 }
 
 .search-box:focus-within {
   border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  width: 320px;
 }
 
 .search-icon {
@@ -1783,17 +1791,31 @@ body[data-device-mode="tv"] {
   position: absolute;
   top: calc(100% + 10px);
   inset-inline-end: 0;
-  width: 295px;
-  background: rgba(16, 16, 20, 0.98);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  width: 315px;
+  background: rgba(18, 18, 22, 0.98);
+  backdrop-filter: blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
   padding: 12px;
-  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.88);
   z-index: 1500;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+}
+
+.dropdown-device-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  gap: 10px;
+}
+
+.dropdown-device-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #d1d5db;
 }
 
 .dropdown-section-label {
@@ -2658,3 +2680,272 @@ body[data-device-mode="tv"] {
     color: #ffffff;
   }
 }
+
+/* =========================================================================
+   Binge-Watch Continuous Playback (Series Episodes & Movie Sequels)
+   ========================================================================= */
+.binge-active-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #6ee7b7;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
+}
+
+.player-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#playerBingeToggleBtn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #d4d4d8;
+  transition: all 0.2s ease;
+}
+
+#playerBingeToggleBtn.active {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.55);
+  color: #6ee7b7;
+}
+
+#playerBingeToggleBtn:hover {
+  transform: translateY(-1px);
+  border-color: #34d399;
+}
+
+.binge-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+}
+
+.binge-next-highlight {
+  background: linear-gradient(135deg, rgba(229, 9, 20, 0.28), rgba(229, 9, 20, 0.12)) !important;
+  border-color: rgba(229, 9, 20, 0.65) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.25);
+}
+
+.binge-next-highlight:hover {
+  background: var(--brand-red) !important;
+  border-color: #ff4d57 !important;
+}
+
+/* Netflix-style Up Next Floating Overlay Card */
+.binge-upnext-card {
+  position: absolute;
+  bottom: 92px;
+  inset-inline-end: 28px;
+  z-index: 65;
+  width: 360px;
+  max-width: calc(100vw - 36px);
+  background: rgba(14, 14, 18, 0.95);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(229, 9, 20, 0.55);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.88), 0 0 24px rgba(229, 9, 20, 0.22);
+  animation: bingeSlideIn 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bingeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.binge-upnext-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.binge-upnext-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  background: rgba(229, 9, 20, 0.22);
+  border: 1px solid rgba(229, 9, 20, 0.55);
+  color: #fca5a5;
+}
+
+.binge-dismiss-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #d4d4d8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.binge-dismiss-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.binge-upnext-body {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.binge-upnext-thumb-wrap {
+  position: relative;
+  width: 96px;
+  height: 58px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #18181b;
+}
+
+.binge-upnext-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.binge-upnext-play-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.38);
+  color: #ffffff;
+  font-size: 1.15rem;
+}
+
+.binge-upnext-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.binge-upnext-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.binge-upnext-sub {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+.binge-upnext-sub strong {
+  color: #f87171;
+  font-weight: 900;
+}
+
+.binge-upnext-progress-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.binge-upnext-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e50914, #fb7185);
+  border-radius: 999px;
+  transition: width 0.95s linear;
+}
+
+.binge-upnext-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.binge-play-now-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 9px 14px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  border-radius: 10px;
+}
+
+.episode-card.current-binge-playing {
+  border-color: #e50914 !important;
+  background: linear-gradient(90deg, rgba(229, 9, 20, 0.18), rgba(24, 24, 29, 0.92)) !important;
+  box-shadow: 0 0 0 1px rgba(229, 9, 20, 0.45);
+}
+
+/* Admin Registration Approvals Badge & Button */
+.admin-dropdown-btn {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  color: #fde68a !important;
+  margin-top: 4px;
+}
+
+.admin-dropdown-btn:hover {
+  background: rgba(245, 158, 11, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.admin-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  background: #e50914;
+  color: #ffffff;
+  margin-inline-start: auto;
+  box-shadow: 0 0 10px rgba(229, 9, 20, 0.6);
+}
+
+/* Android TV / Streamer Remote High-Contrast Focus Ring (10-Foot UI) */
+.tv-focused,
+body.device-tv :focus-visible {
+  outline: 3px solid #ffffff !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 6px rgba(229, 9, 20, 0.88), 0 14px 32px rgba(0, 0, 0, 0.9) !important;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s ease !important;
+}
+
+.media-card.tv-focused {
+  transform: translateY(-6px) scale(1.06) !important;
+  z-index: 25 !important;
+}
+
+
+

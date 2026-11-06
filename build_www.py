@@ -31,9 +31,10 @@ def build_www() -> None:
     src_data = os.path.join(BASE_DIR, "data")
     dst_data = os.path.join(WWW_DIR, "data")
     os.makedirs(dst_data, exist_ok=True)
-    cat_file = os.path.join(src_data, "hebrew_catalog.json")
-    if os.path.exists(cat_file):
-        shutil.copy2(cat_file, os.path.join(dst_data, "hebrew_catalog.json"))
+    for data_fname in ("hebrew_catalog.json", "accounts_vault.json"):
+        data_file = os.path.join(src_data, data_fname)
+        if os.path.exists(data_file):
+            shutil.copy2(data_file, os.path.join(dst_data, data_fname))
 
     print("[STREAM IT] Built standalone Capacitor / Git bundle in www/")
 

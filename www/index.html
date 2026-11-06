@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&family=Rubik:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5.6" />
+  <link rel="stylesheet" href="styles.css?v=6.0" />
   <script>
     // Wipe any old Service Worker cache that previously served the old Sandbox player
     (function () {
@@ -31,7 +31,7 @@
 </head>
 <body data-device-mode="auto">
 
-  <!-- Top Navigation Header -->
+  <!-- Top Navigation Header (Clean Netflix / Apple TV+ Cinema Layout) -->
   <header class="site-header" role="banner">
     <div class="header-inner">
       <div class="header-right">
@@ -48,8 +48,6 @@
           <button type="button" class="nav-link tv-focusable" data-nav="series" aria-label="סדרות">סדרות</button>
           <button type="button" class="nav-link tv-focusable" data-nav="live" aria-label="שידורים חיים">שידורים חיים</button>
           <button type="button" class="nav-link tv-focusable" data-nav="watchlist" aria-label="הרשימה שלי">הרשימה שלי</button>
-          <button type="button" class="nav-link tv-focusable" data-nav="telegram" aria-label="חיפוש והזרמת סרטים מטלגרם">טלגרם סרטים 🔒</button>
-          <button type="button" class="nav-link tv-focusable" data-nav="addons" aria-label="תוספים">תוספים</button>
         </nav>
       </div>
 
@@ -60,69 +58,97 @@
             type="search"
             id="globalSearchInput"
             class="search-input tv-focusable"
-            placeholder="חיפוש סרטים, סדרות או ערוצים..."
-            aria-label="חיפוש סרטים, סדרות או ערוצים"
+            placeholder="חיפוש סרט, סדרה או שנה..."
+            aria-label="חיפוש סרט, סדרה או שנה"
             autocomplete="off"
           />
           <button type="button" id="clearSearchBtn" class="icon-btn hidden" aria-label="נקה חיפוש">
             <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
-          <button type="button" id="openVirtualKbBtn" class="icon-btn tv-focusable" title="מקלדת על המסך לשלט" aria-label="פתח מקלדת עברית וירטואלית">
+          <button type="button" id="openVirtualKbBtn" class="icon-btn tv-focusable" title="מקלדת עברית על המסך" aria-label="פתח מקלדת עברית וירטואלית">
             <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg>
           </button>
         </div>
 
-        <button type="button" id="openSubtitlePrefsBtn" class="btn-secondary btn-sm tv-focusable" aria-label="העדפות מראה ועיצוב כתוביות">
-          <span>🎨 עיצוב כתוביות</span>
-        </button>
-
-        <button type="button" id="openVpnShieldBtn" class="btn-secondary btn-sm tv-focusable" style="border-color:rgba(70,211,105,0.4);color:#86efac;" aria-label="הגדרות VPN מובנה והצפנה">
-          <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <span id="vpnHeaderBadgeText">🛡️ VPN מוצפן: פעיל</span>
-        </button>
-
-        <!-- Netflix-Style Active Sub-User Avatar + Quick Switcher Dropdown -->
+        <!-- Netflix-Style Active User Pill + Unified Profile & Settings Menu -->
         <div class="header-user-menu-wrap" id="headerUserMenuWrap">
-          <button type="button" id="openAuthProfilesBtn" class="header-user-pill tv-focusable" aria-expanded="false" aria-haspopup="true" aria-label="תפריט יוזר, היסטוריית צפייה והחלפת יוזר">
+          <button type="button" id="openAuthProfilesBtn" class="header-user-pill tv-focusable" aria-expanded="false" aria-haspopup="true" aria-label="תפריט יוזר והגדרות">
             <span id="headerActiveAvatar" class="header-user-avatar" style="background:#E50914;">א</span>
             <span id="activeProfileHeaderLabel" class="header-user-name">יוזר</span>
             <span id="headerKidsBadge" class="header-kids-pill hidden">ילדים</span>
             <svg viewBox="0 0 24 24" class="icon-svg header-user-chevron" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
           </button>
 
-          <div id="headerUserDropdown" class="header-user-dropdown hidden" role="menu" aria-label="תפריט יוזרים וחשבון">
-            <div class="dropdown-section-label">יוזרים בחשבון המשפחתי (מעבר מהיר)</div>
+          <div id="headerUserDropdown" class="header-user-dropdown hidden" role="menu" aria-label="תפריט יוזרים, הגדרות וחשבון">
+            <div class="dropdown-section-label">מי צופה עכשיו? (מעבר מהיר)</div>
             <div id="headerQuickUsersList" class="dropdown-users-list"></div>
 
             <div class="dropdown-divider"></div>
 
             <button type="button" id="headerOpenWhosWatchingBtn" class="dropdown-action-item tv-focusable" role="menuitem">
               <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <span>מסך "מי צופה עכשיו?" וניהול יוזרים</span>
+              <span>ניהול יוזרים והגדרות פרופיל</span>
             </button>
 
             <button type="button" id="headerOpenWatchHistoryBtn" class="dropdown-action-item tv-focusable" role="menuitem">
               <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span>היסטוריית הצפייה והטעם האישי שלי</span>
+              <span>היסטוריית צפייה והמלצות אישיות</span>
             </button>
+
+            <button type="button" id="openAdminApprovalsBtn" class="dropdown-action-item admin-dropdown-btn hidden tv-focusable" role="menuitem">
+              <span aria-hidden="true">👑</span>
+              <span>אישור הרשמות וניהול משתמשים (מנהל)</span>
+              <span id="adminPendingCountBadge" class="admin-pending-badge hidden">0</span>
+            </button>
+
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-section-label">הגדרות נגן ומקורות תוכן</div>
+
+            <button type="button" id="openSubtitlePrefsBtn" class="dropdown-action-item tv-focusable" role="menuitem">
+              <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>
+              <span>הגדרות ועיצוב כתוביות</span>
+            </button>
+
+            <button type="button" class="dropdown-action-item tv-focusable" data-nav="addons" role="menuitem">
+              <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <span>מקורות תוכן ותוספים (PirateBay / EZTV)</span>
+            </button>
+
+            <button type="button" class="dropdown-action-item tv-focusable" data-nav="telegram" role="menuitem">
+              <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+              <span>ערוצי קולנוע בטלגרם</span>
+            </button>
+
+            <button type="button" id="openVpnShieldBtn" class="dropdown-action-item tv-focusable" role="menuitem">
+              <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span id="vpnHeaderBadgeText">חיבור VPN מוצפן: פעיל</span>
+            </button>
+
+            <div class="dropdown-device-row">
+              <span class="dropdown-device-label">מצב תצוגה:</span>
+              <div class="device-switcher" role="group" aria-label="מצב תצוגה">
+                <button type="button" class="device-pill active tv-focusable" data-device="auto" aria-label="מצב תצוגה אוטומטי">אוטומטי</button>
+                <button type="button" class="device-pill tv-focusable" data-device="tv" aria-label="מצב סטרימר וטלוויזיה">סטרימר TV</button>
+              </div>
+            </div>
+
+            <a href="STREAM_IT_TV_Streamer.apk" download="STREAM_IT_TV_Streamer.apk" class="dropdown-action-item tv-focusable" style="text-decoration:none;color:#86efac;" role="menuitem">
+              <span aria-hidden="true">📺</span>
+              <span>הורד קובץ התקנה לסטרימרים (APK)</span>
+            </a>
 
             <div class="dropdown-divider"></div>
 
             <div class="dropdown-account-info">
-              <span class="dropdown-account-caption">משתמש רשום (חשבון מייל):</span>
+              <span class="dropdown-account-caption">חשבון רשום:</span>
               <strong id="headerAccountEmailLabel" class="dropdown-account-email" dir="ltr">user@streamit.co.il</strong>
             </div>
 
             <button type="button" id="headerLogoutAccountBtn" class="dropdown-action-item dropdown-logout-btn tv-focusable" role="menuitem">
               <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              <span>התנתק מחשבון המייל</span>
+              <span>התנתק מהחשבון</span>
             </button>
           </div>
-        </div>
-
-        <div class="device-switcher" role="group" aria-label="מצב תצוגה">
-          <button type="button" class="device-pill active tv-focusable" data-device="auto" aria-label="מצב תצוגה אוטומטי">אוטומטי</button>
-          <button type="button" class="device-pill tv-focusable" data-device="tv" aria-label="מצב סטרימר וטלוויזיה">סטרימר TV</button>
         </div>
       </div>
     </div>
@@ -186,6 +212,21 @@
         </div>
 
         <div class="filter-selects">
+          <select id="yearFilterSelect" class="clean-select tv-focusable" aria-label="סינון לפי שנה">
+            <option value="all">שנה: כל השנים</option>
+            <option value="2026">2026 — חדשים</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+            <option value="2015-2019">2015–2019</option>
+            <option value="2010-2014">2010–2014</option>
+            <option value="2000-2009">2000–2009</option>
+            <option value="classic">שנות ה-90 וקלאסיקות</option>
+          </select>
+
           <select id="sortSelect" class="clean-select tv-focusable" aria-label="מיון כותרים">
             <option value="popularity">מיון: פופולריות</option>
             <option value="imdb">מיון: דירוג IMDb</option>
@@ -194,8 +235,8 @@
           </select>
 
           <select id="qualityFilterSelect" class="clean-select tv-focusable" aria-label="סינון איכות">
-            <option value="all">איכות: 1080p Full HD (ברירת מחדל מהירה ⚡)</option>
-            <option value="1080p">1080p Full HD בלבד</option>
+            <option value="all">איכות: הכל (1080p / 4K)</option>
+            <option value="1080p">1080p Full HD</option>
             <option value="4k">4K UHD</option>
           </select>
         </div>
@@ -433,10 +474,30 @@
         <!-- Series Season & Episode Picker -->
         <div id="seriesEpisodesBlock" class="sheet-section hidden">
           <div class="sheet-section-header">
-            <h3 class="sheet-section-title">פרקים</h3>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <h3 class="sheet-section-title">פרקים (צפייה ברצף מופעלת)</h3>
+              <span class="binge-active-pill">
+                <svg viewBox="0 0 24 24" class="icon-svg" style="width:14px;height:14px;" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                <span>מעבר אוטומטי לפרק הבא</span>
+              </span>
+            </div>
             <div id="seasonTabsRow" class="season-pills-row" role="tablist" aria-label="עונות"></div>
           </div>
           <div id="episodesListContainer" class="episodes-stack"></div>
+        </div>
+
+        <!-- Movie Franchise / Sequels Continuous Binge Block -->
+        <div id="movieFranchiseBlock" class="sheet-section hidden">
+          <div class="sheet-section-header">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <h3 id="movieFranchiseTitle" class="sheet-section-title">סרטי המשך וצפייה ברצף</h3>
+              <span class="binge-active-pill">
+                <svg viewBox="0 0 24 24" class="icon-svg" style="width:14px;height:14px;" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>ניגון אוטומטי של סרט ההמשך בסיום הצפייה</span>
+              </span>
+            </div>
+          </div>
+          <div id="movieFranchiseListContainer" class="episodes-stack"></div>
         </div>
 
         <!-- Clean Source & Torrent Selector -->
@@ -488,6 +549,9 @@
         </div>
 
         <div class="player-topbar-left">
+          <button type="button" id="playerBingeToggleBtn" class="autosub-status-btn active tv-focusable" aria-label="הפעל או כבה צפייה ברצף בפרקים ובסרטי המשך">
+            <span id="playerBingePillText">⏭ צפייה ברצף: פעיל</span>
+          </button>
           <button type="button" id="toggleAutoSubInspectorBtn" class="autosub-status-btn tv-focusable" aria-label="עיצוב וסנכרון כתוביות בעברית">
             <span class="status-dot"></span>
             <span id="autoSubPillText">🎨 כתוביות בעברית: מסונכרן (0.0s)</span>
@@ -535,6 +599,32 @@
         <div id="autoSubToastBanner" class="autosub-toast">
           <div class="autosub-toast-title">כתוביות בעברית אומתו והוצמדו אוטומטית (1080p)</div>
           <div id="autoSubToastSub" class="autosub-toast-sub">התאמה מלאה לגרסת השחרור • 23.976 FPS • 0.0s דיליי</div>
+        </div>
+
+        <!-- Netflix-Style Binge-Watch Up Next Card (Series Next Episode & Movie Sequels) -->
+        <div id="bingeUpNextCard" class="binge-upnext-card hidden" dir="rtl" role="region" aria-label="המשך צפייה ברצף">
+          <div class="binge-upnext-header">
+            <span id="bingeUpNextBadge" class="binge-upnext-badge">הפרק הבא ברצף</span>
+            <button type="button" id="bingeDismissBtn" class="binge-dismiss-btn tv-focusable" aria-label="המשך צפייה בנוכחי ובטל מעבר אוטומטי">✕ המשך צפייה</button>
+          </div>
+          <div class="binge-upnext-body">
+            <div class="binge-upnext-thumb-wrap">
+              <img id="bingeUpNextThumb" src="" alt="תמונה מקדימה" class="binge-upnext-thumb" />
+              <div class="binge-upnext-play-icon" aria-hidden="true">▶</div>
+            </div>
+            <div class="binge-upnext-info">
+              <div id="bingeUpNextTitle" class="binge-upnext-title">פרק 2: שם הפרק</div>
+              <div id="bingeUpNextSub" class="binge-upnext-sub">מתחיל אוטומטית בעוד <strong id="bingeCountdownSec">10</strong> שניות...</div>
+            </div>
+          </div>
+          <div class="binge-upnext-progress-track">
+            <div id="bingeProgressBar" class="binge-upnext-progress-fill" style="width:100%;"></div>
+          </div>
+          <div class="binge-upnext-actions">
+            <button type="button" id="bingePlayNowBtn" class="btn-primary binge-play-now-btn tv-focusable" aria-label="נגן עכשיו את הפרק או סרט ההמשך הבא">
+              ▶ נגן עכשיו ברצף
+            </button>
+          </div>
         </div>
 
         <!-- AutoSub Sync AI Inspector Drawer -->
@@ -651,6 +741,14 @@
           </div>
 
           <div class="controls-group" dir="rtl">
+            <button type="button" id="playerPrevBingeBtn" class="ctrl-pill-btn binge-ctrl-btn hidden tv-focusable" aria-label="עבור לפרק או לסרט הקודם">
+              <span>⏮</span>
+              <span id="playerPrevBingeLabel">פרק קודם</span>
+            </button>
+            <button type="button" id="playerNextBingeBtn" class="ctrl-pill-btn binge-ctrl-btn binge-next-highlight hidden tv-focusable" aria-label="עבור לפרק הבא או לסרט ההמשך">
+              <span id="playerNextBingeLabel">הפרק הבא</span>
+              <span>⏭</span>
+            </button>
             <button type="button" id="playerQuickSubMinusBtn" class="ctrl-pill-btn tv-focusable" aria-label="הקדם כתוביות ב-0.1 שניות">כתוביות <span dir="ltr">-0.1s</span></button>
             <button type="button" id="playerQuickSubPlusBtn" class="ctrl-pill-btn tv-focusable" aria-label="אחר כתוביות ב-0.1 שניות">כתוביות <span dir="ltr">+0.1s</span></button>
             <button type="button" id="playerSubToggleBtn" class="ctrl-pill-btn active tv-focusable" aria-label="הצג או הסתר כתוביות">כתוביות: פעיל</button>
@@ -911,6 +1009,10 @@
       <div class="whos-watching-account-bar">
         <span id="currentAccountBadge" class="whos-account-pill" dir="ltr">user@streamit.co.il</span>
         <span class="whos-count-label">יוזרים בחשבון: <strong id="profilesCountLabel">1/6</strong></span>
+        <button type="button" id="openAdminFromPickerBtn" class="btn-primary btn-sm hidden tv-focusable" aria-label="ניהול ואישור הרשמות חדשות">
+          <span>👑 אישור הרשמות</span>
+          <span id="adminPickerPendingBadge" class="admin-pending-badge hidden">0</span>
+        </button>
         <button type="button" id="closeAuthProfilesModalBtn" class="btn-secondary btn-sm tv-focusable" aria-label="חזור למסך הסרטים">
           חזרה לצפייה
         </button>
@@ -1066,6 +1168,41 @@
 
         <!-- Chronological Watch History List -->
         <div id="watchHistoryListContainer" class="sources-list" style="max-height:420px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 5D: ADMIN REGISTRATION APPROVALS & ACCOUNTS MANAGER (ELAN ONLY) -->
+  <!-- ===================================================================== -->
+  <div id="adminApprovalsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="adminApprovalsModalTitle">
+    <div class="details-sheet addons-sheet" style="max-width: 880px;">
+      <button type="button" id="closeAdminApprovalsModalBtn" class="sheet-close-btn tv-focusable" aria-label="סגור חלון ניהול הרשמות">
+        <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+
+      <div class="addons-sheet-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h2 id="adminApprovalsModalTitle" class="sheet-title">👑 פאנל מנהל מערכת — אישור הרשמות וניהול חשבונות</h2>
+            <p class="sheet-section-sub">
+              הרשמות חדשות ל-STREAM IT <strong>אינן מופעלות אוטומטית</strong>. כל בקשת הרשמה ממתינה לאישור שלך כמנהל המערכת לפני שהמשתמש יכול להתחבר ולצפות.
+            </p>
+          </div>
+          <button type="button" id="refreshAdminAccountsBtn" class="btn-secondary btn-sm tv-focusable" aria-label="רענן רשימת בקשות הרשמה">
+            🔄 רענן רשימה
+          </button>
+        </div>
+
+        <div class="sheet-section" style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.35);border-radius:12px;padding:16px;">
+          <h3 class="sheet-section-title" style="color:#fcd34d;margin-bottom:10px;">⏳ בקשות הרשמה הממתינות לאישורך</h3>
+          <div id="adminPendingListContainer" class="sources-list" style="max-height:280px;"></div>
+        </div>
+
+        <div class="sheet-section">
+          <h3 class="sheet-section-title">👥 כל החשבונות הרשומים במערכת</h3>
+          <div id="adminApprovedListContainer" class="sources-list" style="max-height:320px;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1256,7 +1393,7 @@
 
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
 
-  <script src="tv-navigation.js?v=5.6"></script>
-  <script src="app.js?v=5.6"></script>
+  <script src="tv-navigation.js?v=6.0"></script>
+  <script src="app.js?v=6.0"></script>
 </body>
 </html>

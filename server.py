@@ -832,6 +832,47 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
 
                 if raw_bytes.lstrip().startswith(b"#EXTM3U"):
                     m3u8_text = raw_bytes.decode("utf-8", errors="replace")
+
+                    # Trim huge 4-hour DVR live playlists (e.g. i24NEWS) to the last 10 live segments for instant 0.3s start
+                    if (
+                        player_origin == "live"
+                        and "#EXTINF:" in m3u8_text
+                        and "#EXT-X-STREAM-INF" not in m3u8_text
+                        and "#EXT-X-ENDLIST" not in m3u8_text
+                    ):
+                        raw_lines = [ln.strip() for ln in m3u8_text.splitlines() if ln.strip()]
+                        header_lines: List[str] = []
+                        seg_blocks: List[List[str]] = []
+                        cur_block: List[str] = []
+                        in_segments = False
+                        for ln in raw_lines:
+                            if ln.startswith(("#EXT-X-PROGRAM-DATE-TIME", "#EXTINF", "#EXT-X-DISCONTINUITY", "#EXT-X-KEY")):
+                                in_segments = True
+                                cur_block.append(ln)
+                            elif not ln.startswith("#"):
+                                in_segments = True
+                                cur_block.append(ln)
+                                seg_blocks.append(cur_block)
+                                cur_block = []
+                            elif not in_segments:
+                                header_lines.append(ln)
+                            else:
+                                cur_block.append(ln)
+                        if len(seg_blocks) > 12:
+                            dropped = len(seg_blocks) - 10
+                            seg_blocks = seg_blocks[-10:]
+                            new_headers: List[str] = []
+                            for hln in header_lines:
+                                if hln.startswith("#EXT-X-MEDIA-SEQUENCE:"):
+                                    try:
+                                        old_seq = int(hln.split(":", 1)[1].strip())
+                                        hln = f"#EXT-X-MEDIA-SEQUENCE:{old_seq + dropped}"
+                                    except Exception:
+                                        pass
+                                new_headers.append(hln)
+                            flat_segs = [item for blk in seg_blocks for item in blk]
+                            m3u8_text = "\n".join(new_headers + flat_segs)
+
                     out_lines: List[str] = []
 
                     def _proxy_wrap(raw_u: str) -> str:
@@ -1033,7 +1074,7 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
             self._send_json({"ok": True, "state": state, **state})
             return
 
-        # 8b. Encrypted Email Account Vault Lookup
+        # 8b. Encrypted Email Account Vault Lookup & Admin Approvals List
         if path == "/api/accounts/get":
             email_key = q_val("email", "").strip().lower()
             vault_path = os.path.join(DATA_DIR, "accounts_vault.json")
@@ -1045,7 +1086,43 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                 except Exception:
                     accounts_map = {}
             rec = accounts_map.get(email_key)
+            if isinstance(rec, dict):
+                if email_key == "bensahal@gmail.com":
+                    rec["status"] = "approved"
+                    rec["role"] = "admin"
+                else:
+                    rec.setdefault("status", "pending")
+                    rec.setdefault("role", "user")
             self._send_json({"ok": bool(rec), "email": email_key, "record": rec})
+            return
+
+        if path == "/api/accounts/list":
+            vault_path = os.path.join(DATA_DIR, "accounts_vault.json")
+            accounts_map = {}
+            if os.path.exists(vault_path):
+                try:
+                    with open(vault_path, "r", encoding="utf-8") as vf:
+                        accounts_map = json.load(vf) or {}
+                except Exception:
+                    accounts_map = {}
+            items: List[Dict[str, Any]] = []
+            for em, rec in accounts_map.items():
+                if not isinstance(rec, dict):
+                    continue
+                em_clean = str(em).strip().lower()
+                is_master = em_clean == "bensahal@gmail.com"
+                status = "approved" if is_master else str(rec.get("status") or "pending")
+                role = "admin" if is_master else str(rec.get("role") or "user")
+                items.append({
+                    "email": em_clean,
+                    "display_name": rec.get("display_name") or ("אילן בן סהל (מנהל)" if is_master else em_clean.split("@")[0]),
+                    "status": status,
+                    "role": role,
+                    "requested_at": rec.get("requested_at") or rec.get("updatedAt") or "",
+                    "updatedAt": rec.get("updatedAt") or "",
+                    "record": {**rec, "status": status, "role": role},
+                })
+            self._send_json({"ok": True, "accounts": items})
             return
 
         # 9. Installed Addons List
@@ -1135,15 +1212,86 @@ class StreamItRequestHandler(SimpleHTTPRequestHandler):
                                 accounts_map = json.load(vf) or {}
                         except Exception:
                             accounts_map = {}
+
+                    existing_rec = accounts_map.get(email_key)
+                    if email_key == "bensahal@gmail.com":
+                        record["status"] = "approved"
+                        record["role"] = "admin"
+                    elif isinstance(existing_rec, dict) and existing_rec.get("status"):
+                        # Preserve server-side admin approval status so a client cannot self-approve
+                        record["status"] = existing_rec["status"]
+                        record["role"] = existing_rec.get("role", "user")
+                    else:
+                        # Strictly pending admin approval for all new registrations!
+                        record["status"] = "pending"
+                        record["role"] = "user"
+
                     accounts_map[email_key] = record
                     try:
                         with open(vault_path, "w", encoding="utf-8") as vf:
                             json.dump(accounts_map, vf, ensure_ascii=False, indent=2)
                     except Exception:
                         pass
-                self._send_json({"ok": True, "email": email_key})
+                self._send_json({
+                    "ok": True,
+                    "email": email_key,
+                    "status": record.get("status", "pending"),
+                    "role": record.get("role", "user"),
+                })
                 return
             self._send_json({"ok": False, "error": "Invalid email or record"}, status_code=400)
+            return
+
+        if path == "/api/accounts/admin-action":
+            admin_email = str(body.get("admin_email") or "").strip().lower()
+            target_email = str(body.get("target_email") or "").strip().lower()
+            action = str(body.get("action") or "").strip().lower()
+            if not target_email or action not in ("approve", "reject", "pending", "delete"):
+                self._send_json({"ok": False, "error": "Missing target_email or valid action"}, status_code=400)
+                return
+
+            vault_path = os.path.join(DATA_DIR, "accounts_vault.json")
+            with STATE_LOCK:
+                accounts_map = {}
+                if os.path.exists(vault_path):
+                    try:
+                        with open(vault_path, "r", encoding="utf-8") as vf:
+                            accounts_map = json.load(vf) or {}
+                    except Exception:
+                        accounts_map = {}
+
+                admin_rec = accounts_map.get(admin_email) or {}
+                is_authorized_admin = (
+                    admin_email == "bensahal@gmail.com"
+                    or str(admin_rec.get("role") or "") == "admin"
+                )
+                if not is_authorized_admin:
+                    self._send_json({"ok": False, "error": "רק מנהל המערכת מורשה לאשר או לדחות הרשמות"}, status_code=403)
+                    return
+
+                if target_email == "bensahal@gmail.com" and action in ("reject", "pending", "delete"):
+                    self._send_json({"ok": False, "error": "לא ניתן לחסום או למחוק את חשבון מנהל המערכת הראשי"}, status_code=400)
+                    return
+
+                if action == "delete":
+                    accounts_map.pop(target_email, None)
+                elif target_email in accounts_map and isinstance(accounts_map[target_email], dict):
+                    if action == "approve":
+                        accounts_map[target_email]["status"] = "approved"
+                        accounts_map[target_email]["approved_by"] = admin_email
+                        accounts_map[target_email]["approved_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                    elif action == "reject":
+                        accounts_map[target_email]["status"] = "rejected"
+                    elif action == "pending":
+                        accounts_map[target_email]["status"] = "pending"
+
+                try:
+                    with open(vault_path, "w", encoding="utf-8") as vf:
+                        json.dump(accounts_map, vf, ensure_ascii=False, indent=2)
+                except Exception:
+                    pass
+
+            self._send_json({"ok": True, "target_email": target_email, "action": action})
             return
 
         if path == "/api/addons/install":
